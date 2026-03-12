@@ -1,18 +1,13 @@
-type WorkingHour = {
-    start_time: string
-    end_time: string
-}
+import type { WorkingHour } from '@/src/features/booking/api/get-barber-working-hours'
+import type { BarberAppointment } from '@/src/features/booking/api/get-barber-appointments-by-date'
+import type { TimeOffRange } from '@/src/features/time-off/api/get-time-off-by-barber-and-date'
 
-type Appointment = {
-    start_at: string
-    end_at: string
-}
-
-type GenerateTimeSlotsParams = {
+type GenerateTimeSlotsInput = {
     date: string
     serviceDurationMinutes: number
     workingHours: WorkingHour[]
-    appointments: Appointment[]
+    appointments: BarberAppointment[]
+    timeOffRanges: TimeOffRange[]
     slotStepMinutes?: number
 }
 
@@ -22,23 +17,24 @@ type TimeSlot = {
     end_at: string
 }
 
-function timeToMinutes(time: string): number {
-    const [hours, minutes] = time.slice(0, 5).split(':').map(Number)
-    return hours * 60 + minutes
+function formatHourLabel(date: Date) {
+    return date.toLocaleTimeString('es-CL', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    })
 }
 
-function minutesToTime(minutes: number): string {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+function combineDateAndTime(date: string, time: string) {
+    return new Date(`${date}T${time}`)
 }
 
-function isOverlapping(
+function overlaps(
     startA: Date,
     endA: Date,
     startB: Date,
     endB: Date
-): boolean {
+) {
     return startA < endB && endA > startB
 }
 
@@ -47,39 +43,50 @@ export function generateTimeSlots({
     serviceDurationMinutes,
     workingHours,
     appointments,
+    timeOffRanges,
     slotStepMinutes = 30,
-}: GenerateTimeSlotsParams): TimeSlot[] {
+}: GenerateTimeSlotsInput): TimeSlot[] {
     const slots: TimeSlot[] = []
 
-    for (const schedule of workingHours) {
-        const scheduleStart = timeToMinutes(schedule.start_time)
-        const scheduleEnd = timeToMinutes(schedule.end_time)
+    for (const block of workingHours) {
+        const blockStart = combineDateAndTime(date, block.start_time.slice(0, 5))
+        const blockEnd = combineDateAndTime(date, block.end_time.slice(0, 5))
 
-        for (
-            let current = scheduleStart;
-            current + serviceDurationMinutes <= scheduleEnd;
-            current += slotStepMinutes
-        ) {
-            const startTime = minutesToTime(current)
-            const endTime = minutesToTime(current + serviceDurationMinutes)
+        let current = new Date(blockStart)
 
-            const slotStart = new Date(`${date}T${startTime}:00`)
-            const slotEnd = new Date(`${date}T${endTime}:00`)
+        while (current < blockEnd) {
+            const slotStart = new Date(current)
+            const slotEnd = new Date(
+                slotStart.getTime() + serviceDurationMinutes * 60 * 1000
+            )
 
-            const hasConflict = appointments.some((appointment) => {
+            if (slotEnd > blockEnd) {
+                break
+            }
+
+            const collidesWithAppointment = appointments.some((appointment) => {
                 const appointmentStart = new Date(appointment.start_at)
                 const appointmentEnd = new Date(appointment.end_at)
 
-                return isOverlapping(slotStart, slotEnd, appointmentStart, appointmentEnd)
+                return overlaps(slotStart, slotEnd, appointmentStart, appointmentEnd)
             })
 
-            if (!hasConflict) {
+            const collidesWithTimeOff = timeOffRanges.some((range) => {
+                const rangeStart = new Date(range.start_at)
+                const rangeEnd = new Date(range.end_at)
+
+                return overlaps(slotStart, slotEnd, rangeStart, rangeEnd)
+            })
+
+            if (!collidesWithAppointment && !collidesWithTimeOff) {
                 slots.push({
-                    label: startTime,
+                    label: formatHourLabel(slotStart),
                     start_at: slotStart.toISOString(),
                     end_at: slotEnd.toISOString(),
                 })
             }
+
+            current = new Date(current.getTime() + slotStepMinutes * 60 * 1000)
         }
     }
 

@@ -1,19 +1,9 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/src/lib/supabase/server'
-import { AdminLogoutButton } from '@/src/features/auth/components/admin-logout-button'
+
 import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
 import { AdminBarberForm } from '@/src/features/barbers/components/admin-barber-form'
 import { AdminBarberEditForm } from '@/src/features/barbers/components/admin-barber-edit-form'
 
 export default async function AdminBarberosPage() {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-        redirect('/admin/login')
-    }
 
     const barbers = await getBarbersAdmin()
     const businessId = barbers[0]?.business_id
@@ -21,8 +11,7 @@ export default async function AdminBarberosPage() {
     return (
         <main className="p-8">
             <div className="mb-6 flex items-center justify-between">
-                <h1 className="text-3xl font-bold">Barberos</h1>
-                <AdminLogoutButton />
+                <h1 className="mb-6 text-3xl font-bold">Barberos</h1>
             </div>
 
             {businessId ? (

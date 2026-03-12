@@ -1,6 +1,6 @@
 import { supabase } from '@/src/lib/supabase/client'
 
-type Appointment = {
+export type BarberAppointment = {
     id: string
     barber_id: string
     appointment_date: string
@@ -12,7 +12,7 @@ type Appointment = {
 export async function getBarberAppointmentsByDate(
     barberId: string,
     appointmentDate: string
-): Promise<Appointment[]> {
+): Promise<BarberAppointment[]> {
     const { data, error } = await supabase
         .from('appointments')
         .select('id, barber_id, appointment_date, start_at, end_at, status')
@@ -25,5 +25,5 @@ export async function getBarberAppointmentsByDate(
         throw new Error(error.message)
     }
 
-    return (data ?? []) as Appointment[]
+    return (data ?? []) as BarberAppointment[]
 }

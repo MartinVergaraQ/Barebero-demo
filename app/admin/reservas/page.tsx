@@ -1,9 +1,6 @@
 import { getAppointments, type AppointmentItem } from '@/src/features/booking/api/get-appointments'
 import { AppointmentStatusSelect } from '@/src/features/booking/api/components/appointment-status-select'
 import { AdminAppointmentsFilter } from '@/src/features/booking/api/components/admin-appointments-filter'
-import { redirect } from 'next/navigation'
-import { createClient } from '@/src/lib/supabase/server'
-import { AdminLogoutButton } from '@/src/features/auth/components/admin-logout-button'
 
 function getRelationName(
     relation: { name: string } | { name: string }[] | null
@@ -22,22 +19,13 @@ type PageProps = {
 export default async function AdminReservasPage({ searchParams }: PageProps) {
     const params = await searchParams
     const selectedDate = params.date ?? ''
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-        redirect('/admin/login')
-    }
 
     const appointments = (await getAppointments(selectedDate)) as AppointmentItem[]
 
     return (
         <main className="p-8">
             <div className="mb-6 flex items-center justify-between">
-                <h1 className="text-3xl font-bold">Reservas</h1>
-                <AdminLogoutButton />
+                <h1 className="mb-6 text-3xl font-bold">Reservas</h1>
             </div>
             <AdminAppointmentsFilter />
 

@@ -1,6 +1,6 @@
 import { supabase } from '@/src/lib/supabase/client'
 
-type WorkingHour = {
+export type WorkingHour = {
     id: string
     barber_id: string
     day_of_week: number

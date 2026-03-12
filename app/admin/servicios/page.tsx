@@ -1,19 +1,8 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/src/lib/supabase/server'
 import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
 import { AdminServiceForm } from '@/src/features/services/api/components/admin-service-form'
-import { AdminLogoutButton } from '@/src/features/auth/components/admin-logout-button'
 import { AdminServiceEditForm } from '@/src/features/services/api/components/admin-service-edit-form'
 
 export default async function AdminServiciosPage() {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-        redirect('/admin/login')
-    }
 
     const services = await getServicesAdmin()
 
@@ -22,8 +11,7 @@ export default async function AdminServiciosPage() {
     return (
         <main className="p-8">
             <div className="mb-6 flex items-center justify-between">
-                <h1 className="text-3xl font-bold">Servicios</h1>
-                <AdminLogoutButton />
+                <h1 className="mb-6 text-3xl font-bold">Servicios</h1>
             </div>
 
             {businessId ? (

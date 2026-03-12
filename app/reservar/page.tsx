@@ -6,6 +6,7 @@ import { createAppointment } from '@/src/features/booking/api/create.appointment
 import { getBarberWorkingHours } from '@/src/features/booking/api/get-barber-working-hours'
 import { getBarberAppointmentsByDate } from '@/src/features/booking/api/get-barber-appointments-by-date'
 import { generateTimeSlots } from '@/src/features/booking/utils/generate-time-slots'
+import { getTimeOffByBarberAndDate } from '@/src/features/time-off/api/get-time-off-by-barber-and-date'
 
 type Service = {
     id: string
@@ -128,9 +129,10 @@ export default function ReservarPage() {
             const localDate = new Date(`${form.appointment_date}T12:00:00`)
             const dayOfWeek = localDate.getDay()
 
-            const [workingHours, appointments] = await Promise.all([
+            const [workingHours, appointments, timeOffRanges] = await Promise.all([
                 getBarberWorkingHours(form.barber_id, dayOfWeek),
                 getBarberAppointmentsByDate(form.barber_id, form.appointment_date),
+                getTimeOffByBarberAndDate(form.barber_id, form.appointment_date),
             ])
 
             const slots = generateTimeSlots({
@@ -138,6 +140,7 @@ export default function ReservarPage() {
                 serviceDurationMinutes: selectedService.duration_minutes,
                 workingHours,
                 appointments,
+                timeOffRanges,
                 slotStepMinutes: 30,
             })
 
