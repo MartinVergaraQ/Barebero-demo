@@ -20,7 +20,12 @@ export type AppointmentItem = {
   barbers: { name: string } | { name: string }[] | null
 }
 
-export async function getAppointments(date?: string) {
+type GetAppointmentsFilters = {
+  date?: string
+  status?: AppointmentStatus | ''
+}
+
+export async function getAppointments(filters?: GetAppointmentsFilters) {
   let query = supabase
     .from('appointments')
     .select(`
@@ -37,8 +42,12 @@ export async function getAppointments(date?: string) {
     `)
     .order('start_at', { ascending: true })
 
-  if (date) {
-    query = query.eq('appointment_date', date)
+  if (filters?.date) {
+    query = query.eq('appointment_date', filters.date)
+  }
+
+  if (filters?.status) {
+    query = query.eq('status', filters.status)
   }
 
   const { data, error } = await query

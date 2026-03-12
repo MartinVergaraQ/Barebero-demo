@@ -3,12 +3,24 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
+const statusOptions = [
+    { value: '', label: 'Todos' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'no_show', label: 'No Show' },
+]
+
 export function AdminAppointmentsFilter() {
     const router = useRouter()
     const searchParams = useSearchParams()
 
     const currentDate = searchParams.get('date') ?? ''
+    const currentStatus = searchParams.get('status') ?? ''
+
     const [date, setDate] = useState(currentDate)
+    const [status, setStatus] = useState(currentStatus)
 
     function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
@@ -21,11 +33,19 @@ export function AdminAppointmentsFilter() {
             params.delete('date')
         }
 
-        router.push(`/admin/reservas?${params.toString()}`)
+        if (status) {
+            params.set('status', status)
+        } else {
+            params.delete('status')
+        }
+
+        const queryString = params.toString()
+        router.push(queryString ? `/admin/reservas?${queryString}` : '/admin/reservas')
     }
 
     function handleClear() {
         setDate('')
+        setStatus('')
         router.push('/admin/reservas')
     }
 
@@ -42,6 +62,24 @@ export function AdminAppointmentsFilter() {
                     onChange={(e) => setDate(e.target.value)}
                     className="rounded-lg border p-3"
                 />
+            </div>
+
+            <div>
+                <label htmlFor="status" className="mb-2 block text-sm font-medium">
+                    Filtrar por estado
+                </label>
+                <select
+                    id="status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="rounded-lg border p-3"
+                >
+                    {statusOptions.map((option) => (
+                        <option key={option.value || 'all'} value={option.value}>
+                            {option.label}
+                        </option>
+                    ))}
+                </select>
             </div>
 
             <button

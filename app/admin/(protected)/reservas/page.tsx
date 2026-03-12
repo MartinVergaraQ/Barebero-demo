@@ -1,7 +1,11 @@
-import { getAppointments, type AppointmentItem } from '@/src/features/booking/api/get-appointments'
+import {
+    getAppointments,
+    type AppointmentItem,
+    type AppointmentStatus,
+} from '@/src/features/booking/api/get-appointments'
+
 import { AppointmentStatusSelect } from '@/src/features/booking/api/components/appointment-status-select'
 import { AdminAppointmentsFilter } from '@/src/features/booking/api/components/admin-appointments-filter'
-
 function getRelationName(
     relation: { name: string } | { name: string }[] | null
 ) {
@@ -13,26 +17,42 @@ function getRelationName(
 type PageProps = {
     searchParams: Promise<{
         date?: string
+        status?: AppointmentStatus | ''
     }>
 }
 
 export default async function AdminReservasPage({ searchParams }: PageProps) {
     const params = await searchParams
     const selectedDate = params.date ?? ''
+    const selectedStatus = params.status ?? ''
 
-    const appointments = (await getAppointments(selectedDate)) as AppointmentItem[]
+    const appointments = (await getAppointments({
+        date: selectedDate,
+        status: selectedStatus,
+    })) as AppointmentItem[]
 
     return (
-        <main className="p-8">
-            <div className="mb-6 flex items-center justify-between">
-                <h1 className="mb-6 text-3xl font-bold">Reservas</h1>
-            </div>
+        <main>
+            <h1 className="mb-6 text-3xl font-bold">Reservas</h1>
+
             <AdminAppointmentsFilter />
 
-            {selectedDate && (
-                <p className="mb-4 text-sm text-gray-600">
-                    Mostrando reservas para: <span className="font-medium">{selectedDate}</span>
-                </p>
+            {(selectedDate || selectedStatus) && (
+                <div className="mb-4 text-sm text-gray-600">
+                    {selectedDate && (
+                        <p>
+                            Mostrando reservas para la fecha:{' '}
+                            <span className="font-medium">{selectedDate}</span>
+                        </p>
+                    )}
+
+                    {selectedStatus && (
+                        <p>
+                            Mostrando reservas con estado:{' '}
+                            <span className="font-medium">{selectedStatus}</span>
+                        </p>
+                    )}
+                </div>
             )}
 
             {appointments.length === 0 ? (
