@@ -1,4 +1,4 @@
-import { getActiveBarbers } from '@/src/features/barbers/api/get-barbers'
+import { getActiveBarbers } from '@/src/features/barbers/api/get-barber'
 
 export default async function BarberosPage() {
     const barbers = await getActiveBarbers()
