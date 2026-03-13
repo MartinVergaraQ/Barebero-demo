@@ -16,6 +16,8 @@ export type AppointmentItem = {
   start_at: string
   end_at: string
   status: AppointmentStatus
+  barber_id: string
+  service_id: string
   services: { name: string } | { name: string }[] | null
   barbers: { name: string } | { name: string }[] | null
 }
@@ -23,6 +25,7 @@ export type AppointmentItem = {
 type GetAppointmentsFilters = {
   date?: string
   status?: AppointmentStatus | ''
+  barberId?: string
 }
 
 export async function getAppointments(filters?: GetAppointmentsFilters) {
@@ -37,6 +40,8 @@ export async function getAppointments(filters?: GetAppointmentsFilters) {
       start_at,
       end_at,
       status,
+      barber_id,
+      service_id,
       services ( name ),
       barbers ( name )
     `)
@@ -48,6 +53,10 @@ export async function getAppointments(filters?: GetAppointmentsFilters) {
 
   if (filters?.status) {
     query = query.eq('status', filters.status)
+  }
+
+  if (filters?.barberId) {
+    query = query.eq('barber_id', filters.barberId)
   }
 
   const { data, error } = await query

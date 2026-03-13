@@ -3,9 +3,13 @@ import {
     type AppointmentItem,
     type AppointmentStatus,
 } from '@/src/features/booking/api/get-appointments'
-
 import { AppointmentStatusSelect } from '@/src/features/booking/api/components/appointment-status-select'
 import { AdminAppointmentsFilter } from '@/src/features/booking/api/components/admin-appointments-filter'
+import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
+import { DeleteAppointmentButton } from '@/src/features/booking/api/components/delete-appointment-button'
+import { AdminAppointmentEditForm } from '@/src/features/booking/api/components/admin-appointment-edit-form'
+import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
+
 function getRelationName(
     relation: { name: string } | { name: string }[] | null
 ) {
@@ -18,6 +22,7 @@ type PageProps = {
     searchParams: Promise<{
         date?: string
         status?: AppointmentStatus | ''
+        barberId?: string
     }>
 }
 
@@ -25,31 +30,49 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
     const params = await searchParams
     const selectedDate = params.date ?? ''
     const selectedStatus = params.status ?? ''
+    const selectedBarberId = params.barberId ?? ''
 
-    const appointments = (await getAppointments({
-        date: selectedDate,
-        status: selectedStatus,
-    })) as AppointmentItem[]
+    const [appointments, barbers, services] = await Promise.all([
+        getAppointments({
+            date: selectedDate,
+            status: selectedStatus,
+            barberId: selectedBarberId,
+        }),
+        getBarbersAdmin(),
+        getServicesAdmin(),
+    ])
 
     return (
         <main>
             <h1 className="mb-6 text-3xl font-bold">Reservas</h1>
 
-            <AdminAppointmentsFilter />
+            <AdminAppointmentsFilter
+                barbers={barbers.map((barber) => ({
+                    id: barber.id,
+                    name: barber.name,
+                }))}
+            />
 
-            {(selectedDate || selectedStatus) && (
-                <div className="mb-4 text-sm text-gray-600">
+            {(selectedDate || selectedStatus || selectedBarberId) && (
+                <div className="mb-4 text-sm text-gray-600 space-y-1">
                     {selectedDate && (
                         <p>
-                            Mostrando reservas para la fecha:{' '}
-                            <span className="font-medium">{selectedDate}</span>
+                            Fecha: <span className="font-medium">{selectedDate}</span>
                         </p>
                     )}
 
                     {selectedStatus && (
                         <p>
-                            Mostrando reservas con estado:{' '}
-                            <span className="font-medium">{selectedStatus}</span>
+                            Estado: <span className="font-medium">{selectedStatus}</span>
+                        </p>
+                    )}
+
+                    {selectedBarberId && (
+                        <p>
+                            Barbero:{' '}
+                            <span className="font-medium">
+                                {barbers.find((b) => b.id === selectedBarberId)?.name ?? selectedBarberId}
+                            </span>
                         </p>
                     )}
                 </div>
@@ -59,7 +82,7 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
                 <p>No hay reservas para mostrar.</p>
             ) : (
                 <div className="space-y-4">
-                    {appointments.map((appointment) => (
+                    {(appointments as AppointmentItem[]).map((appointment) => (
                         <article
                             key={appointment.id}
                             className="rounded-xl border p-4 shadow-sm"
@@ -114,6 +137,28 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
                                 <AppointmentStatusSelect
                                     appointmentId={appointment.id}
                                     currentStatus={appointment.status}
+                                />
+                                <DeleteAppointmentButton id={appointment.id} />
+                                <AdminAppointmentEditForm
+                                    appointment={{
+                                        id: appointment.id,
+                                        barber_id: appointment.barber_id,
+                                        service_id: appointment.service_id,
+                                        client_name: appointment.client_name,
+                                        client_email: appointment.client_email,
+                                        client_phone: appointment.client_phone,
+                                        appointment_date: appointment.appointment_date,
+                                        start_at: appointment.start_at,
+                                    }}
+                                    barbers={barbers.map((barber) => ({
+                                        id: barber.id,
+                                        name: barber.name,
+                                    }))}
+                                    services={services.map((service) => ({
+                                        id: service.id,
+                                        name: service.name,
+                                        duration_minutes: service.duration_minutes,
+                                    }))}
                                 />
                             </div>
                         </article>
