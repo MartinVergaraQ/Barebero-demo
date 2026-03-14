@@ -10,6 +10,7 @@ const links = [
     { href: '/admin/barberos', label: 'Barberos' },
     { href: '/admin/horarios', label: 'Horarios' },
     { href: '/admin/bloqueos', label: 'Bloqueos' },
+    { href: '/admin/galeria', label: 'Galería' },
 ]
 
 export function AdminNav() {
@@ -31,8 +32,8 @@ export function AdminNav() {
                             key={link.href}
                             href={link.href}
                             className={`rounded-lg px-4 py-3 text-sm font-medium transition ${isActive
-                                    ? 'bg-black text-white'
-                                    : 'border text-gray-700 hover:bg-gray-50'
+                                ? 'bg-black text-white'
+                                : 'border text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
                             {link.label}
