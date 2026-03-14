@@ -1,6 +1,8 @@
 import { getGalleryItemsAdmin } from '@/src/features/gallery/api/get-gallery-items-admin'
 import { AdminGalleryForm } from '@/src/features/gallery/components/admin-gallery-form'
 import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
+import { AdminGalleryEditForm } from '@/src/features/gallery/components/admin-gallery-edit-form'
+import { DeleteGalleryItemButton } from '@/src/features/gallery/components/delete-gallery-item-button'
 
 export default async function AdminGaleriaPage() {
     const [items, services] = await Promise.all([
@@ -41,6 +43,16 @@ export default async function AdminGaleriaPage() {
                                 <p className="text-sm text-gray-600">
                                     Activa: {item.is_active ? 'Sí' : 'No'}
                                 </p>
+                                <AdminGalleryEditForm
+                                    item={{
+                                        id: item.id,
+                                        title: item.title,
+                                        display_order: item.display_order,
+                                        is_active: item.is_active,
+                                    }} />
+                                <DeleteGalleryItemButton
+                                    id={item.id}
+                                    publicId={item.public_id} />
                             </article>
                         ))}
                     </div>
