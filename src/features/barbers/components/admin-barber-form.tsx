@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createBarber } from '@/src/features/barbers/api/create-barber'
+import { uploadBarberPhoto } from '@/src/features/barbers/api/upload-barber-photo'
 
 type Props = {
     businessId: string
@@ -32,6 +33,31 @@ export function AdminBarberForm({ businessId }: Props) {
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
+    const [uploadingImage, setUploadingImage] = useState(false)
+
+    async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setUploadingImage(true)
+        setErrorMessage('')
+        setMessage('')
+
+        try {
+            const result = await uploadBarberPhoto(file)
+
+            setForm((prev) => ({
+                ...prev,
+                photo_url: result.secure_url,
+            }))
+        } catch (error) {
+            setErrorMessage(
+                error instanceof Error ? error.message : 'Error subiendo imagen'
+            )
+        } finally {
+            setUploadingImage(false)
+        }
+    }
 
     function handleChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -152,14 +178,29 @@ export function AdminBarberForm({ businessId }: Props) {
                 </div>
 
                 <div className="md:col-span-2">
-                    <label className="mb-2 block font-medium">Foto URL</label>
+                    <label className="mb-2 block font-medium">Foto</label>
+
                     <input
-                        name="photo_url"
-                        value={form.photo_url}
-                        onChange={handleChange}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
                         className="w-full rounded-lg border p-3"
-                        placeholder="https://..."
                     />
+
+                    {uploadingImage && (
+                        <p className="mt-2 text-sm text-gray-600">Subiendo imagen...</p>
+                    )}
+
+                    {form.photo_url && (
+                        <div className="mt-3">
+                            <img
+                                src={form.photo_url}
+                                alt="Preview"
+                                className="h-32 w-32 rounded-lg object-cover border"
+                            />
+                            <p className="mt-2 break-all text-xs text-gray-500">{form.photo_url}</p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="md:col-span-2">
