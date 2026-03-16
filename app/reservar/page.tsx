@@ -1,4 +1,4 @@
-import ReservarClient from '@/src/features/booking/api/components/reservar-client'
+import ReservarClient from '@/src/features/booking/components/reservar-client'
 
 type ReservarPageProps = {
     searchParams?: Promise<{
