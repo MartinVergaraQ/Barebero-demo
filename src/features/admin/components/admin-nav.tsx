@@ -12,6 +12,7 @@ const links = [
     { href: '/admin/bloqueos', label: 'Bloqueos' },
     { href: '/admin/galeria', label: 'Galería' },
     { href: '/admin/contenido', label: 'Contenido' },
+    { href: '/admin/reviews', label: 'Reviews' },
 ]
 
 export function AdminNav() {
