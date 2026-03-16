@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/src/lib/supabase/client'
 import { createAppointment } from '@/src/features/booking/api/create.appointment'
@@ -23,6 +24,7 @@ type Barber = {
     bio: string | null
     specialty: string | null
     business_id: string
+    photo_url?: string | null
 }
 
 type TimeSlot = {
@@ -33,6 +35,37 @@ type TimeSlot = {
 
 type ReservarClientProps = {
     initialServiceId?: string
+}
+
+function formatPrice(price: number | string) {
+    const numericPrice = typeof price === 'string' ? Number(price) : price
+    if (Number.isNaN(numericPrice)) return '$0'
+
+    return new Intl.NumberFormat('es-CL', {
+        style: 'currency',
+        currency: 'CLP',
+        maximumFractionDigits: 0,
+    }).format(numericPrice)
+}
+
+function getInitials(name: string) {
+    return name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join('')
+}
+
+function formatHumanDate(dateString: string) {
+    if (!dateString) return '-'
+
+    const date = new Date(`${dateString}T12:00:00`)
+    return new Intl.DateTimeFormat('es-CL', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+    }).format(date)
 }
 
 export default function ReservarClient({
@@ -50,6 +83,8 @@ export default function ReservarClient({
 
     const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
+
+    const [step, setStep] = useState<1 | 2>(1)
 
     const [form, setForm] = useState({
         service_id: initialServiceId,
@@ -77,7 +112,7 @@ export default function ReservarClient({
 
                 supabase
                     .from('barbers')
-                    .select('id, name, bio, specialty, business_id')
+                    .select('id, name, bio, specialty, business_id, photo_url')
                     .eq('is_active', true)
                     .order('display_order', { ascending: true }),
             ])
@@ -106,6 +141,10 @@ export default function ReservarClient({
         return services.find((service) => service.id === form.service_id) ?? null
     }, [services, form.service_id])
 
+    const selectedBarber = useMemo(() => {
+        return barbers.find((barber) => barber.id === form.barber_id) ?? null
+    }, [barbers, form.barber_id])
+
     function handleChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) {
@@ -127,9 +166,7 @@ export default function ReservarClient({
         setMessage('')
         setSelectedSlot(null)
 
-        if (!form.barber_id || !form.appointment_date || !selectedService) {
-            return
-        }
+        if (!form.barber_id || !form.appointment_date || !selectedService) return
 
         setLoadingSlots(true)
 
@@ -168,6 +205,33 @@ export default function ReservarClient({
         }
     }, [form.barber_id, form.appointment_date, selectedService])
 
+    function handleContinueToStepTwo() {
+        setErrorMessage('')
+        setMessage('')
+
+        if (!form.service_id) {
+            setErrorMessage('Selecciona un servicio')
+            return
+        }
+
+        if (!form.barber_id) {
+            setErrorMessage('Selecciona un barbero')
+            return
+        }
+
+        if (!form.appointment_date) {
+            setErrorMessage('Selecciona una fecha')
+            return
+        }
+
+        if (!selectedSlot) {
+            setErrorMessage('Selecciona una hora disponible')
+            return
+        }
+
+        setStep(2)
+    }
+
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setSubmitting(true)
@@ -182,7 +246,6 @@ export default function ReservarClient({
             if (!form.client_name.trim()) throw new Error('Ingresa tu nombre')
             if (!form.client_phone.trim()) throw new Error('Ingresa tu teléfono')
 
-            const selectedBarber = barbers.find((barber) => barber.id === form.barber_id)
             if (!selectedBarber) throw new Error('Barbero no válido')
 
             await createAppointment({
@@ -200,6 +263,7 @@ export default function ReservarClient({
             setMessage('Reserva creada correctamente')
             setAvailableSlots([])
             setSelectedSlot(null)
+            setStep(1)
 
             setForm({
                 service_id: initialServiceId,
@@ -220,212 +284,368 @@ export default function ReservarClient({
 
     if (loadingData) {
         return (
-            <main className="p-8">
-                <h1 className="text-3xl font-bold">Reservar hora</h1>
-                <p className="mt-4">Cargando datos...</p>
+            <main className="min-h-screen bg-[#f8f6f6] p-6 text-slate-900">
+                <div className="mx-auto max-w-md">
+                    <h1 className="text-2xl font-black">Reservar cita</h1>
+                    <p className="mt-4 text-slate-500">Cargando datos...</p>
+                </div>
             </main>
         )
     }
 
     return (
-        <main className="p-8 max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold mb-6">Reservar hora</h1>
+        <main className="min-h-screen bg-[#f8f6f6] text-slate-900 pb-28">
+            <div className="mx-auto max-w-md">
+                <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f8f6f6]/90 backdrop-blur">
+                    <div className="flex items-center justify-between px-4 py-4">
+                        <Link
+                            href="/?tab=services"
+                            className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-200/60"
+                        >
+                            ←
+                        </Link>
+                        <h1 className="text-lg font-black">
+                            {step === 1 ? 'Reservar cita' : 'Confirmar reserva'}
+                        </h1>
+                        <div className="w-10" />
+                    </div>
+                </header>
 
-            {errorMessage && (
-                <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700">
-                    {errorMessage}
-                </div>
-            )}
-
-            {message && (
-                <div className="mb-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-700">
-                    {message}
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label htmlFor="service_id" className="block mb-2 font-medium">
-                        Servicio
-                    </label>
-                    <select
-                        id="service_id"
-                        name="service_id"
-                        value={form.service_id}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border p-3"
-                    >
-                        <option value="">Selecciona un servicio</option>
-                        {services.map((service) => (
-                            <option key={service.id} value={service.id}>
-                                {service.name} - ${service.price} - {service.duration_minutes} min
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div>
-                    <label htmlFor="barber_id" className="block mb-2 font-medium">
-                        Barbero
-                    </label>
-                    <select
-                        id="barber_id"
-                        name="barber_id"
-                        value={form.barber_id}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border p-3"
-                    >
-                        <option value="">Selecciona un barbero</option>
-                        {barbers.map((barber) => (
-                            <option key={barber.id} value={barber.id}>
-                                {barber.name} {barber.specialty ? `- ${barber.specialty}` : ''}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div>
-                    <label htmlFor="appointment_date" className="block mb-2 font-medium">
-                        Fecha
-                    </label>
-                    <input
-                        id="appointment_date"
-                        name="appointment_date"
-                        type="date"
-                        value={form.appointment_date}
-                        onChange={handleChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full rounded-lg border p-3"
-                    />
-                </div>
-
-                <div>
-                    <label className="block mb-2 font-medium">Horas disponibles</label>
-
-                    {loadingSlots ? (
-                        <p>Cargando horarios...</p>
-                    ) : availableSlots.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                            {availableSlots.map((slot) => {
-                                const isSelected = selectedSlot?.start_at === slot.start_at
-
-                                return (
-                                    <button
-                                        key={slot.start_at}
-                                        type="button"
-                                        onClick={() => setSelectedSlot(slot)}
-                                        className={`rounded-lg border px-4 py-2 ${isSelected ? 'bg-black text-white' : 'bg-white'
-                                            }`}
-                                    >
-                                        {slot.label}
-                                    </button>
-                                )
-                            })}
-                        </div>
-                    ) : form.barber_id && form.appointment_date && selectedService ? (
-                        <p>No hay horarios disponibles para esa fecha.</p>
-                    ) : (
-                        <p>Selecciona servicio, barbero y fecha.</p>
-                    )}
-                </div>
-
-                <hr className="my-6" />
-
-                <div>
-                    <label htmlFor="client_name" className="block mb-2 font-medium">
-                        Nombre completo
-                    </label>
-                    <input
-                        id="client_name"
-                        name="client_name"
-                        type="text"
-                        value={form.client_name}
-                        onChange={handleChange}
-                        placeholder="Tu nombre"
-                        className="w-full rounded-lg border p-3"
-                    />
-                </div>
-
-                <div>
-                    <label htmlFor="client_email" className="block mb-2 font-medium">
-                        Email
-                    </label>
-                    <input
-                        id="client_email"
-                        name="client_email"
-                        type="email"
-                        value={form.client_email}
-                        onChange={handleChange}
-                        placeholder="tu@email.com"
-                        className="w-full rounded-lg border p-3"
-                    />
-                </div>
-
-                <div>
-                    <label htmlFor="client_phone" className="block mb-2 font-medium">
-                        Teléfono
-                    </label>
-                    <input
-                        id="client_phone"
-                        name="client_phone"
-                        type="text"
-                        value={form.client_phone}
-                        onChange={handleChange}
-                        placeholder="+56 9 ..."
-                        className="w-full rounded-lg border p-3"
-                    />
-                </div>
-
-                {selectedService && form.barber_id && form.appointment_date && selectedSlot && (
-                    <div className="rounded-xl border p-4 bg-zinc-900 text-white">
-                        <h2 className="text-lg font-semibold mb-3">Resumen de tu reserva</h2>
-
-                        <div className="space-y-2 text-sm">
-                            <p>
-                                <span className="font-medium">Servicio:</span> {selectedService.name}
-                            </p>
-
-                            <p>
-                                <span className="font-medium">Barbero:</span>{' '}
-                                {barbers.find((barber) => barber.id === form.barber_id)?.name ?? '-'}
-                            </p>
-
-                            <p>
-                                <span className="font-medium">Fecha:</span> {form.appointment_date}
-                            </p>
-
-                            <p>
-                                <span className="font-medium">Hora:</span> {selectedSlot.label}
-                            </p>
-
-                            <p>
-                                <span className="font-medium">Duración:</span>{' '}
-                                {selectedService.duration_minutes} min
-                            </p>
-
-                            <p>
-                                <span className="font-medium">Precio:</span> ${selectedService.price}
-                            </p>
+                {errorMessage && (
+                    <div className="px-4 pt-4">
+                        <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+                            {errorMessage}
                         </div>
                     </div>
                 )}
 
-                <button
-                    type="submit"
-                    disabled={
-                        submitting ||
-                        !form.service_id ||
-                        !form.barber_id ||
-                        !form.appointment_date ||
-                        !selectedSlot ||
-                        !form.client_name.trim() ||
-                        !form.client_phone.trim()
-                    }
-                    className="w-full rounded-lg bg-black px-4 py-3 text-white disabled:opacity-50"
-                >
-                    {submitting ? 'Guardando reserva...' : 'Reservar ahora'}
-                </button>
-            </form>
+                {message && (
+                    <div className="px-4 pt-4">
+                        <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-sm text-green-700">
+                            {message}
+                        </div>
+                    </div>
+                )}
+
+                {step === 1 && (
+                    <>
+                        <section className="px-4 pt-5">
+                            <div className="space-y-2">
+                                <div className="flex items-end justify-between">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ec5b13]">
+                                            Paso 1 de 2
+                                        </p>
+                                        <h2 className="text-2xl font-black">Selección de cita</h2>
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-500">50%</span>
+                                </div>
+
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                                    <div className="h-full w-1/2 rounded-full bg-[#ec5b13]" />
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="px-4 pt-5">
+                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
+                                <label htmlFor="service_id" className="mb-2 block text-sm font-bold text-slate-500">
+                                    Servicio
+                                </label>
+
+                                <select
+                                    id="service_id"
+                                    name="service_id"
+                                    value={form.service_id}
+                                    onChange={handleChange}
+                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
+                                >
+                                    <option value="">Selecciona un servicio</option>
+                                    {services.map((service) => (
+                                        <option key={service.id} value={service.id}>
+                                            {service.name} - {formatPrice(service.price)} - {service.duration_minutes} min
+                                        </option>
+                                    ))}
+                                </select>
+
+                                {selectedService && (
+                                    <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                                        <h3 className="text-lg font-black">{selectedService.name}</h3>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            {selectedService.description || 'Servicio profesional de barbería.'}
+                                        </p>
+                                        <div className="mt-3 flex items-center gap-3">
+                                            <span className="text-sm text-slate-400">
+                                                {selectedService.duration_minutes} min
+                                            </span>
+                                            <span className="text-lg font-black text-[#ec5b13]">
+                                                {formatPrice(selectedService.price)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="px-4 pt-5">
+                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
+                                <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                                    Seleccionar barbero
+                                </h3>
+
+                                <div className="flex gap-3 overflow-x-auto pb-1">
+                                    {barbers.map((barber) => {
+                                        const isSelected = barber.id === form.barber_id
+
+                                        return (
+                                            <button
+                                                key={barber.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setForm((prev) => ({ ...prev, barber_id: barber.id }))
+                                                    setSelectedSlot(null)
+                                                    setAvailableSlots([])
+                                                }}
+                                                className={`flex min-w-[88px] shrink-0 flex-col items-center gap-2 ${isSelected ? '' : 'opacity-70'
+                                                    }`}
+                                            >
+                                                <div
+                                                    className={`relative h-16 w-16 overflow-hidden rounded-full bg-slate-200 ${isSelected ? 'ring-2 ring-[#ec5b13] ring-offset-2' : ''
+                                                        }`}
+                                                >
+                                                    {barber.photo_url ? (
+                                                        <img
+                                                            src={barber.photo_url}
+                                                            alt={barber.name}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600">
+                                                            {getInitials(barber.name)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs font-bold">{barber.name.split(' ')[0]}</span>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="px-4 pt-5">
+                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
+                                <label
+                                    htmlFor="appointment_date"
+                                    className="mb-2 block text-sm font-bold uppercase tracking-[0.18em] text-slate-500"
+                                >
+                                    Fecha
+                                </label>
+
+                                <input
+                                    id="appointment_date"
+                                    name="appointment_date"
+                                    type="date"
+                                    value={form.appointment_date}
+                                    onChange={handleChange}
+                                    min={new Date().toISOString().split('T')[0]}
+                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
+                                />
+                            </div>
+                        </section>
+
+                        <section className="px-4 pt-5">
+                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
+                                <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                                    Horas disponibles
+                                </h3>
+
+                                {loadingSlots ? (
+                                    <p className="text-sm text-slate-500">Cargando horarios...</p>
+                                ) : availableSlots.length > 0 ? (
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {availableSlots.map((slot) => {
+                                            const isSelected = selectedSlot?.start_at === slot.start_at
+
+                                            return (
+                                                <button
+                                                    key={slot.start_at}
+                                                    type="button"
+                                                    onClick={() => setSelectedSlot(slot)}
+                                                    className={`rounded-xl border px-4 py-3 text-sm font-bold transition ${isSelected
+                                                            ? 'border-[#ec5b13] bg-[#ec5b13]/10 text-[#ec5b13]'
+                                                            : 'border-slate-200 bg-white text-slate-700'
+                                                        }`}
+                                                >
+                                                    {slot.label}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                ) : form.barber_id && form.appointment_date && selectedService ? (
+                                    <p className="text-sm text-slate-500">
+                                        No hay horarios disponibles para esa fecha.
+                                    </p>
+                                ) : (
+                                    <p className="text-sm text-slate-500">
+                                        Selecciona servicio, barbero y fecha.
+                                    </p>
+                                )}
+                            </div>
+                        </section>
+
+                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 backdrop-blur">
+                            <div className="mx-auto flex max-w-md items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-xs font-medium text-slate-500">Total estimado</p>
+                                    <p className="text-2xl font-black">
+                                        {selectedService ? formatPrice(selectedService.price) : '$0'}
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleContinueToStepTwo}
+                                    className="flex-1 rounded-2xl bg-[#ec5b13] px-4 py-4 text-base font-bold text-white shadow-lg shadow-orange-200"
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        </footer>
+                    </>
+                )}
+
+                {step === 2 && (
+                    <form onSubmit={handleSubmit}>
+                        <section className="px-4 pt-5">
+                            <div className="space-y-2">
+                                <div className="flex items-end justify-between">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ec5b13]">
+                                            Paso 2 de 2
+                                        </p>
+                                        <h2 className="text-2xl font-black">Tus datos</h2>
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-500">100%</span>
+                                </div>
+
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                                    <div className="h-full w-full rounded-full bg-[#ec5b13]" />
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="px-4 pt-5">
+                            <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
+                                <h3 className="text-xl font-black">{selectedService?.name || 'Servicio'}</h3>
+
+                                <div className="mt-3 space-y-2 text-sm text-slate-600">
+                                    <p>
+                                        <span className="font-bold text-slate-900">Barbero:</span>{' '}
+                                        {selectedBarber?.name || '-'}
+                                    </p>
+                                    <p>
+                                        <span className="font-bold text-slate-900">Fecha:</span>{' '}
+                                        {formatHumanDate(form.appointment_date)}
+                                    </p>
+                                    <p>
+                                        <span className="font-bold text-slate-900">Hora:</span>{' '}
+                                        {selectedSlot?.label || '-'}
+                                    </p>
+                                    <p>
+                                        <span className="font-bold text-slate-900">Duración:</span>{' '}
+                                        {selectedService?.duration_minutes ?? 0} min
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="px-4 pt-5 space-y-4">
+                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
+                                <label htmlFor="client_name" className="mb-2 block text-sm font-bold text-slate-600">
+                                    Nombre completo
+                                </label>
+                                <input
+                                    id="client_name"
+                                    name="client_name"
+                                    type="text"
+                                    value={form.client_name}
+                                    onChange={handleChange}
+                                    placeholder="Ej. Juan Pérez"
+                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
+                                />
+                            </div>
+
+                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
+                                <label htmlFor="client_email" className="mb-2 block text-sm font-bold text-slate-600">
+                                    Correo electrónico
+                                </label>
+                                <input
+                                    id="client_email"
+                                    name="client_email"
+                                    type="email"
+                                    value={form.client_email}
+                                    onChange={handleChange}
+                                    placeholder="tu@correo.com"
+                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
+                                />
+                            </div>
+
+                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
+                                <label htmlFor="client_phone" className="mb-2 block text-sm font-bold text-slate-600">
+                                    Número de celular
+                                </label>
+                                <input
+                                    id="client_phone"
+                                    name="client_phone"
+                                    type="text"
+                                    value={form.client_phone}
+                                    onChange={handleChange}
+                                    placeholder="+56 9 1234 5678"
+                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
+                                />
+                            </div>
+                        </section>
+
+                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 backdrop-blur">
+                            <div className="mx-auto flex max-w-md flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-slate-500">Total a pagar</span>
+                                    <span className="text-2xl font-black">
+                                        {selectedService ? formatPrice(selectedService.price) : '$0'}
+                                    </span>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep(1)}
+                                        className="flex-1 rounded-2xl border border-slate-300 px-4 py-4 text-sm font-bold text-slate-800"
+                                    >
+                                        Volver
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        disabled={
+                                            submitting ||
+                                            !form.service_id ||
+                                            !form.barber_id ||
+                                            !form.appointment_date ||
+                                            !selectedSlot ||
+                                            !form.client_name.trim() ||
+                                            !form.client_phone.trim()
+                                        }
+                                        className="flex-1 rounded-2xl bg-[#ec5b13] px-4 py-4 text-sm font-bold text-white shadow-lg shadow-orange-200 disabled:opacity-50"
+                                    >
+                                        {submitting ? 'Guardando...' : 'Confirmar reserva'}
+                                    </button>
+                                </div>
+                            </div>
+                        </footer>
+                    </form>
+                )}
+            </div>
         </main>
     )
 }
