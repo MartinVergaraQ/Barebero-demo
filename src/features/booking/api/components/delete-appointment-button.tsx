@@ -15,7 +15,6 @@ export function DeleteAppointmentButton({ id }: Props) {
 
     async function handleDelete() {
         const confirmed = window.confirm('¿Seguro que quieres eliminar esta reserva?')
-
         if (!confirmed) return
 
         setLoading(true)
@@ -34,19 +33,19 @@ export function DeleteAppointmentButton({ id }: Props) {
     }
 
     return (
-        <div className="mt-3">
+        <div className="space-y-2">
             <button
                 type="button"
                 onClick={handleDelete}
                 disabled={loading}
-                className="rounded-lg border border-red-300 px-4 py-2 text-red-700 disabled:opacity-50"
+                className="h-[42px] w-full rounded-[8px] border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 disabled:opacity-50 sm:w-auto"
             >
                 {loading ? 'Eliminando...' : 'Eliminar reserva'}
             </button>
 
-            {errorMessage && (
-                <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
-            )}
+            {errorMessage ? (
+                <p className="text-xs text-red-600">{errorMessage}</p>
+            ) : null}
         </div>
     )
 }

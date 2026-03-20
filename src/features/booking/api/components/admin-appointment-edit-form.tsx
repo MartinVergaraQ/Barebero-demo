@@ -30,14 +30,6 @@ type Props = {
     barbers: Barber[]
 }
 
-function toLocalDateInputValue(dateString: string) {
-    const date = new Date(dateString)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-}
-
 function toLocalTimeInputValue(dateString: string) {
     const date = new Date(dateString)
     const hours = String(date.getHours()).padStart(2, '0')
@@ -136,7 +128,7 @@ export function AdminAppointmentEditForm({
 
     if (!editing) {
         return (
-            <div className="mt-3">
+            <div className="space-y-2">
                 <button
                     type="button"
                     onClick={() => {
@@ -144,115 +136,139 @@ export function AdminAppointmentEditForm({
                         setErrorMessage('')
                         setMessage('')
                     }}
-                    className="rounded-lg border px-4 py-2"
+                    className="h-[42px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm font-semibold text-[#2d2a26] sm:w-auto"
                 >
                     Editar reserva
                 </button>
 
-                {message && <p className="mt-2 text-sm text-green-600">{message}</p>}
-                {errorMessage && <p className="mt-2 text-sm text-red-600">{errorMessage}</p>}
+                {message ? (
+                    <p className="text-xs text-green-600">{message}</p>
+                ) : null}
+
+                {errorMessage ? (
+                    <p className="text-xs text-red-600">{errorMessage}</p>
+                ) : null}
             </div>
         )
     }
 
     return (
-        <form onSubmit={handleSubmit} className="mt-4 grid gap-4 md:grid-cols-2">
-            {errorMessage && (
-                <div className="md:col-span-2 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700">
+        <form
+            onSubmit={handleSubmit}
+            className="mt-4 space-y-4 rounded-[10px] border border-[#e5ddce] bg-[#faf8f2] p-4"
+        >
+            {errorMessage ? (
+                <div className="rounded-[8px] border border-red-300 bg-red-50 p-3 text-sm text-red-700">
                     {errorMessage}
                 </div>
-            )}
+            ) : null}
 
-            <div>
-                <label className="mb-2 block font-medium">Nombre</label>
-                <input
-                    name="client_name"
-                    value={form.client_name}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border p-3"
-                />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                    <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
+                        Nombre
+                    </label>
+                    <input
+                        name="client_name"
+                        value={form.client_name}
+                        onChange={handleChange}
+                        className="h-[46px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-3 text-sm"
+                    />
+                </div>
+
+                <div>
+                    <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
+                        Teléfono
+                    </label>
+                    <input
+                        name="client_phone"
+                        value={form.client_phone}
+                        onChange={handleChange}
+                        className="h-[46px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-3 text-sm"
+                    />
+                </div>
+
+                <div className="md:col-span-2">
+                    <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
+                        Email
+                    </label>
+                    <input
+                        name="client_email"
+                        type="email"
+                        value={form.client_email}
+                        onChange={handleChange}
+                        className="h-[46px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-3 text-sm"
+                    />
+                </div>
+
+                <div>
+                    <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
+                        Barbero
+                    </label>
+                    <select
+                        name="barber_id"
+                        value={form.barber_id}
+                        onChange={handleChange}
+                        className="h-[46px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-3 text-sm"
+                    >
+                        {barbers.map((barber) => (
+                            <option key={barber.id} value={barber.id}>
+                                {barber.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
+                        Servicio
+                    </label>
+                    <select
+                        name="service_id"
+                        value={form.service_id}
+                        onChange={handleChange}
+                        className="h-[46px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-3 text-sm"
+                    >
+                        {services.map((service) => (
+                            <option key={service.id} value={service.id}>
+                                {service.name} ({service.duration_minutes} min)
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
+                        Fecha
+                    </label>
+                    <input
+                        name="appointment_date"
+                        type="date"
+                        value={form.appointment_date}
+                        onChange={handleChange}
+                        className="h-[46px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-3 text-sm"
+                    />
+                </div>
+
+                <div>
+                    <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
+                        Hora
+                    </label>
+                    <input
+                        name="appointment_time"
+                        type="time"
+                        value={form.appointment_time}
+                        onChange={handleChange}
+                        className="h-[46px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-3 text-sm"
+                    />
+                </div>
             </div>
 
-            <div>
-                <label className="mb-2 block font-medium">Teléfono</label>
-                <input
-                    name="client_phone"
-                    value={form.client_phone}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border p-3"
-                />
-            </div>
-
-            <div className="md:col-span-2">
-                <label className="mb-2 block font-medium">Email</label>
-                <input
-                    name="client_email"
-                    type="email"
-                    value={form.client_email}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border p-3"
-                />
-            </div>
-
-            <div>
-                <label className="mb-2 block font-medium">Barbero</label>
-                <select
-                    name="barber_id"
-                    value={form.barber_id}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border p-3"
-                >
-                    {barbers.map((barber) => (
-                        <option key={barber.id} value={barber.id}>
-                            {barber.name}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div>
-                <label className="mb-2 block font-medium">Servicio</label>
-                <select
-                    name="service_id"
-                    value={form.service_id}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border p-3"
-                >
-                    {services.map((service) => (
-                        <option key={service.id} value={service.id}>
-                            {service.name} ({service.duration_minutes} min)
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div>
-                <label className="mb-2 block font-medium">Fecha</label>
-                <input
-                    name="appointment_date"
-                    type="date"
-                    value={form.appointment_date}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border p-3"
-                />
-            </div>
-
-            <div>
-                <label className="mb-2 block font-medium">Hora</label>
-                <input
-                    name="appointment_time"
-                    type="time"
-                    value={form.appointment_time}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border p-3"
-                />
-            </div>
-
-            <div className="md:col-span-2 flex gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row">
                 <button
                     type="submit"
                     disabled={loading}
-                    className="rounded-lg bg-black px-4 py-3 text-white disabled:opacity-50"
+                    className="h-[44px] rounded-[8px] bg-black px-4 text-sm font-semibold text-white disabled:opacity-50"
                 >
                     {loading ? 'Guardando...' : 'Guardar cambios'}
                 </button>
@@ -260,7 +276,7 @@ export function AdminAppointmentEditForm({
                 <button
                     type="button"
                     onClick={() => setEditing(false)}
-                    className="rounded-lg border px-4 py-3"
+                    className="h-[44px] rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm font-semibold text-[#2d2a26]"
                 >
                     Cancelar
                 </button>

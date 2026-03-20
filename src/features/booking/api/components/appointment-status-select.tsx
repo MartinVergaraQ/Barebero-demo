@@ -9,11 +9,11 @@ type Props = {
 }
 
 const statusOptions = [
-    'pending',
-    'confirmed',
-    'completed',
-    'cancelled',
-    'no_show',
+    { value: 'pending', label: 'Pendiente' },
+    { value: 'confirmed', label: 'Confirmada' },
+    { value: 'completed', label: 'Completada' },
+    { value: 'cancelled', label: 'Cancelada' },
+    { value: 'no_show', label: 'No asistió' },
 ] as const
 
 export function AppointmentStatusSelect({
@@ -41,25 +41,27 @@ export function AppointmentStatusSelect({
     }
 
     return (
-        <div className="mt-3">
-            <label className="block mb-1 text-sm font-medium">Estado</label>
+        <div className="space-y-2">
+            <label className="block text-sm font-semibold text-[#2f2d2a]">
+                Estado
+            </label>
 
             <select
                 value={status}
                 onChange={handleChange}
                 disabled={loading}
-                className="rounded-lg border p-2"
+                className="h-[42px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-3 text-[15px] text-[#2d2a26] outline-none disabled:opacity-60"
             >
                 {statusOptions.map((option) => (
-                    <option key={option} value={option}>
-                        {option}
+                    <option key={option.value} value={option.value}>
+                        {option.label}
                     </option>
                 ))}
             </select>
 
-            {message && (
-                <p className="mt-2 text-sm text-gray-600">{message}</p>
-            )}
+            {message ? (
+                <p className="text-xs text-[#6a655d]">{message}</p>
+            ) : null}
         </div>
     )
 }

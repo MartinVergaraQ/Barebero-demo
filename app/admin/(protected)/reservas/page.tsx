@@ -88,6 +88,16 @@ function getStatusBadge(status: string) {
     }
   }
 
+  if (['no_show', 'noshow', 'no-show'].includes(normalized)) {
+    return {
+      label: 'No asistió',
+      style: {
+        backgroundColor: '#efe2d1',
+        color: '#8a5a2b',
+      },
+    }
+  }
+
   return {
     label: status || 'Sin estado',
     style: {
@@ -156,7 +166,7 @@ function MetricCard({
 }) {
   return (
     <article
-      className="rounded-[12px] border bg-white p-6"
+      className="rounded-[12px] border bg-white p-5 md:p-6"
       style={{ borderColor: COLORS.border }}
     >
       <div className="flex items-start justify-between gap-4">
@@ -164,7 +174,7 @@ function MetricCard({
           <p className="text-[13px] font-semibold uppercase tracking-[0.24em] text-[#59544c]">
             {title}
           </p>
-          <p className="mt-3 text-[54px] font-bold leading-none text-black">
+          <p className="mt-3 text-[42px] font-bold leading-none text-black sm:text-[46px] md:text-[54px]">
             {value}
           </p>
         </div>
@@ -177,7 +187,7 @@ function MetricCard({
         </div>
       </div>
 
-      <p className="mt-6 text-[14px] text-[#5e584f]">{subtitle}</p>
+      <p className="mt-5 text-[14px] text-[#5e584f]">{subtitle}</p>
     </article>
   )
 }
@@ -213,26 +223,26 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
   ])
 
   return (
-    <main className="space-y-8">
+    <main className="space-y-6 md:space-y-8">
       <header
-        className="flex flex-col gap-6 border-b pb-7 lg:flex-row lg:items-start lg:justify-between"
+        className="flex flex-col gap-5 border-b pb-5 md:pb-7 lg:flex-row lg:items-start lg:justify-between"
         style={{ borderColor: COLORS.border }}
       >
         <div>
           <h1
-            className="text-[54px] font-bold leading-none tracking-[-0.04em] md:text-[60px]"
+            className="text-[42px] font-bold leading-none tracking-[-0.04em] sm:text-[48px] md:text-[60px]"
             style={{ color: COLORS.primary }}
           >
             Reservas
           </h1>
-          <p className="mt-2 text-[16px] text-[#4f4b45]">
+          <p className="mt-2 max-w-[620px] text-[15px] leading-7 text-[#4f4b45] md:text-[16px]">
             Gestiona citas, estados y disponibilidad del negocio
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <button
-            className="h-[44px] rounded-[4px] border bg-white px-7 text-[15px] font-semibold text-[#2a2927]"
+            className="h-[48px] w-full rounded-[6px] border bg-white px-7 text-[15px] font-semibold text-[#2a2927] sm:w-auto"
             style={{ borderColor: COLORS.border }}
             type="button"
           >
@@ -240,7 +250,7 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
           </button>
 
           <button
-            className="h-[44px] rounded-[4px] px-7 text-[15px] font-semibold text-white"
+            className="h-[48px] w-full rounded-[6px] px-7 text-[15px] font-semibold text-white sm:w-auto"
             style={{ backgroundColor: COLORS.primary }}
             type="button"
           >
@@ -249,7 +259,7 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
         </div>
       </header>
 
-      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 md:gap-6">
         <MetricCard
           title="Reservas hoy"
           value={items.length}
@@ -376,7 +386,7 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
                       </span>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <AppointmentStatusSelect
                         appointmentId={appointment.id}
                         currentStatus={appointment.status}
@@ -466,31 +476,33 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
               return (
                 <article
                   key={appointment.id}
-                  className="rounded-[12px] border bg-white p-5"
+                  className="rounded-[12px] border bg-white p-4 sm:p-5"
                   style={{ borderColor: COLORS.border }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-bold text-[#1a1a1a]">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <h2 className="text-[28px] font-bold leading-none text-[#1a1a1a]">
                         {appointment.client_name}
                       </h2>
-                      <p className="mt-1 text-sm text-[#4f4b45]">
+                      <p className="mt-2 text-sm text-[#4f4b45]">
                         {appointment.client_phone}
                       </p>
-                      <p className="mt-1 text-sm italic text-[#8d877d]">
+                      <p className="mt-1 break-all text-sm italic text-[#8d877d]">
                         {appointment.client_email || '-'}
                       </p>
                     </div>
 
-                    <span
-                      className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em]"
-                      style={badge.style}
-                    >
-                      {badge.label}
-                    </span>
+                    <div className="shrink-0">
+                      <span
+                        className="inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em]"
+                        style={badge.style}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 text-sm text-[#3b3833] md:grid-cols-2">
+                  <div className="mt-5 grid gap-3 text-sm text-[#3b3833]">
                     <p>
                       <span className="font-semibold">Servicio:</span>{' '}
                       {getRelationName(appointment.services)}
@@ -510,13 +522,16 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
                     </p>
                   </div>
 
-                  <div className="mt-5 space-y-3">
+                  <div
+                    className="mt-5 space-y-4 border-t pt-4"
+                    style={{ borderColor: '#efe8d8' }}
+                  >
                     <AppointmentStatusSelect
                       appointmentId={appointment.id}
                       currentStatus={appointment.status}
                     />
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-1 gap-3">
                       <AdminAppointmentEditForm
                         appointment={{
                           id: appointment.id,
