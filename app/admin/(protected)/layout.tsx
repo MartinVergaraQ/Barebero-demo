@@ -17,11 +17,13 @@ export default async function AdminLayout({
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 md:flex">
+        <div className="min-h-screen bg-[#f6f3e8] text-[#1f1f1f] md:flex">
             <AdminNav />
 
-            <section className="flex-1 p-4 md:p-8">
-                {children}
+            <section className="min-w-0 flex-1 md:ml-[254px]">
+                <div className="w-full px-5 py-5 md:px-12 md:py-8">
+                    {children}
+                </div>
             </section>
         </div>
     )

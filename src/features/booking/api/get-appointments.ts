@@ -1,4 +1,4 @@
-import { supabase } from '@/src/lib/supabase/client'
+import { createClient } from '@/src/lib/supabase/server'
 
 export type AppointmentStatus =
   | 'pending'
@@ -29,6 +29,8 @@ type GetAppointmentsFilters = {
 }
 
 export async function getAppointments(filters?: GetAppointmentsFilters) {
+  const supabase = await createClient()
+
   let query = supabase
     .from('appointments')
     .select(`

@@ -361,7 +361,7 @@ export default async function DemoPage({ searchParams }: DemoPageProps) {
                               </div>
 
                               <Link
-                                href="/reservar"
+                                href={`/reservar?barberId=${barber.id}`}
                                 className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold"
                               >
                                 Reservar

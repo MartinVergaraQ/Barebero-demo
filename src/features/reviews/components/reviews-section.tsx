@@ -103,7 +103,7 @@ export function ReviewsSection({
                                     <div>
                                         <p className="font-bold">{review.client_name}</p>
                                         <p className="text-xs uppercase tracking-widest text-slate-400">
-                                            Cliente verificado
+                                            Cliente
                                         </p>
                                     </div>
                                 </div>

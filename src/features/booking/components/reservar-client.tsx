@@ -35,6 +35,7 @@ type TimeSlot = {
 
 type ReservarClientProps = {
     initialServiceId?: string
+    initialBarberId?: string
 }
 
 const PRIMARY = '#B7791F'
@@ -73,6 +74,7 @@ function formatHumanDate(dateString: string) {
 
 export default function ReservarClient({
     initialServiceId = '',
+    initialBarberId = '',
 }: ReservarClientProps) {
     const [services, setServices] = useState<Service[]>([])
     const [barbers, setBarbers] = useState<Barber[]>([])
@@ -91,7 +93,7 @@ export default function ReservarClient({
 
     const [form, setForm] = useState({
         service_id: initialServiceId,
-        barber_id: '',
+        barber_id: initialBarberId,
         appointment_date: '',
         client_name: '',
         client_email: '',
@@ -147,6 +149,8 @@ export default function ReservarClient({
     const selectedBarber = useMemo(() => {
         return barbers.find((barber) => barber.id === form.barber_id) ?? null
     }, [barbers, form.barber_id])
+
+    const hasLockedBarber = !!initialBarberId
 
     function handleChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -270,7 +274,7 @@ export default function ReservarClient({
 
             setForm({
                 service_id: initialServiceId,
-                barber_id: '',
+                barber_id: initialBarberId,
                 appointment_date: '',
                 client_name: '',
                 client_email: '',
@@ -341,7 +345,9 @@ export default function ReservarClient({
                                         <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: PRIMARY }}>
                                             Paso 1 de 2
                                         </p>
-                                        <h2 className="text-2xl font-black md:text-4xl">Selección de cita</h2>
+                                        <h2 className="text-2xl font-black md:text-4xl">
+                                            {hasLockedBarber ? 'Reserva con tu barbero' : 'Selección de cita'}
+                                        </h2>
                                     </div>
                                     <span className="text-sm font-medium text-slate-500 md:text-base">50%</span>
                                 </div>
@@ -393,52 +399,91 @@ export default function ReservarClient({
                                         )}
                                     </div>
 
-                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
-                                        <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
-                                            Seleccionar barbero
-                                        </h3>
+                                    {hasLockedBarber ? (
+                                        <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                                                Barbero seleccionado
+                                            </h3>
 
-                                        <div className="flex gap-4 overflow-x-auto pb-1 xl:grid xl:grid-cols-4 xl:overflow-visible">
-                                            {barbers.map((barber) => {
-                                                const isSelected = barber.id === form.barber_id
+                                            {selectedBarber ? (
+                                                <div className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">
+                                                    <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-200 md:h-20 md:w-20">
+                                                        {selectedBarber.photo_url ? (
+                                                            <img
+                                                                src={selectedBarber.photo_url}
+                                                                alt={selectedBarber.name}
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600 md:text-lg">
+                                                                {getInitials(selectedBarber.name)}
+                                                            </div>
+                                                        )}
+                                                    </div>
 
-                                                return (
-                                                    <button
-                                                        key={barber.id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setForm((prev) => ({ ...prev, barber_id: barber.id }))
-                                                            setSelectedSlot(null)
-                                                            setAvailableSlots([])
-                                                        }}
-                                                        className={`flex min-w-[92px] shrink-0 flex-col items-center gap-2 xl:min-w-0 ${isSelected ? '' : 'opacity-70'
-                                                            }`}
-                                                    >
-                                                        <div
-                                                            className={`relative h-16 w-16 overflow-hidden rounded-full bg-slate-200 md:h-20 md:w-20 ${isSelected ? 'ring-2 ring-offset-2' : ''
-                                                                }`}
-                                                            style={isSelected ? { ringColor: PRIMARY } as React.CSSProperties : undefined}
-                                                        >
-                                                            {barber.photo_url ? (
-                                                                <img
-                                                                    src={barber.photo_url}
-                                                                    alt={barber.name}
-                                                                    className="h-full w-full object-cover"
-                                                                />
-                                                            ) : (
-                                                                <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600 md:text-lg">
-                                                                    {getInitials(barber.name)}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-xs font-bold md:text-sm">
-                                                            {barber.name.split(' ')[0]}
-                                                        </span>
-                                                    </button>
-                                                )
-                                            })}
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-lg font-black md:text-2xl">{selectedBarber.name}</p>
+                                                        <p className="text-sm text-slate-500 md:text-base">
+                                                            {selectedBarber.specialty || 'Barbero profesional'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-slate-500">Cargando barbero...</p>
+                                            )}
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                                                Seleccionar barbero
+                                            </h3>
+
+                                            <div className="flex gap-4 overflow-x-auto pb-1 xl:grid xl:grid-cols-4 xl:overflow-visible">
+                                                {barbers.map((barber) => {
+                                                    const isSelected = barber.id === form.barber_id
+
+                                                    return (
+                                                        <button
+                                                            key={barber.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setForm((prev) => ({ ...prev, barber_id: barber.id }))
+                                                                setSelectedSlot(null)
+                                                                setAvailableSlots([])
+                                                            }}
+                                                            className={`flex min-w-[92px] shrink-0 flex-col items-center gap-2 xl:min-w-0 ${isSelected ? '' : 'opacity-70'
+                                                                }`}
+                                                        >
+                                                            <div
+                                                                className={`relative h-16 w-16 overflow-hidden rounded-full bg-slate-200 md:h-20 md:w-20 ${isSelected ? 'ring-2 ring-offset-2' : ''
+                                                                    }`}
+                                                                style={
+                                                                    isSelected
+                                                                        ? ({ ringColor: PRIMARY } as React.CSSProperties)
+                                                                        : undefined
+                                                                }
+                                                            >
+                                                                {barber.photo_url ? (
+                                                                    <img
+                                                                        src={barber.photo_url}
+                                                                        alt={barber.name}
+                                                                        className="h-full w-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600 md:text-lg">
+                                                                        {getInitials(barber.name)}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-xs font-bold md:text-sm">
+                                                                {barber.name.split(' ')[0]}
+                                                            </span>
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
                                         <label
@@ -478,8 +523,8 @@ export default function ReservarClient({
                                                         type="button"
                                                         onClick={() => setSelectedSlot(slot)}
                                                         className={`rounded-xl border px-4 py-3 text-sm font-bold transition md:text-base ${isSelected
-                                                                ? 'bg-white'
-                                                                : 'border-slate-200 bg-white text-slate-700'
+                                                            ? 'bg-white'
+                                                            : 'border-slate-200 bg-white text-slate-700'
                                                             }`}
                                                         style={
                                                             isSelected
