@@ -6,9 +6,9 @@ import {
 import { AppointmentStatusSelect } from '@/src/features/booking/api/components/appointment-status-select'
 import { AdminAppointmentsFilter } from '@/src/features/booking/api/components/admin-appointments-filter'
 import { DeleteAppointmentButton } from '@/src/features/booking/api/components/delete-appointment-button'
-import { AdminAppointmentEditForm } from '@/src/features/booking/api/components/admin-appointment-edit-form'
 import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
 import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
+import { AdminAppointmentEditSheet } from '@/src/features/booking/api/components/admin-appointment-edit-sheet'
 
 const COLORS = {
   primary: '#a87408',
@@ -393,7 +393,7 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
                       />
 
                       <div className="flex flex-wrap gap-2">
-                        <AdminAppointmentEditForm
+                        <AdminAppointmentEditSheet
                           appointment={{
                             id: appointment.id,
                             barber_id: appointment.barber_id,
@@ -532,7 +532,7 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
                     />
 
                     <div className="grid grid-cols-1 gap-3">
-                      <AdminAppointmentEditForm
+                      <AdminAppointmentEditSheet
                         appointment={{
                           id: appointment.id,
                           barber_id: appointment.barber_id,

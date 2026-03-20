@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { updateAppointmentStatus } from '@/src/features/booking/api/update-appointment-status'
+import { toast } from 'sonner'
 
 type Props = {
     appointmentId: string
@@ -32,9 +33,9 @@ export function AppointmentStatusSelect({
 
         try {
             await updateAppointmentStatus(appointmentId, nextStatus)
-            setMessage('Estado actualizado')
+            toast.success('Estado actualizado')
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : 'Error actualizando')
+            toast.error(error instanceof Error ? error.message : 'Error actualizando estado')
         } finally {
             setLoading(false)
         }
