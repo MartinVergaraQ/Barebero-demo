@@ -143,7 +143,7 @@ export function ReviewsSection({
                             </button>
                         </div>
 
-                        <PublicReviewForm businessId={businessId} />
+                        <PublicReviewForm businessId={businessId} onSuccess={() => setOpen(false)} />
                     </div>
                 </div>
             )}

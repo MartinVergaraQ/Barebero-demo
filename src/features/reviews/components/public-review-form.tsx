@@ -5,12 +5,13 @@ import { createPublicReview } from '@/src/features/reviews/api/create-public-rev
 
 type Props = {
     businessId: string
+    onSuccess?: () => void
 }
 
 const PRIMARY = '#B7791F'
 const PRIMARY_SOFT = '#F4E7D3'
 
-export function PublicReviewForm({ businessId }: Props) {
+export function PublicReviewForm({ businessId, onSuccess }: Props) {
     const [form, setForm] = useState({
         client_name: '',
         rating: 5,
@@ -59,6 +60,10 @@ export function PublicReviewForm({ businessId }: Props) {
                 rating: 5,
                 comment: '',
             })
+
+            setTimeout(() => {
+                onSuccess?.()
+            }, 1200)
         } catch (error) {
             setErrorMessage(
                 error instanceof Error ? error.message : 'Error enviando opinión'
