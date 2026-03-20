@@ -37,6 +37,9 @@ type ReservarClientProps = {
     initialServiceId?: string
 }
 
+const PRIMARY = '#B7791F'
+const PRIMARY_SOFT = '#F4E7D3'
+
 function formatPrice(price: number | string) {
     const numericPrice = typeof price === 'string' ? Number(price) : price
     if (Number.isNaN(numericPrice)) return '$0'
@@ -285,8 +288,8 @@ export default function ReservarClient({
     if (loadingData) {
         return (
             <main className="min-h-screen bg-[#f8f6f6] p-6 text-slate-900">
-                <div className="mx-auto max-w-md">
-                    <h1 className="text-2xl font-black">Reservar cita</h1>
+                <div className="mx-auto max-w-6xl">
+                    <h1 className="text-2xl font-black md:text-3xl">Reservar cita</h1>
                     <p className="mt-4 text-slate-500">Cargando datos...</p>
                 </div>
             </main>
@@ -294,25 +297,27 @@ export default function ReservarClient({
     }
 
     return (
-        <main className="min-h-screen bg-[#f8f6f6] text-slate-900 pb-28">
-            <div className="mx-auto max-w-md">
+        <main className="min-h-screen bg-[#f8f6f6] pb-28 text-slate-900">
+            <div className="mx-auto max-w-7xl">
                 <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f8f6f6]/90 backdrop-blur">
-                    <div className="flex items-center justify-between px-4 py-4">
+                    <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
                         <Link
                             href="/?tab=services"
                             className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-200/60"
                         >
                             ←
                         </Link>
-                        <h1 className="text-lg font-black">
+
+                        <h1 className="text-lg font-black md:text-2xl">
                             {step === 1 ? 'Reservar cita' : 'Confirmar reserva'}
                         </h1>
+
                         <div className="w-10" />
                     </div>
                 </header>
 
                 {errorMessage && (
-                    <div className="px-4 pt-4">
+                    <div className="mx-auto max-w-6xl px-4 pt-4 md:px-6 lg:px-8">
                         <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
                             {errorMessage}
                         </div>
@@ -320,7 +325,7 @@ export default function ReservarClient({
                 )}
 
                 {message && (
-                    <div className="px-4 pt-4">
+                    <div className="mx-auto max-w-6xl px-4 pt-4 md:px-6 lg:px-8">
                         <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-sm text-green-700">
                             {message}
                         </div>
@@ -329,176 +334,186 @@ export default function ReservarClient({
 
                 {step === 1 && (
                     <>
-                        <section className="px-4 pt-5">
+                        <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
                             <div className="space-y-2">
                                 <div className="flex items-end justify-between">
                                     <div>
-                                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ec5b13]">
+                                        <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: PRIMARY }}>
                                             Paso 1 de 2
                                         </p>
-                                        <h2 className="text-2xl font-black">Selección de cita</h2>
+                                        <h2 className="text-2xl font-black md:text-4xl">Selección de cita</h2>
                                     </div>
-                                    <span className="text-sm font-medium text-slate-500">50%</span>
+                                    <span className="text-sm font-medium text-slate-500 md:text-base">50%</span>
                                 </div>
 
                                 <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                                    <div className="h-full w-1/2 rounded-full bg-[#ec5b13]" />
+                                    <div className="h-full w-1/2 rounded-full" style={{ backgroundColor: PRIMARY }} />
                                 </div>
                             </div>
                         </section>
 
-                        <section className="px-4 pt-5">
-                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
-                                <label htmlFor="service_id" className="mb-2 block text-sm font-bold text-slate-500">
-                                    Servicio
-                                </label>
+                        <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
+                            <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+                                <div className="space-y-5">
+                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                        <label htmlFor="service_id" className="mb-2 block text-sm font-bold text-slate-500">
+                                            Servicio
+                                        </label>
 
-                                <select
-                                    id="service_id"
-                                    name="service_id"
-                                    value={form.service_id}
-                                    onChange={handleChange}
-                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
-                                >
-                                    <option value="">Selecciona un servicio</option>
-                                    {services.map((service) => (
-                                        <option key={service.id} value={service.id}>
-                                            {service.name} - {formatPrice(service.price)} - {service.duration_minutes} min
-                                        </option>
-                                    ))}
-                                </select>
+                                        <select
+                                            id="service_id"
+                                            name="service_id"
+                                            value={form.service_id}
+                                            onChange={handleChange}
+                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
+                                        >
+                                            <option value="">Selecciona un servicio</option>
+                                            {services.map((service) => (
+                                                <option key={service.id} value={service.id}>
+                                                    {service.name} - {formatPrice(service.price)} - {service.duration_minutes} min
+                                                </option>
+                                            ))}
+                                        </select>
 
-                                {selectedService && (
-                                    <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                                        <h3 className="text-lg font-black">{selectedService.name}</h3>
-                                        <p className="mt-1 text-sm text-slate-500">
-                                            {selectedService.description || 'Servicio profesional de barbería.'}
-                                        </p>
-                                        <div className="mt-3 flex items-center gap-3">
-                                            <span className="text-sm text-slate-400">
-                                                {selectedService.duration_minutes} min
-                                            </span>
-                                            <span className="text-lg font-black text-[#ec5b13]">
-                                                {formatPrice(selectedService.price)}
-                                            </span>
+                                        {selectedService && (
+                                            <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">
+                                                <h3 className="text-lg font-black md:text-2xl">{selectedService.name}</h3>
+                                                <p className="mt-1 text-sm text-slate-500 md:text-base">
+                                                    {selectedService.description || 'Servicio profesional de barbería.'}
+                                                </p>
+                                                <div className="mt-3 flex items-center gap-3">
+                                                    <span className="text-sm text-slate-400 md:text-base">
+                                                        {selectedService.duration_minutes} min
+                                                    </span>
+                                                    <span className="text-lg font-black md:text-2xl" style={{ color: PRIMARY }}>
+                                                        {formatPrice(selectedService.price)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                        <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                                            Seleccionar barbero
+                                        </h3>
+
+                                        <div className="flex gap-4 overflow-x-auto pb-1 xl:grid xl:grid-cols-4 xl:overflow-visible">
+                                            {barbers.map((barber) => {
+                                                const isSelected = barber.id === form.barber_id
+
+                                                return (
+                                                    <button
+                                                        key={barber.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setForm((prev) => ({ ...prev, barber_id: barber.id }))
+                                                            setSelectedSlot(null)
+                                                            setAvailableSlots([])
+                                                        }}
+                                                        className={`flex min-w-[92px] shrink-0 flex-col items-center gap-2 xl:min-w-0 ${isSelected ? '' : 'opacity-70'
+                                                            }`}
+                                                    >
+                                                        <div
+                                                            className={`relative h-16 w-16 overflow-hidden rounded-full bg-slate-200 md:h-20 md:w-20 ${isSelected ? 'ring-2 ring-offset-2' : ''
+                                                                }`}
+                                                            style={isSelected ? { ringColor: PRIMARY } as React.CSSProperties : undefined}
+                                                        >
+                                                            {barber.photo_url ? (
+                                                                <img
+                                                                    src={barber.photo_url}
+                                                                    alt={barber.name}
+                                                                    className="h-full w-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600 md:text-lg">
+                                                                    {getInitials(barber.name)}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-xs font-bold md:text-sm">
+                                                            {barber.name.split(' ')[0]}
+                                                        </span>
+                                                    </button>
+                                                )
+                                            })}
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                        </section>
 
-                        <section className="px-4 pt-5">
-                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
-                                <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
-                                    Seleccionar barbero
-                                </h3>
+                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                        <label
+                                            htmlFor="appointment_date"
+                                            className="mb-2 block text-sm font-bold uppercase tracking-[0.18em] text-slate-500"
+                                        >
+                                            Fecha
+                                        </label>
 
-                                <div className="flex gap-3 overflow-x-auto pb-1">
-                                    {barbers.map((barber) => {
-                                        const isSelected = barber.id === form.barber_id
-
-                                        return (
-                                            <button
-                                                key={barber.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setForm((prev) => ({ ...prev, barber_id: barber.id }))
-                                                    setSelectedSlot(null)
-                                                    setAvailableSlots([])
-                                                }}
-                                                className={`flex min-w-[88px] shrink-0 flex-col items-center gap-2 ${isSelected ? '' : 'opacity-70'
-                                                    }`}
-                                            >
-                                                <div
-                                                    className={`relative h-16 w-16 overflow-hidden rounded-full bg-slate-200 ${isSelected ? 'ring-2 ring-[#ec5b13] ring-offset-2' : ''
-                                                        }`}
-                                                >
-                                                    {barber.photo_url ? (
-                                                        <img
-                                                            src={barber.photo_url}
-                                                            alt={barber.name}
-                                                            className="h-full w-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600">
-                                                            {getInitials(barber.name)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <span className="text-xs font-bold">{barber.name.split(' ')[0]}</span>
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        </section>
-
-                        <section className="px-4 pt-5">
-                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
-                                <label
-                                    htmlFor="appointment_date"
-                                    className="mb-2 block text-sm font-bold uppercase tracking-[0.18em] text-slate-500"
-                                >
-                                    Fecha
-                                </label>
-
-                                <input
-                                    id="appointment_date"
-                                    name="appointment_date"
-                                    type="date"
-                                    value={form.appointment_date}
-                                    onChange={handleChange}
-                                    min={new Date().toISOString().split('T')[0]}
-                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
-                                />
-                            </div>
-                        </section>
-
-                        <section className="px-4 pt-5">
-                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
-                                <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
-                                    Horas disponibles
-                                </h3>
-
-                                {loadingSlots ? (
-                                    <p className="text-sm text-slate-500">Cargando horarios...</p>
-                                ) : availableSlots.length > 0 ? (
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {availableSlots.map((slot) => {
-                                            const isSelected = selectedSlot?.start_at === slot.start_at
-
-                                            return (
-                                                <button
-                                                    key={slot.start_at}
-                                                    type="button"
-                                                    onClick={() => setSelectedSlot(slot)}
-                                                    className={`rounded-xl border px-4 py-3 text-sm font-bold transition ${isSelected
-                                                            ? 'border-[#ec5b13] bg-[#ec5b13]/10 text-[#ec5b13]'
-                                                            : 'border-slate-200 bg-white text-slate-700'
-                                                        }`}
-                                                >
-                                                    {slot.label}
-                                                </button>
-                                            )
-                                        })}
+                                        <input
+                                            id="appointment_date"
+                                            name="appointment_date"
+                                            type="date"
+                                            value={form.appointment_date}
+                                            onChange={handleChange}
+                                            min={new Date().toISOString().split('T')[0]}
+                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
+                                        />
                                     </div>
-                                ) : form.barber_id && form.appointment_date && selectedService ? (
-                                    <p className="text-sm text-slate-500">
-                                        No hay horarios disponibles para esa fecha.
-                                    </p>
-                                ) : (
-                                    <p className="text-sm text-slate-500">
-                                        Selecciona servicio, barbero y fecha.
-                                    </p>
-                                )}
+                                </div>
+
+                                <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5 xl:sticky xl:top-28 xl:h-fit">
+                                    <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                                        Horas disponibles
+                                    </h3>
+
+                                    {loadingSlots ? (
+                                        <p className="text-sm text-slate-500">Cargando horarios...</p>
+                                    ) : availableSlots.length > 0 ? (
+                                        <div className="grid grid-cols-3 gap-2 md:grid-cols-4 xl:grid-cols-3">
+                                            {availableSlots.map((slot) => {
+                                                const isSelected = selectedSlot?.start_at === slot.start_at
+
+                                                return (
+                                                    <button
+                                                        key={slot.start_at}
+                                                        type="button"
+                                                        onClick={() => setSelectedSlot(slot)}
+                                                        className={`rounded-xl border px-4 py-3 text-sm font-bold transition md:text-base ${isSelected
+                                                                ? 'bg-white'
+                                                                : 'border-slate-200 bg-white text-slate-700'
+                                                            }`}
+                                                        style={
+                                                            isSelected
+                                                                ? {
+                                                                    borderColor: PRIMARY,
+                                                                    backgroundColor: PRIMARY_SOFT,
+                                                                    color: PRIMARY,
+                                                                }
+                                                                : undefined
+                                                        }
+                                                    >
+                                                        {slot.label}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    ) : form.barber_id && form.appointment_date && selectedService ? (
+                                        <p className="text-sm text-slate-500">
+                                            No hay horarios disponibles para esa fecha.
+                                        </p>
+                                    ) : (
+                                        <p className="text-sm text-slate-500">
+                                            Selecciona servicio, barbero y fecha.
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </section>
 
                         <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 backdrop-blur">
-                            <div className="mx-auto flex max-w-md items-center justify-between gap-4">
+                            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
                                 <div>
-                                    <p className="text-xs font-medium text-slate-500">Total estimado</p>
-                                    <p className="text-2xl font-black">
+                                    <p className="text-xs font-medium text-slate-500 md:text-sm">Total estimado</p>
+                                    <p className="text-2xl font-black md:text-3xl">
                                         {selectedService ? formatPrice(selectedService.price) : '$0'}
                                     </p>
                                 </div>
@@ -506,7 +521,8 @@ export default function ReservarClient({
                                 <button
                                     type="button"
                                     onClick={handleContinueToStepTwo}
-                                    className="flex-1 rounded-2xl bg-[#ec5b13] px-4 py-4 text-base font-bold text-white shadow-lg shadow-orange-200"
+                                    className="flex-1 rounded-2xl px-4 py-4 text-base font-bold text-white shadow-lg md:max-w-sm"
+                                    style={{ backgroundColor: PRIMARY }}
                                 >
                                     Siguiente
                                 </button>
@@ -517,110 +533,118 @@ export default function ReservarClient({
 
                 {step === 2 && (
                     <form onSubmit={handleSubmit}>
-                        <section className="px-4 pt-5">
+                        <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
                             <div className="space-y-2">
                                 <div className="flex items-end justify-between">
                                     <div>
-                                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ec5b13]">
+                                        <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: PRIMARY }}>
                                             Paso 2 de 2
                                         </p>
-                                        <h2 className="text-2xl font-black">Tus datos</h2>
+                                        <h2 className="text-2xl font-black md:text-4xl">Tus datos</h2>
                                     </div>
-                                    <span className="text-sm font-medium text-slate-500">100%</span>
+                                    <span className="text-sm font-medium text-slate-500 md:text-base">100%</span>
                                 </div>
 
                                 <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                                    <div className="h-full w-full rounded-full bg-[#ec5b13]" />
+                                    <div className="h-full w-full rounded-full" style={{ backgroundColor: PRIMARY }} />
                                 </div>
                             </div>
                         </section>
 
-                        <section className="px-4 pt-5">
-                            <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
-                                <h3 className="text-xl font-black">{selectedService?.name || 'Servicio'}</h3>
+                        <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
+                            <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+                                <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm xl:sticky xl:top-28 xl:h-fit">
+                                    <h3 className="text-xl font-black md:text-2xl">
+                                        {selectedService?.name || 'Servicio'}
+                                    </h3>
 
-                                <div className="mt-3 space-y-2 text-sm text-slate-600">
-                                    <p>
-                                        <span className="font-bold text-slate-900">Barbero:</span>{' '}
-                                        {selectedBarber?.name || '-'}
-                                    </p>
-                                    <p>
-                                        <span className="font-bold text-slate-900">Fecha:</span>{' '}
-                                        {formatHumanDate(form.appointment_date)}
-                                    </p>
-                                    <p>
-                                        <span className="font-bold text-slate-900">Hora:</span>{' '}
-                                        {selectedSlot?.label || '-'}
-                                    </p>
-                                    <p>
-                                        <span className="font-bold text-slate-900">Duración:</span>{' '}
-                                        {selectedService?.duration_minutes ?? 0} min
-                                    </p>
+                                    <div className="mt-3 space-y-2 text-sm text-slate-600 md:text-base">
+                                        <p>
+                                            <span className="font-bold text-slate-900">Barbero:</span>{' '}
+                                            {selectedBarber?.name || '-'}
+                                        </p>
+                                        <p>
+                                            <span className="font-bold text-slate-900">Fecha:</span>{' '}
+                                            {formatHumanDate(form.appointment_date)}
+                                        </p>
+                                        <p>
+                                            <span className="font-bold text-slate-900">Hora:</span>{' '}
+                                            {selectedSlot?.label || '-'}
+                                        </p>
+                                        <p>
+                                            <span className="font-bold text-slate-900">Duración:</span>{' '}
+                                            {selectedService?.duration_minutes ?? 0} min
+                                        </p>
+                                        <p>
+                                            <span className="font-bold text-slate-900">Total:</span>{' '}
+                                            {selectedService ? formatPrice(selectedService.price) : '$0'}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        </section>
 
-                        <section className="px-4 pt-5 space-y-4">
-                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
-                                <label htmlFor="client_name" className="mb-2 block text-sm font-bold text-slate-600">
-                                    Nombre completo
-                                </label>
-                                <input
-                                    id="client_name"
-                                    name="client_name"
-                                    type="text"
-                                    value={form.client_name}
-                                    onChange={handleChange}
-                                    placeholder="Ej. Juan Pérez"
-                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
-                                />
-                            </div>
+                                <div className="space-y-4">
+                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                        <label htmlFor="client_name" className="mb-2 block text-sm font-bold text-slate-600">
+                                            Nombre completo
+                                        </label>
+                                        <input
+                                            id="client_name"
+                                            name="client_name"
+                                            type="text"
+                                            value={form.client_name}
+                                            onChange={handleChange}
+                                            placeholder="Ej. Juan Pérez"
+                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
+                                        />
+                                    </div>
 
-                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
-                                <label htmlFor="client_email" className="mb-2 block text-sm font-bold text-slate-600">
-                                    Correo electrónico
-                                </label>
-                                <input
-                                    id="client_email"
-                                    name="client_email"
-                                    type="email"
-                                    value={form.client_email}
-                                    onChange={handleChange}
-                                    placeholder="tu@correo.com"
-                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
-                                />
-                            </div>
+                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                        <label htmlFor="client_email" className="mb-2 block text-sm font-bold text-slate-600">
+                                            Correo electrónico
+                                        </label>
+                                        <input
+                                            id="client_email"
+                                            name="client_email"
+                                            type="email"
+                                            value={form.client_email}
+                                            onChange={handleChange}
+                                            placeholder="tu@correo.com"
+                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
+                                        />
+                                    </div>
 
-                            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
-                                <label htmlFor="client_phone" className="mb-2 block text-sm font-bold text-slate-600">
-                                    Número de celular
-                                </label>
-                                <input
-                                    id="client_phone"
-                                    name="client_phone"
-                                    type="text"
-                                    value={form.client_phone}
-                                    onChange={handleChange}
-                                    placeholder="+56 9 1234 5678"
-                                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none"
-                                />
+                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                        <label htmlFor="client_phone" className="mb-2 block text-sm font-bold text-slate-600">
+                                            Número de celular
+                                        </label>
+                                        <input
+                                            id="client_phone"
+                                            name="client_phone"
+                                            type="text"
+                                            value={form.client_phone}
+                                            onChange={handleChange}
+                                            placeholder="+56 9 1234 5678"
+                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </section>
 
                         <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 backdrop-blur">
-                            <div className="mx-auto flex max-w-md flex-col gap-3">
-                                <div className="flex items-center justify-between">
+                            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+                                <div>
                                     <span className="text-sm font-medium text-slate-500">Total a pagar</span>
-                                    <span className="text-2xl font-black">
+                                    <p className="text-2xl font-black md:text-3xl">
                                         {selectedService ? formatPrice(selectedService.price) : '$0'}
-                                    </span>
+                                    </p>
                                 </div>
 
-                                <div className="flex gap-3">
+                                <div className="flex w-full max-w-md gap-3">
                                     <button
                                         type="button"
                                         onClick={() => setStep(1)}
-                                        className="flex-1 rounded-2xl border border-slate-300 px-4 py-4 text-sm font-bold text-slate-800"
+                                        className="flex-1 rounded-2xl border border-slate-300 px-4 py-4 text-sm font-bold text-slate-800 md:text-base"
                                     >
                                         Volver
                                     </button>
@@ -636,7 +660,8 @@ export default function ReservarClient({
                                             !form.client_name.trim() ||
                                             !form.client_phone.trim()
                                         }
-                                        className="flex-1 rounded-2xl bg-[#ec5b13] px-4 py-4 text-sm font-bold text-white shadow-lg shadow-orange-200 disabled:opacity-50"
+                                        className="flex-1 rounded-2xl px-4 py-4 text-sm font-bold text-white shadow-lg disabled:opacity-50 md:text-base"
+                                        style={{ backgroundColor: PRIMARY }}
                                     >
                                         {submitting ? 'Guardando...' : 'Confirmar reserva'}
                                     </button>
