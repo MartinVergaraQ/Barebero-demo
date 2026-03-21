@@ -1,6 +1,8 @@
-import { supabase } from '@/src/lib/supabase/client'
+import { createClient } from '@/src/lib/supabase/server'
 
 export async function getBusinessId() {
+    const supabase = await createClient()
+
     const { data, error } = await supabase
         .from('businesses')
         .select('id')

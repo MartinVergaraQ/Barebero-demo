@@ -9,6 +9,8 @@ import { DeleteAppointmentButton } from '@/src/features/booking/api/components/d
 import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
 import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
 import { AdminAppointmentEditSheet } from '@/src/features/booking/api/components/admin-appointment-edit-sheet'
+import { AdminCreateAppointmentSheet } from '@/src/features/booking/api/components/admin-create-appointment-sheet'
+import { getBusinessId } from '@/src/features/business/api/get-business-id'
 
 const COLORS = {
   primary: '#a87408',
@@ -198,7 +200,7 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
   const selectedStatus = params.status ?? ''
   const selectedBarberId = params.barberId ?? ''
 
-  const [appointments, barbers, services] = await Promise.all([
+  const [appointments, barbers, services, businessId] = await Promise.all([
     getAppointments({
       date: selectedDate,
       status: selectedStatus,
@@ -206,6 +208,7 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
     }),
     getBarbersAdmin(),
     getServicesAdmin(),
+    getBusinessId(),
   ])
 
   const items = appointments as AppointmentItem[]
@@ -249,13 +252,18 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
             Exportar
           </button>
 
-          <button
-            className="h-[48px] w-full rounded-[6px] px-7 text-[15px] font-semibold text-white sm:w-auto"
-            style={{ backgroundColor: COLORS.primary }}
-            type="button"
-          >
-            Nueva reserva
-          </button>
+          <AdminCreateAppointmentSheet
+            businessId={businessId}
+            barbers={barbers.map((barber) => ({
+              id: barber.id,
+              name: barber.name,
+            }))}
+            services={services.map((service) => ({
+              id: service.id,
+              name: service.name,
+              duration_minutes: service.duration_minutes,
+            }))}
+          />
         </div>
       </header>
 

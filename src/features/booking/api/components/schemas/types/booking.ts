@@ -8,4 +8,6 @@ export type CreateAppointmentInput = {
     appointment_date: string
     start_at: string
     end_at: string
+    status?: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+    source?: 'web' | 'admin' | 'dm' | 'whatsapp'
 }

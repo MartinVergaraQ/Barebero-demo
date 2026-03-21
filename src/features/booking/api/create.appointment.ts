@@ -31,8 +31,8 @@ export async function createAppointment(input: CreateAppointmentInput) {
         appointment_date: input.appointment_date,
         start_at: input.start_at,
         end_at: input.end_at,
-        status: 'confirmed',
-        source: 'web',
+        status: input.status ?? 'confirmed',
+        source: input.source ?? 'admin',
     }
 
     const { data, error } = await supabase
