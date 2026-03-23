@@ -143,9 +143,39 @@ export default function ReservarClient({
     const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
     const [availabilityMessage, setAvailabilityMessage] = useState('')
-    const [isClosedDay, setIsClosedDay] = useState(false)
     const dateOptions = useMemo(() => getDateOptions(10), [])
-    const [step, setStep] = useState<1 | 2>(1)
+    const [step, setStep] = useState<1 | 2 | 3>(1)
+    const BUSINESS_WHATSAPP = process.env.NEXT_PUBLIC_BUSINESS_WHATSAPP ?? ''
+
+    function buildWhatsAppUrl() {
+        if (!successfulReservation) return '#'
+
+        const text = [
+            'Hola, quiero confirmar mi reserva.',
+            '',
+            `Nombre: ${successfulReservation.client_name}`,
+            `Servicio: ${successfulReservation.service_name}`,
+            `Barbero: ${successfulReservation.barber_name}`,
+            `Fecha: ${formatHumanDate(successfulReservation.appointment_date)}`,
+            `Hora: ${successfulReservation.slot_label}`,
+        ].join('\n')
+
+        return `https://wa.me/${BUSINESS_WHATSAPP}?text=${encodeURIComponent(text)}`
+    }
+
+    type SuccessfulReservation = {
+        client_name: string
+        client_phone: string
+        client_email: string
+        service_name: string
+        barber_name: string
+        appointment_date: string
+        slot_label: string
+        price: number
+    }
+
+    const [successfulReservation, setSuccessfulReservation] =
+        useState<SuccessfulReservation | null>(null)
 
     const [form, setForm] = useState({
         service_id: initialServiceId,
@@ -222,7 +252,7 @@ export default function ReservarClient({
             setSelectedSlot(null)
             setAvailableSlots([])
             setAvailabilityMessage('')
-            setIsClosedDay(false)
+
         }
     }
     function handleDateSelect(value: string) {
@@ -234,7 +264,7 @@ export default function ReservarClient({
         setSelectedSlot(null)
         setAvailableSlots([])
         setAvailabilityMessage('')
-        setIsClosedDay(false)
+
     }
 
     async function loadAvailableSlots() {
@@ -243,7 +273,7 @@ export default function ReservarClient({
         setSelectedSlot(null)
         setAvailableSlots([])
         setAvailabilityMessage('')
-        setIsClosedDay(false)
+
 
         if (!form.barber_id || !form.appointment_date || !selectedService) return
 
@@ -260,7 +290,7 @@ export default function ReservarClient({
             ])
 
             if (workingHours.length === 0) {
-                setIsClosedDay(true)
+
                 setAvailabilityMessage('Este barbero no atiende ese día')
                 return
             }
@@ -343,6 +373,7 @@ export default function ReservarClient({
             if (!form.client_phone.trim()) throw new Error('Ingresa tu teléfono')
 
             if (!selectedBarber) throw new Error('Barbero no válido')
+            if (!selectedService) throw new Error('Servicio no válido')
 
             await createAppointment({
                 business_id: selectedBarber.business_id,
@@ -356,19 +387,18 @@ export default function ReservarClient({
                 end_at: selectedSlot.end_at,
             })
 
-            setMessage('Reserva creada correctamente')
-            setAvailableSlots([])
-            setSelectedSlot(null)
-            setStep(1)
-
-            setForm({
-                service_id: initialServiceId,
-                barber_id: initialBarberId,
-                appointment_date: '',
-                client_name: '',
-                client_email: '',
-                client_phone: '',
+            setSuccessfulReservation({
+                client_name: form.client_name.trim(),
+                client_phone: form.client_phone.trim(),
+                client_email: form.client_email.trim(),
+                service_name: selectedService.name,
+                barber_name: selectedBarber.name,
+                appointment_date: form.appointment_date,
+                slot_label: selectedSlot.label,
+                price: selectedService.price,
             })
+
+            setStep(3)
         } catch (error) {
             setErrorMessage(
                 error instanceof Error ? error.message : 'Ocurrió un error inesperado'
@@ -376,6 +406,25 @@ export default function ReservarClient({
         } finally {
             setSubmitting(false)
         }
+    }
+
+    function resetBooking() {
+        setMessage('')
+        setErrorMessage('')
+        setAvailableSlots([])
+        setSelectedSlot(null)
+        setAvailabilityMessage('')
+        setSuccessfulReservation(null)
+        setStep(1)
+
+        setForm({
+            service_id: initialServiceId,
+            barber_id: initialBarberId,
+            appointment_date: '',
+            client_name: '',
+            client_email: '',
+            client_phone: '',
+        })
     }
 
     if (loadingData) {
@@ -402,7 +451,11 @@ export default function ReservarClient({
                         </Link>
 
                         <h1 className="text-lg font-black md:text-2xl">
-                            {step === 1 ? 'Reservar cita' : 'Confirmar reserva'}
+                            {step === 1
+                                ? 'Reservar cita'
+                                : step === 2
+                                    ? 'Confirmar reserva'
+                                    : 'Reserva confirmada'}
                         </h1>
 
                         <div className="w-10" />
@@ -540,7 +593,7 @@ export default function ReservarClient({
                                                                 setSelectedSlot(null)
                                                                 setAvailableSlots([])
                                                                 setAvailabilityMessage('')
-                                                                setIsClosedDay(false)
+
                                                             }}
                                                             className={`flex min-w-[88px] shrink-0 snap-start flex-col items-center gap-2 xl:min-w-0 ${isSelected ? '' : 'opacity-70'
                                                                 }`}
@@ -842,6 +895,61 @@ export default function ReservarClient({
                             </div>
                         </footer>
                     </form>
+                )}
+                {step === 3 && successfulReservation && (
+                    <section className="mx-auto max-w-3xl px-4 py-6 md:px-6 lg:px-8">
+                        <div className="rounded-[23px] border border-green-200 bg-white p-5 shadow-sm md:p-8">
+
+                            <div className="mt-6">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: PRIMARY }}>
+                                    Reserva confirmada
+                                </p>
+                                <h2 className="mt-2 text-2xl font-black md:text-4xl">
+                                    Todo listo
+                                </h2>
+                                <p className="mt-2 text-sm text-slate-500 md:text-base">
+                                    Ya registramos tu hora. Aquí tienes el resumen.
+                                </p>
+                            </div>
+
+                            <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">
+                                <div className="space-y-2 text-sm text-slate-700 md:text-base">
+                                    <p><span className="font-bold text-slate-900">Servicio:</span> {successfulReservation.service_name}</p>
+                                    <p><span className="font-bold text-slate-900">Barbero:</span> {successfulReservation.barber_name}</p>
+                                    <p><span className="font-bold text-slate-900">Fecha:</span> {formatHumanDate(successfulReservation.appointment_date)}</p>
+                                    <p><span className="font-bold text-slate-900">Hora:</span> {successfulReservation.slot_label}</p>
+                                    <p><span className="font-bold text-slate-900">Total:</span> {formatPrice(successfulReservation.price)}</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                                <Link
+                                    href="/?tab=services"
+                                    className="rounded-2xl border border-slate-300 px-4 py-4 text-center text-sm font-bold text-slate-800 md:text-base"
+                                >
+                                    Ir al inicio
+                                </Link>
+
+                                <a
+                                    href={buildWhatsAppUrl()}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-2xl px-4 py-4 text-center text-sm font-bold text-white shadow-lg md:text-base"
+                                    style={{ backgroundColor: PRIMARY }}
+                                >
+                                    Confirmar por WhatsApp
+                                </a>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={resetBooking}
+                                className="mt-4 w-full text-sm font-medium text-slate-500 underline"
+                            >
+                                Hacer otra reserva
+                            </button>
+                        </div>
+                    </section>
                 )}
             </div>
         </main>
