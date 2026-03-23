@@ -94,14 +94,21 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
         value: string | boolean
     ) {
         setRows((prev) =>
-            prev.map((row) =>
-                row.day_of_week === dayOfWeek
-                    ? {
+            prev.map((row) => {
+                if (row.day_of_week !== dayOfWeek) return row
+
+                if (row.day_of_week === 0) {
+                    return {
                         ...row,
-                        [field]: value,
+                        is_active: false,
                     }
-                    : row
-            )
+                }
+
+                return {
+                    ...row,
+                    [field]: value,
+                }
+            })
         )
     }
 
@@ -117,20 +124,25 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
 
         try {
             for (const row of rows) {
-                if (row.is_active && row.start_time >= row.end_time) {
+                const normalizedRow =
+                    row.day_of_week === 0
+                        ? { ...row, is_active: false }
+                        : row
+
+                if (normalizedRow.is_active && normalizedRow.start_time >= normalizedRow.end_time) {
                     throw new Error(
-                        `El horario del día ${weekDays.find((d) => d.value === row.day_of_week)?.label} no es válido`
+                        `El horario del día ${weekDays.find((d) => d.value === normalizedRow.day_of_week)?.label} no es válido`
                     )
                 }
 
                 await upsertWorkingHour({
-                    id: row.id,
+                    id: normalizedRow.id,
                     business_id: selectedBarber.business_id,
                     barber_id: selectedBarber.id,
-                    day_of_week: row.day_of_week,
-                    start_time: row.start_time,
-                    end_time: row.end_time,
-                    is_active: row.is_active,
+                    day_of_week: normalizedRow.day_of_week,
+                    start_time: normalizedRow.start_time,
+                    end_time: normalizedRow.end_time,
+                    is_active: normalizedRow.is_active,
                 })
             }
 
@@ -194,21 +206,30 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                                     >
                                         <div className="font-medium">{dayLabel}</div>
 
-                                        <label className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                checked={row.is_active}
-                                                onChange={(e) =>
-                                                    updateRow(row.day_of_week, 'is_active', e.target.checked)
-                                                }
-                                            />
-                                            Activo
-                                        </label>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={row.day_of_week === 0 ? false : row.is_active}
+                                                    disabled={row.day_of_week === 0}
+                                                    onChange={(e) =>
+                                                        updateRow(row.day_of_week, 'is_active', e.target.checked)
+                                                    }
+                                                />
+                                                Activo
+                                            </label>
+
+                                            {row.day_of_week === 0 && (
+                                                <span className="text-xs text-slate-500">
+                                                    Cerrado por política del local
+                                                </span>
+                                            )}
+                                        </div>
 
                                         <input
                                             type="time"
                                             value={row.start_time}
-                                            disabled={!row.is_active}
+                                            disabled={!row.is_active || row.day_of_week === 0}
                                             onChange={(e) =>
                                                 updateRow(row.day_of_week, 'start_time', e.target.value)
                                             }
@@ -218,7 +239,7 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                                         <input
                                             type="time"
                                             value={row.end_time}
-                                            disabled={!row.is_active}
+                                            disabled={!row.is_active || row.day_of_week === 0}
                                             onChange={(e) =>
                                                 updateRow(row.day_of_week, 'end_time', e.target.value)
                                             }

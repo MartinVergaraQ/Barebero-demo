@@ -13,36 +13,20 @@ export type UpsertWorkingHourInput = {
 export async function upsertWorkingHour(input: UpsertWorkingHourInput) {
     const supabase = createClient()
 
-    if (input.id) {
-        const { data, error } = await supabase
-            .from('working_hours')
-            .update({
-                start_time: input.start_time,
-                end_time: input.end_time,
-                is_active: input.is_active,
-            })
-            .eq('id', input.id)
-            .select()
-
-        if (error) {
-            throw new Error(error.message)
-        }
-
-        return data
+    const payload = {
+        business_id: input.business_id,
+        barber_id: input.barber_id,
+        day_of_week: input.day_of_week,
+        start_time: input.start_time,
+        end_time: input.end_time,
+        is_active: input.is_active,
     }
 
     const { data, error } = await supabase
         .from('working_hours')
-        .insert([
-            {
-                business_id: input.business_id,
-                barber_id: input.barber_id,
-                day_of_week: input.day_of_week,
-                start_time: input.start_time,
-                end_time: input.end_time,
-                is_active: input.is_active,
-            },
-        ])
+        .upsert(payload, {
+            onConflict: 'barber_id,day_of_week',
+        })
         .select()
 
     if (error) {

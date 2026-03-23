@@ -11,7 +11,7 @@ type GenerateTimeSlotsInput = {
     slotStepMinutes?: number
 }
 
-type TimeSlot = {
+export type TimeSlot = {
     label: string
     start_at: string
     end_at: string
@@ -26,7 +26,7 @@ function formatHourLabel(date: Date) {
 }
 
 function combineDateAndTime(date: string, time: string) {
-    return new Date(`${date}T${time}`)
+    return new Date(`${date}T${time}:00`)
 }
 
 function overlaps(
@@ -46,9 +46,17 @@ export function generateTimeSlots({
     timeOffRanges,
     slotStepMinutes = 30,
 }: GenerateTimeSlotsInput): TimeSlot[] {
+    const activeWorkingHours = [...workingHours]
+        .filter((block) => block.is_active)
+        .sort((a, b) => a.start_time.localeCompare(b.start_time))
+
+    if (activeWorkingHours.length === 0) {
+        return []
+    }
+
     const slots: TimeSlot[] = []
 
-    for (const block of workingHours) {
+    for (const block of activeWorkingHours) {
         const blockStart = combineDateAndTime(date, block.start_time.slice(0, 5))
         const blockEnd = combineDateAndTime(date, block.end_time.slice(0, 5))
 
@@ -60,6 +68,7 @@ export function generateTimeSlots({
                 slotStart.getTime() + serviceDurationMinutes * 60 * 1000
             )
 
+            // si el servicio no alcanza a terminar dentro del bloque, no ofrecer
             if (slotEnd > blockEnd) {
                 break
             }

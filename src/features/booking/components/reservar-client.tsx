@@ -51,6 +51,60 @@ function formatPrice(price: number | string) {
         maximumFractionDigits: 0,
     }).format(numericPrice)
 }
+type DateOption = {
+    value: string
+    label: string
+    shortLabel: string
+    isToday: boolean
+    isTomorrow: boolean
+}
+
+function formatDateValue(date: Date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
+function getDateOptions(daysToShow = 10): DateOption[] {
+    const options: DateOption[] = []
+    const today = new Date()
+    today.setHours(12, 0, 0, 0)
+
+    const todayValue = formatDateValue(today)
+
+    const tomorrow = new Date(today)
+    tomorrow.setDate(today.getDate() + 1)
+    const tomorrowValue = formatDateValue(tomorrow)
+
+    let offset = 0
+
+    while (options.length < daysToShow) {
+        const date = new Date(today)
+        date.setDate(today.getDate() + offset)
+        offset += 1
+
+        const dayOfWeek = date.getDay()
+        if (dayOfWeek === 0) continue
+
+        const value = formatDateValue(date)
+        const isToday = value === todayValue
+        const isTomorrow = value === tomorrowValue
+
+        const weekday = date.toLocaleDateString('es-CL', { weekday: 'short' })
+        const day = date.toLocaleDateString('es-CL', { day: '2-digit' })
+
+        options.push({
+            value,
+            label: `${weekday.replace('.', '')} ${day}`,
+            shortLabel: isToday ? 'Hoy' : isTomorrow ? 'Mañana' : `${weekday.replace('.', '')} ${day}`,
+            isToday,
+            isTomorrow,
+        })
+    }
+
+    return options
+}
 
 function getInitials(name: string) {
     return name
@@ -88,7 +142,9 @@ export default function ReservarClient({
 
     const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
-
+    const [availabilityMessage, setAvailabilityMessage] = useState('')
+    const [isClosedDay, setIsClosedDay] = useState(false)
+    const dateOptions = useMemo(() => getDateOptions(10), [])
     const [step, setStep] = useState<1 | 2>(1)
 
     const [form, setForm] = useState({
@@ -162,16 +218,32 @@ export default function ReservarClient({
             [name]: value,
         }))
 
-        if (name === 'service_id' || name === 'barber_id' || name === 'appointment_date') {
+        if (name === 'service_id' || name === 'barber_id') {
             setSelectedSlot(null)
             setAvailableSlots([])
+            setAvailabilityMessage('')
+            setIsClosedDay(false)
         }
+    }
+    function handleDateSelect(value: string) {
+        setForm((prev) => ({
+            ...prev,
+            appointment_date: value,
+        }))
+
+        setSelectedSlot(null)
+        setAvailableSlots([])
+        setAvailabilityMessage('')
+        setIsClosedDay(false)
     }
 
     async function loadAvailableSlots() {
         setErrorMessage('')
         setMessage('')
         setSelectedSlot(null)
+        setAvailableSlots([])
+        setAvailabilityMessage('')
+        setIsClosedDay(false)
 
         if (!form.barber_id || !form.appointment_date || !selectedService) return
 
@@ -187,6 +259,12 @@ export default function ReservarClient({
                 getTimeOffByBarberAndDate(form.barber_id, form.appointment_date),
             ])
 
+            if (workingHours.length === 0) {
+                setIsClosedDay(true)
+                setAvailabilityMessage('Este barbero no atiende ese día')
+                return
+            }
+
             const slots = generateTimeSlots({
                 date: form.appointment_date,
                 serviceDurationMinutes: selectedService.duration_minutes,
@@ -197,6 +275,10 @@ export default function ReservarClient({
             })
 
             setAvailableSlots(slots)
+
+            if (slots.length === 0) {
+                setAvailabilityMessage('No hay horarios disponibles para esa fecha')
+            }
         } catch (error) {
             setErrorMessage(
                 error instanceof Error ? error.message : 'Error cargando horarios'
@@ -211,6 +293,13 @@ export default function ReservarClient({
             loadAvailableSlots()
         }
     }, [form.barber_id, form.appointment_date, selectedService])
+
+    const canContinueToStepTwo =
+        !!form.service_id &&
+        !!form.barber_id &&
+        !!form.appointment_date &&
+        !!selectedSlot &&
+        !loadingSlots
 
     function handleContinueToStepTwo() {
         setErrorMessage('')
@@ -450,6 +539,8 @@ export default function ReservarClient({
                                                                 setForm((prev) => ({ ...prev, barber_id: barber.id }))
                                                                 setSelectedSlot(null)
                                                                 setAvailableSlots([])
+                                                                setAvailabilityMessage('')
+                                                                setIsClosedDay(false)
                                                             }}
                                                             className={`flex min-w-[92px] shrink-0 flex-col items-center gap-2 xl:min-w-0 ${isSelected ? '' : 'opacity-70'
                                                                 }`}
@@ -486,22 +577,59 @@ export default function ReservarClient({
                                     )}
 
                                     <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
-                                        <label
-                                            htmlFor="appointment_date"
-                                            className="mb-2 block text-sm font-bold uppercase tracking-[0.18em] text-slate-500"
-                                        >
-                                            Fecha
-                                        </label>
+                                        <div className="mb-3 flex items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                                                    Fecha
+                                                </p>
+                                                <p className="mt-1 text-sm text-slate-500">
+                                                    Selecciona una fecha disponible
+                                                </p>
+                                            </div>
 
-                                        <input
-                                            id="appointment_date"
-                                            name="appointment_date"
-                                            type="date"
-                                            value={form.appointment_date}
-                                            onChange={handleChange}
-                                            min={new Date().toISOString().split('T')[0]}
-                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
-                                        />
+                                            {form.appointment_date && (
+                                                <span className="text-sm font-semibold" style={{ color: PRIMARY }}>
+                                                    {formatHumanDate(form.appointment_date)}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-3 overflow-x-auto pb-1">
+                                            {dateOptions.map((option) => {
+                                                const isSelected = form.appointment_date === option.value
+
+                                                return (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        onClick={() => handleDateSelect(option.value)}
+                                                        className={`min-w-[92px] shrink-0 rounded-2xl border px-4 py-3 text-center transition ${isSelected
+                                                            ? 'bg-white'
+                                                            : 'border-slate-200 bg-white text-slate-700'
+                                                            }`}
+                                                        style={
+                                                            isSelected
+                                                                ? {
+                                                                    borderColor: PRIMARY,
+                                                                    backgroundColor: PRIMARY_SOFT,
+                                                                    color: PRIMARY,
+                                                                }
+                                                                : undefined
+                                                        }
+                                                    >
+                                                        <div className="text-sm font-bold md:text-base">
+                                                            {option.shortLabel}
+                                                        </div>
+
+                                                        {!option.isToday && !option.isTomorrow && (
+                                                            <div className="mt-1 text-xs text-slate-500">
+                                                                {option.label}
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -509,7 +637,6 @@ export default function ReservarClient({
                                     <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
                                         Horas disponibles
                                     </h3>
-
                                     {loadingSlots ? (
                                         <p className="text-sm text-slate-500">Cargando horarios...</p>
                                     ) : availableSlots.length > 0 ? (
@@ -541,13 +668,13 @@ export default function ReservarClient({
                                                 )
                                             })}
                                         </div>
-                                    ) : form.barber_id && form.appointment_date && selectedService ? (
-                                        <p className="text-sm text-slate-500">
-                                            No hay horarios disponibles para esa fecha.
-                                        </p>
+                                    ) : availabilityMessage ? (
+                                        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-700">
+                                            {availabilityMessage}
+                                        </div>
                                     ) : (
                                         <p className="text-sm text-slate-500">
-                                            Selecciona servicio, barbero y fecha.
+                                            Selecciona servicio, barbero y fecha para ver horarios disponibles.
                                         </p>
                                     )}
                                 </div>
@@ -566,7 +693,8 @@ export default function ReservarClient({
                                 <button
                                     type="button"
                                     onClick={handleContinueToStepTwo}
-                                    className="flex-1 rounded-2xl px-4 py-4 text-base font-bold text-white shadow-lg md:max-w-sm"
+                                    disabled={!canContinueToStepTwo}
+                                    className="flex-1 rounded-2xl px-4 py-4 text-base font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 md:max-w-sm"
                                     style={{ backgroundColor: PRIMARY }}
                                 >
                                     Siguiente
