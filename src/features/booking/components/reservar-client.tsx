@@ -390,8 +390,8 @@ export default function ReservarClient({
     }
 
     return (
-        <main className="min-h-screen bg-[#f8f6f6] pb-28 text-slate-900">
-            <div className="mx-auto max-w-7xl">
+        <main className="min-h-screen overflow-x-hidden bg-[#f8f6f6] pb-28 text-slate-900">
+            <div className="mx-auto w-full max-w-7xl overflow-x-hidden">
                 <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f8f6f6]/90 backdrop-blur">
                     <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
                         <Link
@@ -448,8 +448,8 @@ export default function ReservarClient({
                         </section>
 
                         <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
-                            <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-                                <div className="space-y-5">
+                            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                                <div className="min-w-0 space-y-5">
                                     <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
                                         <label htmlFor="service_id" className="mb-2 block text-sm font-bold text-slate-500">
                                             Servicio
@@ -501,7 +501,7 @@ export default function ReservarClient({
                                                             <img
                                                                 src={selectedBarber.photo_url}
                                                                 alt={selectedBarber.name}
-                                                                className="h-full w-full object-cover"
+                                                                className="block h-full w-full object-cover"
                                                             />
                                                         ) : (
                                                             <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600 md:text-lg">
@@ -527,7 +527,7 @@ export default function ReservarClient({
                                                 Seleccionar barbero
                                             </h3>
 
-                                            <div className="flex gap-4 overflow-x-auto pb-1 xl:grid xl:grid-cols-4 xl:overflow-visible">
+                                            <div className="flex w-full max-w-full gap-4 overflow-x-auto overflow-y-hidden pb-2 [-webkit-overflow-scrolling:touch] xl:grid xl:grid-cols-4 xl:overflow-visible">
                                                 {barbers.map((barber) => {
                                                     const isSelected = barber.id === form.barber_id
 
@@ -542,7 +542,7 @@ export default function ReservarClient({
                                                                 setAvailabilityMessage('')
                                                                 setIsClosedDay(false)
                                                             }}
-                                                            className={`flex min-w-[92px] shrink-0 flex-col items-center gap-2 xl:min-w-0 ${isSelected ? '' : 'opacity-70'
+                                                            className={`flex min-w-[88px] shrink-0 snap-start flex-col items-center gap-2 xl:min-w-0 ${isSelected ? '' : 'opacity-70'
                                                                 }`}
                                                         >
                                                             <div
@@ -558,7 +558,7 @@ export default function ReservarClient({
                                                                     <img
                                                                         src={barber.photo_url}
                                                                         alt={barber.name}
-                                                                        className="h-full w-full object-cover"
+                                                                        className="block h-full w-full object-cover"
                                                                     />
                                                                 ) : (
                                                                     <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600 md:text-lg">
@@ -594,7 +594,7 @@ export default function ReservarClient({
                                             )}
                                         </div>
 
-                                        <div className="flex gap-3 overflow-x-auto pb-1">
+                                        <div className="flex w-full max-w-full snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden pb-2 [-webkit-overflow-scrolling:touch]">
                                             {dateOptions.map((option) => {
                                                 const isSelected = form.appointment_date === option.value
 
@@ -603,7 +603,7 @@ export default function ReservarClient({
                                                         key={option.value}
                                                         type="button"
                                                         onClick={() => handleDateSelect(option.value)}
-                                                        className={`min-w-[92px] shrink-0 rounded-2xl border px-4 py-3 text-center transition ${isSelected
+                                                        className={`min-w-[88px] shrink-0 snap-start rounded-2xl border px-3 py-3 text-center transition ${isSelected
                                                             ? 'bg-white'
                                                             : 'border-slate-200 bg-white text-slate-700'
                                                             }`}
@@ -633,14 +633,14 @@ export default function ReservarClient({
                                     </div>
                                 </div>
 
-                                <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5 xl:sticky xl:top-28 xl:h-fit">
+                                <div className="min-w-0 rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5 xl:sticky xl:top-28 xl:h-fit">
                                     <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
                                         Horas disponibles
                                     </h3>
                                     {loadingSlots ? (
                                         <p className="text-sm text-slate-500">Cargando horarios...</p>
                                     ) : availableSlots.length > 0 ? (
-                                        <div className="grid grid-cols-3 gap-2 md:grid-cols-4 xl:grid-cols-3">
+                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3">
                                             {availableSlots.map((slot) => {
                                                 const isSelected = selectedSlot?.start_at === slot.start_at
 
@@ -649,7 +649,7 @@ export default function ReservarClient({
                                                         key={slot.start_at}
                                                         type="button"
                                                         onClick={() => setSelectedSlot(slot)}
-                                                        className={`rounded-xl border px-4 py-3 text-sm font-bold transition md:text-base ${isSelected
+                                                        className={`w-full min-w-0 rounded-xl border px-3 py-3 text-sm font-bold transition sm:px-4 md:text-base ${isSelected
                                                             ? 'bg-white'
                                                             : 'border-slate-200 bg-white text-slate-700'
                                                             }`}
@@ -681,9 +681,9 @@ export default function ReservarClient({
                             </div>
                         </section>
 
-                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 backdrop-blur">
-                            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-                                <div>
+                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur">
+                            <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
+                                <div className="min-w-0 shrink-0">
                                     <p className="text-xs font-medium text-slate-500 md:text-sm">Total estimado</p>
                                     <p className="text-2xl font-black md:text-3xl">
                                         {selectedService ? formatPrice(selectedService.price) : '$0'}
@@ -694,7 +694,7 @@ export default function ReservarClient({
                                     type="button"
                                     onClick={handleContinueToStepTwo}
                                     disabled={!canContinueToStepTwo}
-                                    className="flex-1 rounded-2xl px-4 py-4 text-base font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 md:max-w-sm"
+                                    className="min-w-0 flex-1 rounded-2xl px-4 py-4 text-base font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 md:max-w-sm"
                                     style={{ backgroundColor: PRIMARY }}
                                 >
                                     Siguiente
@@ -804,9 +804,9 @@ export default function ReservarClient({
                             </div>
                         </section>
 
-                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 backdrop-blur">
-                            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-                                <div>
+                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur">
+                            <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
+                                <div className="min-w-0 shrink-0">
                                     <span className="text-sm font-medium text-slate-500">Total a pagar</span>
                                     <p className="text-2xl font-black md:text-3xl">
                                         {selectedService ? formatPrice(selectedService.price) : '$0'}
