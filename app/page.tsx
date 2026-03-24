@@ -93,15 +93,6 @@ export default async function DemoPage({ searchParams }: DemoPageProps) {
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur">
               ←
             </div>
-
-            <div className="flex items-center gap-2">
-              <button className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur">
-                ♥
-              </button>
-              <button className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur">
-                ↗
-              </button>
-            </div>
           </div>
         </section>
 
