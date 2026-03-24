@@ -26,6 +26,7 @@ export function AdminBarberForm({ businessId }: Props) {
         bio: '',
         photo_url: '',
         specialty: '',
+        whatsapp_phone: '',
         is_active: true,
         display_order: '0',
     })
@@ -104,6 +105,7 @@ export function AdminBarberForm({ businessId }: Props) {
                 bio: form.bio,
                 photo_url: form.photo_url,
                 specialty: form.specialty,
+                whatsapp_phone: form.whatsapp_phone,
                 is_active: form.is_active,
                 display_order: Number(form.display_order || 0),
             })
@@ -115,6 +117,7 @@ export function AdminBarberForm({ businessId }: Props) {
                 bio: '',
                 photo_url: '',
                 specialty: '',
+                whatsapp_phone: '',
                 is_active: true,
                 display_order: '0',
             })

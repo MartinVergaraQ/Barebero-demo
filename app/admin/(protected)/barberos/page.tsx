@@ -60,6 +60,10 @@ export default async function AdminBarberosPage() {
                                         <span className="font-medium">Orden:</span>{' '}
                                         {barber.display_order}
                                     </p>
+                                    <p>
+                                        <span className="font-medium">WhatsApp:</span>{' '}
+                                        {barber.whatsapp_phone || '-'}
+                                    </p>
                                 </div>
 
                                 <AdminBarberEditForm barber={barber} />

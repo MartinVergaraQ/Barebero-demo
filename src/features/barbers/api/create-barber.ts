@@ -9,6 +9,7 @@ export type CreateBarberInput = {
     specialty?: string | null
     is_active?: boolean
     display_order?: number
+    whatsapp_phone?: string | null
 }
 
 export async function createBarber(input: CreateBarberInput) {
@@ -23,6 +24,7 @@ export async function createBarber(input: CreateBarberInput) {
         specialty: input.specialty?.trim() || null,
         is_active: input.is_active ?? true,
         display_order: input.display_order ?? 0,
+        whatsapp_phone: input.whatsapp_phone?.trim() || null,
     }
 
     const { data, error } = await supabase

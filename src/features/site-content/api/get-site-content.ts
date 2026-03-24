@@ -7,10 +7,11 @@ export type SiteContentItem = {
     value_json: unknown
 }
 
-export async function getSiteContent() {
+export async function getSiteContent(businessId: string) {
     const { data, error } = await supabase
         .from('site_content')
         .select('id, business_id, key, value_json')
+        .eq('business_id', businessId)
 
     if (error) {
         throw new Error(error.message)
@@ -19,8 +20,8 @@ export async function getSiteContent() {
     return (data ?? []) as SiteContentItem[]
 }
 
-export async function getSiteContentMap() {
-    const items = await getSiteContent()
+export async function getSiteContentMap(businessId: string) {
+    const items = await getSiteContent(businessId)
 
     return items.reduce<Record<string, unknown>>((acc, item) => {
         acc[item.key] = item.value_json

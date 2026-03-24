@@ -12,6 +12,7 @@ type Props = {
         bio: string | null
         photo_url: string | null
         specialty: string | null
+        whatsapp_phone: string | null
         is_active: boolean
         display_order: number
     }
@@ -29,6 +30,7 @@ export function AdminBarberEditForm({ barber }: Props) {
         bio: barber.bio ?? '',
         photo_url: barber.photo_url ?? '',
         specialty: barber.specialty ?? '',
+        whatsapp_phone: barber.whatsapp_phone ?? '',
         is_active: barber.is_active,
         display_order: String(barber.display_order),
     })
@@ -93,6 +95,7 @@ export function AdminBarberEditForm({ barber }: Props) {
                 bio: form.bio,
                 photo_url: form.photo_url,
                 specialty: form.specialty,
+                whatsapp_phone: form.whatsapp_phone,
                 is_active: form.is_active,
                 display_order: Number(form.display_order || 0),
             })
@@ -165,6 +168,19 @@ export function AdminBarberEditForm({ barber }: Props) {
                     onChange={handleChange}
                     className="w-full rounded-lg border p-3"
                 />
+            </div>
+            <div className="md:col-span-2">
+                <label className="mb-2 block font-medium">WhatsApp del barbero</label>
+                <input
+                    name="whatsapp_phone"
+                    value={form.whatsapp_phone}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border p-3"
+                    placeholder="+56 9 1234 5678"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                    Opcional. Si lo dejas vacío, el sistema puede usar el WhatsApp del negocio.
+                </p>
             </div>
 
             <div className="md:col-span-2">

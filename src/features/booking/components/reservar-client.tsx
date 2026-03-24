@@ -8,6 +8,7 @@ import { getBarberWorkingHours } from '@/src/features/booking/api/get-barber-wor
 import { getBarberAppointmentsByDate } from '@/src/features/booking/api/get-barber-appointments-by-date'
 import { generateTimeSlots } from '@/src/features/booking/utils/generate-time-slots'
 import { getTimeOffByBarberAndDate } from '@/src/features/time-off/api/get-time-off-by-barber-and-date'
+import { resolveWhatsAppPhone } from '@/src/features/booking/utils/whatsapp'
 
 type Service = {
     id: string
@@ -36,6 +37,7 @@ type TimeSlot = {
 
 type ReservarClientProps = {
     businessId: string
+    businessSlug: string
     initialServiceId?: string
     initialBarberId?: string
 }
@@ -44,6 +46,7 @@ type Business = {
     id: string
     name: string
     whatsapp_phone: string | null
+    slug: string
     whatsapp_routing?: 'business' | 'barber' | 'fallback' | null
 }
 
@@ -149,6 +152,7 @@ function formatHumanDate(dateString: string) {
 
 export default function ReservarClient({
     businessId,
+    businessSlug,
     initialServiceId = '',
     initialBarberId = '',
 }: ReservarClientProps) {
@@ -167,26 +171,6 @@ export default function ReservarClient({
     const [availabilityMessage, setAvailabilityMessage] = useState('')
     const dateOptions = useMemo(() => getDateOptions(10), [])
     const [step, setStep] = useState<1 | 2 | 3>(1)
-
-    function resolveWhatsAppPhone(params: {
-        barberPhone?: string | null
-        businessPhone?: string | null
-        routing?: 'business' | 'barber' | 'fallback' | null
-    }) {
-        const barber = sanitizePhone(params.barberPhone)
-        const business = sanitizePhone(params.businessPhone)
-        const routing = params.routing ?? 'fallback'
-
-        switch (routing) {
-            case 'business':
-                return business || barber
-            case 'barber':
-                return barber || business
-            case 'fallback':
-            default:
-                return barber || business
-        }
-    }
 
     const [successfulReservation, setSuccessfulReservation] =
         useState<SuccessfulReservation | null>(null)
@@ -213,7 +197,7 @@ export default function ReservarClient({
         return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`
     }, [successfulReservation])
 
-    const hasWhatsApp = whatsappUrl !== '#'
+    const hasWhatsApp = !!successfulReservation?.whatsapp_phone
 
     const [form, setForm] = useState({
         service_id: initialServiceId,
@@ -250,7 +234,7 @@ export default function ReservarClient({
 
                 supabase
                     .from('businesses')
-                    .select('id, name, whatsapp_phone, whatsapp_routing')
+                    .select('id, name, slug, whatsapp_phone, whatsapp_routing')
                     .eq('id', businessId)
                     .single(),
             ])
@@ -281,10 +265,6 @@ export default function ReservarClient({
 
         loadData()
     }, [businessId])
-
-    function sanitizePhone(phone?: string | null) {
-        return (phone ?? '').replace(/\D/g, '')
-    }
 
     const selectedService = useMemo(() => {
         return services.find((service) => service.id === form.service_id) ?? null
@@ -509,7 +489,7 @@ export default function ReservarClient({
                 <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f8f6f6]/90 backdrop-blur">
                     <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
                         <Link
-                            href="/?tab=services"
+                            href={`/b/${businessSlug}?tab=services`}
                             className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-200/60"
                         >
                             ←
@@ -989,7 +969,7 @@ export default function ReservarClient({
 
                             <div className="mt-6 grid gap-3 sm:grid-cols-2">
                                 <Link
-                                    href="/?tab=services"
+                                    href={`/b/${businessSlug}?tab=services`}
                                     className="rounded-2xl border border-slate-300 px-4 py-4 text-center text-sm font-bold text-slate-800 md:text-base"
                                 >
                                     Ir al inicio
