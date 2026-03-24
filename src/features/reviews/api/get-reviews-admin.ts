@@ -10,18 +10,23 @@ export type ReviewItem = {
     created_at: string
 }
 
-export async function getReviewsAdmin() {
+export async function getReviewsAdmin(businessId: string) {
+    if (!businessId) {
+        throw new Error('businessId es requerido para cargar reviews')
+    }
+
     const { data, error } = await supabaseAdmin
         .from('reviews')
         .select(`
-      id,
-      business_id,
-      client_name,
-      rating,
-      comment,
-      is_published,
-      created_at
-    `)
+          id,
+          business_id,
+          client_name,
+          rating,
+          comment,
+          is_published,
+          created_at
+        `)
+        .eq('business_id', businessId)
         .order('created_at', { ascending: false })
 
     if (error) {

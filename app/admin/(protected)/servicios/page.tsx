@@ -1,12 +1,26 @@
+import { getBusinessId } from '@/src/features/business/api/get-business-id'
 import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
 import { AdminServiceForm } from '@/src/features/services/api/components/admin-service-form'
 import { AdminServiceEditForm } from '@/src/features/services/api/components/admin-service-edit-form'
 
 export default async function AdminServiciosPage() {
+    const businessId = await getBusinessId()
 
-    const services = await getServicesAdmin()
+    if (!businessId) {
+        return (
+            <main className="p-8">
+                <div className="mb-6 flex items-center justify-between">
+                    <h1 className="mb-6 text-3xl font-bold">Servicios</h1>
+                </div>
 
-    const businessId = services[0]?.business_id
+                <div className="mb-8 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800">
+                    No se encontró un business_id base.
+                </div>
+            </main>
+        )
+    }
+
+    const services = await getServicesAdmin(businessId)
 
     return (
         <main className="p-8">
@@ -14,14 +28,7 @@ export default async function AdminServiciosPage() {
                 <h1 className="mb-6 text-3xl font-bold">Servicios</h1>
             </div>
 
-            {businessId ? (
-                <AdminServiceForm businessId={businessId} />
-            ) : (
-                <div className="mb-8 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800">
-                    No se encontró un negocio base para crear servicios. Necesitas al menos
-                    un servicio o leer el business_id desde otra tabla.
-                </div>
-            )}
+            <AdminServiceForm businessId={businessId} />
 
             <section>
                 <h2 className="mb-4 text-xl font-semibold">Lista de servicios</h2>

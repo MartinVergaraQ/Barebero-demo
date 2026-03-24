@@ -200,15 +200,48 @@ export default async function AdminReservasPage({ searchParams }: PageProps) {
   const selectedStatus = params.status ?? ''
   const selectedBarberId = params.barberId ?? ''
 
-  const [appointments, barbers, services, businessId] = await Promise.all([
+  const businessId = await getBusinessId()
+
+  if (!businessId) {
+    return (
+      <main className="space-y-6 md:space-y-8">
+        <header
+          className="flex flex-col gap-5 border-b pb-5 md:pb-7"
+          style={{ borderColor: COLORS.border }}
+        >
+          <div>
+            <h1
+              className="text-[42px] font-bold leading-none tracking-[-0.04em] sm:text-[48px] md:text-[60px]"
+              style={{ color: COLORS.primary }}
+            >
+              Reservas
+            </h1>
+            <p className="mt-2 max-w-[620px] text-[15px] leading-7 text-[#4f4b45] md:text-[16px]">
+              Gestiona citas, estados y disponibilidad del negocio
+            </p>
+          </div>
+        </header>
+
+        <section
+          className="rounded-[12px] border bg-white p-10 text-center"
+          style={{ borderColor: COLORS.border }}
+        >
+          <p className="text-lg font-semibold text-slate-700">
+            No se encontró business_id base.
+          </p>
+        </section>
+      </main>
+    )
+  }
+
+  const [appointments, barbers, services] = await Promise.all([
     getAppointments({
       date: selectedDate,
       status: selectedStatus,
       barberId: selectedBarberId,
     }),
-    getBarbersAdmin(),
-    getServicesAdmin(),
-    getBusinessId(),
+    getBarbersAdmin(businessId),
+    getServicesAdmin(businessId),
   ])
 
   const items = appointments as AppointmentItem[]

@@ -11,19 +11,24 @@ export type GalleryItem = {
     is_active: boolean
 }
 
-export async function getGalleryItemsAdmin() {
+export async function getGalleryItemsAdmin(businessId: string) {
+    if (!businessId) {
+        throw new Error('businessId es requerido para cargar galería')
+    }
+
     const { data, error } = await supabase
         .from('gallery_items')
         .select(`
-      id,
-      business_id,
-      type,
-      title,
-      media_url,
-      public_id,
-      display_order,
-      is_active
-    `)
+          id,
+          business_id,
+          type,
+          title,
+          media_url,
+          public_id,
+          display_order,
+          is_active
+        `)
+        .eq('business_id', businessId)
         .order('display_order', { ascending: true })
 
     if (error) {

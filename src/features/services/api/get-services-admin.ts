@@ -14,22 +14,27 @@ export type AdminServiceItem = {
     display_order: number
 }
 
-export async function getServicesAdmin() {
+export async function getServicesAdmin(businessId: string) {
+    if (!businessId) {
+        throw new Error('businessId es requerido para cargar servicios')
+    }
+
     const { data, error } = await supabase
         .from('services')
         .select(`
-      id,
-      business_id,
-      name,
-      slug,
-      description,
-      duration_minutes,
-      price,
-      currency,
-      is_popular,
-      is_active,
-      display_order
-    `)
+          id,
+          business_id,
+          name,
+          slug,
+          description,
+          duration_minutes,
+          price,
+          currency,
+          is_popular,
+          is_active,
+          display_order
+        `)
+        .eq('business_id', businessId)
         .order('display_order', { ascending: true })
 
     if (error) {

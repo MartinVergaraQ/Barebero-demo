@@ -1,8 +1,22 @@
+import { getBusinessId } from '@/src/features/business/api/get-business-id'
 import { getReviewsAdmin } from '@/src/features/reviews/api/get-reviews-admin'
 import { AdminReviewActions } from '@/src/features/reviews/components/admin-review-edit-form'
 
 export default async function AdminReviewsPage() {
-    const reviews = await getReviewsAdmin()
+    const businessId = await getBusinessId()
+
+    if (!businessId) {
+        return (
+            <main>
+                <h1 className="mb-6 text-3xl font-bold">Reviews</h1>
+                <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800">
+                    No se encontró business_id base.
+                </div>
+            </main>
+        )
+    }
+
+    const reviews = await getReviewsAdmin(businessId)
 
     return (
         <main>
