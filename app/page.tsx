@@ -415,15 +415,6 @@ export default async function DemoPage({ searchParams }: DemoPageProps) {
               <span className="text-[10px] font-bold uppercase tracking-wider">Citas</span>
             </Link>
 
-            <button className="flex flex-col items-center gap-1 text-slate-400">
-              <span className="text-lg">♥</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider">Favoritos</span>
-            </button>
-
-            <button className="flex flex-col items-center gap-1 text-slate-400">
-              <span className="text-lg">◉</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider">Perfil</span>
-            </button>
           </div>
         </nav>
       </div>
