@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createService } from '@/src/features/services/api/create-service'
 
 type Props = {
@@ -19,6 +20,8 @@ function slugify(value: string) {
 }
 
 export function AdminServiceForm({ businessId }: Props) {
+    const router = useRouter()
+
     const [form, setForm] = useState({
         name: '',
         slug: '',
@@ -100,6 +103,8 @@ export function AdminServiceForm({ businessId }: Props) {
                 is_active: true,
                 display_order: '0',
             })
+
+            router.refresh()
         } catch (error) {
             setErrorMessage(
                 error instanceof Error ? error.message : 'Error creando servicio'

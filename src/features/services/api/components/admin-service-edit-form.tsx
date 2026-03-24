@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateService } from '@/src/features/services/api/update-service'
 
 type Props = {
@@ -19,6 +20,8 @@ type Props = {
 }
 
 export function AdminServiceEditForm({ service }: Props) {
+    const router = useRouter()
+
     const [editing, setEditing] = useState(false)
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState('')
@@ -83,6 +86,8 @@ export function AdminServiceEditForm({ service }: Props) {
 
             setMessage('Servicio actualizado correctamente')
             setEditing(false)
+
+            router.refresh()
         } catch (error) {
             setErrorMessage(
                 error instanceof Error ? error.message : 'Error actualizando servicio'
@@ -108,7 +113,9 @@ export function AdminServiceEditForm({ service }: Props) {
                 </button>
 
                 {message && <p className="mt-2 text-sm text-green-600">{message}</p>}
-                {errorMessage && <p className="mt-2 text-sm text-red-600">{errorMessage}</p>}
+                {errorMessage && (
+                    <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
+                )}
             </div>
         )
     }
