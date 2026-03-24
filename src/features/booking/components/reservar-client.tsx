@@ -25,6 +25,7 @@ type Barber = {
     specialty: string | null
     business_id: string
     photo_url?: string | null
+    whatsapp_phone?: string | null
 }
 
 type TimeSlot = {
@@ -34,8 +35,28 @@ type TimeSlot = {
 }
 
 type ReservarClientProps = {
+    businessId: string
     initialServiceId?: string
     initialBarberId?: string
+}
+
+type Business = {
+    id: string
+    name: string
+    whatsapp_phone: string | null
+    whatsapp_routing?: 'business' | 'barber' | 'fallback' | null
+}
+
+type SuccessfulReservation = {
+    client_name: string
+    client_phone: string
+    client_email: string
+    service_name: string
+    barber_name: string
+    appointment_date: string
+    slot_label: string
+    price: number
+    whatsapp_phone: string
 }
 
 const PRIMARY = '#B7791F'
@@ -127,6 +148,7 @@ function formatHumanDate(dateString: string) {
 }
 
 export default function ReservarClient({
+    businessId,
     initialServiceId = '',
     initialBarberId = '',
 }: ReservarClientProps) {
@@ -139,43 +161,59 @@ export default function ReservarClient({
 
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
-
+    const [business, setBusiness] = useState<Business | null>(null)
     const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
     const [availabilityMessage, setAvailabilityMessage] = useState('')
     const dateOptions = useMemo(() => getDateOptions(10), [])
     const [step, setStep] = useState<1 | 2 | 3>(1)
-    const BUSINESS_WHATSAPP = process.env.NEXT_PUBLIC_BUSINESS_WHATSAPP ?? ''
 
-    function buildWhatsAppUrl() {
+    function resolveWhatsAppPhone(params: {
+        barberPhone?: string | null
+        businessPhone?: string | null
+        routing?: 'business' | 'barber' | 'fallback' | null
+    }) {
+        const barber = sanitizePhone(params.barberPhone)
+        const business = sanitizePhone(params.businessPhone)
+        const routing = params.routing ?? 'fallback'
+
+        switch (routing) {
+            case 'business':
+                return business || barber
+            case 'barber':
+                return barber || business
+            case 'fallback':
+            default:
+                return barber || business
+        }
+    }
+
+    const [successfulReservation, setSuccessfulReservation] =
+        useState<SuccessfulReservation | null>(null)
+
+    const whatsappUrl = useMemo(() => {
         if (!successfulReservation) return '#'
+
+        const whatsappPhone = successfulReservation.whatsapp_phone
+
+        if (!whatsappPhone) return '#'
 
         const text = [
             'Hola, quiero confirmar mi reserva.',
             '',
             `Nombre: ${successfulReservation.client_name}`,
+            `Teléfono: ${successfulReservation.client_phone}`,
             `Servicio: ${successfulReservation.service_name}`,
             `Barbero: ${successfulReservation.barber_name}`,
             `Fecha: ${formatHumanDate(successfulReservation.appointment_date)}`,
             `Hora: ${successfulReservation.slot_label}`,
+            `Total: ${formatPrice(successfulReservation.price)}`,
         ].join('\n')
 
-        return `https://wa.me/${BUSINESS_WHATSAPP}?text=${encodeURIComponent(text)}`
-    }
+        return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`
+    }, [successfulReservation])
 
-    type SuccessfulReservation = {
-        client_name: string
-        client_phone: string
-        client_email: string
-        service_name: string
-        barber_name: string
-        appointment_date: string
-        slot_label: string
-        price: number
-    }
-
-    const [successfulReservation, setSuccessfulReservation] =
-        useState<SuccessfulReservation | null>(null)
+    const hasWhatsApp = whatsappUrl !== '#'
 
     const [form, setForm] = useState({
         service_id: initialServiceId,
@@ -194,18 +232,27 @@ export default function ReservarClient({
             const [
                 { data: servicesData, error: servicesError },
                 { data: barbersData, error: barbersError },
+                { data: businessData, error: businessError },
             ] = await Promise.all([
                 supabase
                     .from('services')
                     .select('id, name, description, duration_minutes, price, business_id')
+                    .eq('business_id', businessId)
                     .eq('is_active', true)
                     .order('display_order', { ascending: true }),
 
                 supabase
                     .from('barbers')
-                    .select('id, name, bio, specialty, business_id, photo_url')
+                    .select('id, name, bio, specialty, business_id, photo_url, whatsapp_phone')
+                    .eq('business_id', businessId)
                     .eq('is_active', true)
                     .order('display_order', { ascending: true }),
+
+                supabase
+                    .from('businesses')
+                    .select('id, name, whatsapp_phone, whatsapp_routing')
+                    .eq('id', businessId)
+                    .single(),
             ])
 
             if (servicesError) {
@@ -220,13 +267,24 @@ export default function ReservarClient({
                 return
             }
 
+            if (businessError) {
+                setErrorMessage(`Error cargando negocio: ${businessError.message}`)
+                setLoadingData(false)
+                return
+            }
+
             setServices((servicesData ?? []) as Service[])
             setBarbers((barbersData ?? []) as Barber[])
+            setBusiness(businessData as Business)
             setLoadingData(false)
         }
 
         loadData()
-    }, [])
+    }, [businessId])
+
+    function sanitizePhone(phone?: string | null) {
+        return (phone ?? '').replace(/\D/g, '')
+    }
 
     const selectedService = useMemo(() => {
         return services.find((service) => service.id === form.service_id) ?? null
@@ -387,6 +445,12 @@ export default function ReservarClient({
                 end_at: selectedSlot.end_at,
             })
 
+            const resolvedWhatsAppPhone = resolveWhatsAppPhone({
+                barberPhone: selectedBarber.whatsapp_phone,
+                businessPhone: business?.whatsapp_phone,
+                routing: business?.whatsapp_routing,
+            })
+
             setSuccessfulReservation({
                 client_name: form.client_name.trim(),
                 client_phone: form.client_phone.trim(),
@@ -396,6 +460,7 @@ export default function ReservarClient({
                 appointment_date: form.appointment_date,
                 slot_label: selectedSlot.label,
                 price: selectedService.price,
+                whatsapp_phone: resolvedWhatsAppPhone,
             })
 
             setStep(3)
@@ -930,15 +995,21 @@ export default function ReservarClient({
                                     Ir al inicio
                                 </Link>
 
-                                <a
-                                    href={buildWhatsAppUrl()}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="rounded-2xl px-4 py-4 text-center text-sm font-bold text-white shadow-lg md:text-base"
-                                    style={{ backgroundColor: PRIMARY }}
-                                >
-                                    Confirmar por WhatsApp
-                                </a>
+                                {hasWhatsApp ? (
+                                    <a
+                                        href={whatsappUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="rounded-2xl px-4 py-4 text-center text-sm font-bold text-white shadow-lg md:text-base"
+                                        style={{ backgroundColor: PRIMARY }}
+                                    >
+                                        Confirmar por WhatsApp
+                                    </a>
+                                ) : (
+                                    <div className="rounded-2xl border border-slate-200 px-4 py-4 text-center text-sm font-bold text-slate-400 md:text-base">
+                                        WhatsApp no configurado
+                                    </div>
+                                )}
                             </div>
 
                             <button

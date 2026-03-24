@@ -50,8 +50,8 @@ function NavLinks({
                         href={link.href}
                         onClick={onNavigate}
                         className={`flex h-[56px] items-center gap-4 px-6 text-[15px] font-medium transition ${isActive
-                                ? 'bg-[#ece9e2] text-[#b15f12]'
-                                : 'text-[#403d39] hover:bg-[#ece9e2]'
+                            ? 'bg-[#ece9e2] text-[#b15f12]'
+                            : 'text-[#403d39] hover:bg-[#ece9e2]'
                             }`}
                         style={
                             isActive
