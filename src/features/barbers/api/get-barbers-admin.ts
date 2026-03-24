@@ -19,19 +19,19 @@ export async function getBarbersAdmin(businessId: string) {
     const { data, error } = await supabase
         .from('barbers')
         .select(`
-          id,
-          business_id,
-          profile_id,
-          name,
-          slug,
-          bio,
-          photo_url,
-          specialty,
-          whatsapp_phone,
-          rating_avg,
-          is_active,
-          display_order
-        `)
+            id,
+            business_id,
+            profile_id,
+            name,
+            slug,
+            bio,
+            photo_url,
+            specialty,
+            whatsapp_phone,
+            rating_avg,
+            is_active,
+            display_order
+            `)
         .eq('business_id', businessId)
         .order('display_order', { ascending: true })
 
