@@ -1,14 +1,9 @@
 import { getSiteContentMap } from '@/src/features/site-content/api/get-site-content'
 import { AdminSiteContentForm } from '@/src/features/site-content/components/admin-site-content-form'
-import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
+import { getBusinessId } from '@/src/features/business/api/get-business-id'
 
 export default async function AdminContenidoPage() {
-    const [contentMap, services] = await Promise.all([
-        getSiteContentMap(),
-        getServicesAdmin(),
-    ])
-
-    const businessId = services[0]?.business_id
+    const businessId = await getBusinessId()
 
     if (!businessId) {
         return (
@@ -20,6 +15,8 @@ export default async function AdminContenidoPage() {
             </main>
         )
     }
+
+    const contentMap = await getSiteContentMap(businessId)
 
     return (
         <main>
