@@ -1,6 +1,12 @@
-import { supabase } from '@/src/lib/supabase/client'
+import { createClient } from '@/src/lib/supabase/server'
 
 export async function getActiveServices(businessId: string) {
+    if (!businessId) {
+        throw new Error('businessId es requerido para cargar servicios')
+    }
+
+    const supabase = await createClient()
+
     const { data, error } = await supabase
         .from('services')
         .select('*')
