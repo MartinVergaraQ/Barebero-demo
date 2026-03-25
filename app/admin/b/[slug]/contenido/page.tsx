@@ -1,29 +1,30 @@
+import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getSiteContentMap } from '@/src/features/site-content/api/get-site-content'
 import { AdminSiteContentForm } from '@/src/features/site-content/components/admin-site-content-form'
-import { getBusinessId } from '@/src/features/business/api/get-business-id'
 
-export default async function AdminContenidoPage() {
-    const businessId = await getBusinessId()
+type AdminContenidoPageProps = {
+    params: Promise<{
+        slug: string
+    }>
+}
 
-    if (!businessId) {
-        return (
-            <main>
-                <h1 className="mb-6 text-3xl font-bold">Contenido</h1>
-                <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800">
-                    No se encontró business_id base.
-                </div>
-            </main>
-        )
-    }
+export default async function AdminContenidoPage({
+    params,
+}: AdminContenidoPageProps) {
+    const { slug } = await params
+    const business = await getBusinessBySlug(slug)
 
-    const contentMap = await getSiteContentMap(businessId)
+    const contentMap = await getSiteContentMap(business.id)
 
     return (
         <main>
-            <h1 className="mb-6 text-3xl font-bold">Contenido</h1>
+            <div className="mb-6">
+                <p className="text-sm text-slate-500">{business.name}</p>
+                <h1 className="text-3xl font-bold">Contenido</h1>
+            </div>
 
             <AdminSiteContentForm
-                businessId={businessId}
+                businessId={business.id}
                 initialValues={{
                     hero_title: (contentMap.hero_title as string) ?? '',
                     hero_subtitle: (contentMap.hero_subtitle as string) ?? '',

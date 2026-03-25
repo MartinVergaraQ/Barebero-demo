@@ -23,12 +23,17 @@ export type AppointmentItem = {
 }
 
 type GetAppointmentsFilters = {
+  businessId: string
   date?: string
   status?: AppointmentStatus | ''
   barberId?: string
 }
 
-export async function getAppointments(filters?: GetAppointmentsFilters) {
+export async function getAppointments(filters: GetAppointmentsFilters) {
+  if (!filters.businessId) {
+    throw new Error('businessId es requerido para cargar reservas')
+  }
+
   const supabase = await createClient()
 
   let query = supabase
@@ -47,17 +52,18 @@ export async function getAppointments(filters?: GetAppointmentsFilters) {
       services ( name ),
       barbers ( name )
     `)
+    .eq('business_id', filters.businessId)
     .order('start_at', { ascending: true })
 
-  if (filters?.date) {
+  if (filters.date) {
     query = query.eq('appointment_date', filters.date)
   }
 
-  if (filters?.status) {
+  if (filters.status) {
     query = query.eq('status', filters.status)
   }
 
-  if (filters?.barberId) {
+  if (filters.barberId) {
     query = query.eq('barber_id', filters.barberId)
   }
 

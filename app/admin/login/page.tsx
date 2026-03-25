@@ -18,19 +18,56 @@ export default function AdminLoginPage() {
         setLoading(true)
         setErrorMessage('')
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        })
+        try {
+            const { data: signInData, error: signInError } =
+                await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                })
 
-        if (error) {
-            setErrorMessage(error.message)
+            if (signInError) {
+                throw new Error(signInError.message)
+            }
+
+            const userId = signInData.user?.id
+
+            if (!userId) {
+                throw new Error('No se pudo obtener el usuario autenticado')
+            }
+
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('business_id, role')
+                .eq('id', userId)
+                .single()
+
+            if (profileError || !profile) {
+                throw new Error('No se encontró el perfil del administrador')
+            }
+
+            if (!['owner', 'admin'].includes(profile.role)) {
+                throw new Error('No tienes permisos para entrar al panel admin')
+            }
+
+            const { data: business, error: businessError } = await supabase
+                .from('businesses')
+                .select('slug')
+                .eq('id', profile.business_id)
+                .single()
+
+            if (businessError || !business?.slug) {
+                throw new Error('No se encontró el negocio asociado a este admin')
+            }
+
+            router.push(`/admin/b/${business.slug}/reservas`)
+            router.refresh()
+        } catch (error) {
+            setErrorMessage(
+                error instanceof Error ? error.message : 'No se pudo iniciar sesión'
+            )
+        } finally {
             setLoading(false)
-            return
         }
-
-        router.push('/admin/reservas')
-        router.refresh()
     }
 
     return (

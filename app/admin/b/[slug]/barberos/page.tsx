@@ -1,34 +1,32 @@
-import { getBusinessId } from '@/src/features/business/api/get-business-id'
+import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
 import { AdminBarberForm } from '@/src/features/barbers/components/admin-barber-form'
 import { AdminBarberEditForm } from '@/src/features/barbers/components/admin-barber-edit-form'
 
-export default async function AdminBarberosPage() {
-    const businessId = await getBusinessId()
+type AdminBarberosPageProps = {
+    params: Promise<{
+        slug: string
+    }>
+}
 
-    if (!businessId) {
-        return (
-            <main className="p-8">
-                <div className="mb-6 flex items-center justify-between">
-                    <h1 className="mb-6 text-3xl font-bold">Barberos</h1>
-                </div>
+export default async function AdminBarberosPage({
+    params,
+}: AdminBarberosPageProps) {
+    const { slug } = await params
+    const business = await getBusinessBySlug(slug)
 
-                <div className="mb-8 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800">
-                    No se encontró un business_id base.
-                </div>
-            </main>
-        )
-    }
-
-    const barbers = await getBarbersAdmin(businessId)
+    const barbers = await getBarbersAdmin(business.id)
 
     return (
         <main className="p-8">
             <div className="mb-6 flex items-center justify-between">
-                <h1 className="mb-6 text-3xl font-bold">Barberos</h1>
+                <div>
+                    <p className="text-sm text-slate-500">{business.name}</p>
+                    <h1 className="mb-6 text-3xl font-bold">Barberos</h1>
+                </div>
             </div>
 
-            <AdminBarberForm businessId={businessId} />
+            <AdminBarberForm businessId={business.id} />
 
             <section>
                 <h2 className="mb-4 text-xl font-semibold">Lista de barberos</h2>

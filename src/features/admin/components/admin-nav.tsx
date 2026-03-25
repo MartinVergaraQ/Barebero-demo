@@ -15,29 +15,37 @@ import {
     LogOut,
     Menu,
     X,
+    Settings,
 } from 'lucide-react'
 import { AdminLogoutButton } from '@/src/features/auth/components/admin-logout-button'
 
-const links = [
-    { href: '/admin/reservas', label: 'Reservas', icon: CalendarDays },
-    { href: '/admin/servicios', label: 'Servicios', icon: Scissors },
-    { href: '/admin/barberos', label: 'Barberos', icon: User },
-    { href: '/admin/horarios', label: 'Horarios', icon: Clock3 },
-    { href: '/admin/bloqueos', label: 'Bloqueos', icon: Ban },
-    { href: '/admin/galeria', label: 'Galería', icon: ImageIcon },
-    { href: '/admin/contenido', label: 'Contenido', icon: FileText },
-    { href: '/admin/reviews', label: 'Reviews', icon: Star },
-]
-
 const PRIMARY = '#a87408'
+
+function buildLinks(slug: string) {
+    return [
+        { href: `/admin/b/${slug}/reservas`, label: 'Reservas', icon: CalendarDays },
+        { href: `/admin/b/${slug}/servicios`, label: 'Servicios', icon: Scissors },
+        { href: `/admin/b/${slug}/barberos`, label: 'Barberos', icon: User },
+        { href: `/admin/b/${slug}/horarios`, label: 'Horarios', icon: Clock3 },
+        { href: `/admin/b/${slug}/bloqueos`, label: 'Bloqueos', icon: Ban },
+        { href: `/admin/b/${slug}/galeria`, label: 'Galería', icon: ImageIcon },
+        { href: `/admin/b/${slug}/contenido`, label: 'Contenido', icon: FileText },
+        { href: `/admin/b/${slug}/reviews`, label: 'Reviews', icon: Star },
+        { href: `/admin/b/${slug}/negocio`, label: 'Negocio', icon: Settings },
+    ]
+}
 
 function NavLinks({
     pathname,
+    businessSlug,
     onNavigate,
 }: {
     pathname: string
+    businessSlug: string
     onNavigate?: () => void
 }) {
+    const links = buildLinks(businessSlug)
+
     return (
         <nav className="flex flex-col">
             {links.map((link) => {
@@ -50,8 +58,8 @@ function NavLinks({
                         href={link.href}
                         onClick={onNavigate}
                         className={`flex h-[56px] items-center gap-4 px-6 text-[15px] font-medium transition ${isActive
-                            ? 'bg-[#ece9e2] text-[#b15f12]'
-                            : 'text-[#403d39] hover:bg-[#ece9e2]'
+                                ? 'bg-[#ece9e2] text-[#b15f12]'
+                                : 'text-[#403d39] hover:bg-[#ece9e2]'
                             }`}
                         style={
                             isActive
@@ -68,20 +76,25 @@ function NavLinks({
     )
 }
 
-export function AdminNav() {
+export function AdminNav({
+    businessSlug,
+    businessName,
+}: {
+    businessSlug: string
+    businessName?: string
+}) {
     const pathname = usePathname()
     const [open, setOpen] = useState(false)
 
     return (
         <>
-            {/* MOBILE TOPBAR */}
             <div className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-[#ebe5d6] bg-[#f3f2ef] px-5 md:hidden">
                 <div>
                     <h2 className="text-[18px] font-bold leading-none text-[#1e1e1e]">
                         Panel Admin
                     </h2>
                     <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8a857a]">
-                        Barberos Demo
+                        {businessName || businessSlug}
                     </p>
                 </div>
 
@@ -95,7 +108,6 @@ export function AdminNav() {
                 </button>
             </div>
 
-            {/* MOBILE DRAWER */}
             {open && (
                 <div className="fixed inset-0 z-50 md:hidden">
                     <button
@@ -112,7 +124,7 @@ export function AdminNav() {
                                     Panel Admin
                                 </h2>
                                 <p className="mt-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#8a857a]">
-                                    Barberos Demo
+                                    {businessName || businessSlug}
                                 </p>
                             </div>
 
@@ -127,7 +139,11 @@ export function AdminNav() {
                         </div>
 
                         <div className="py-3">
-                            <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
+                            <NavLinks
+                                pathname={pathname}
+                                businessSlug={businessSlug}
+                                onNavigate={() => setOpen(false)}
+                            />
                         </div>
 
                         <div className="mt-auto border-t border-[#ebe5d6] px-6 py-5">
@@ -140,19 +156,18 @@ export function AdminNav() {
                 </div>
             )}
 
-            {/* DESKTOP SIDEBAR */}
             <aside className="hidden border-r border-[#ebe5d6] bg-[#f3f2ef] md:fixed md:left-0 md:top-0 md:flex md:h-screen md:w-[254px] md:flex-col">
                 <div className="px-7 py-7">
                     <h2 className="text-[20px] font-bold leading-none text-[#1e1e1e]">
                         Panel Admin
                     </h2>
                     <p className="mt-2 text-[12px] font-semibold uppercase tracking-[0.2em] text-[#8a857a]">
-                        Barberos Demo
+                        {businessName || businessSlug}
                     </p>
                 </div>
 
                 <div className="mt-2">
-                    <NavLinks pathname={pathname} />
+                    <NavLinks pathname={pathname} businessSlug={businessSlug} />
                 </div>
 
                 <div className="mt-auto px-7 py-7">

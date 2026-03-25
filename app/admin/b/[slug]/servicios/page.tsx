@@ -1,34 +1,32 @@
-import { getBusinessId } from '@/src/features/business/api/get-business-id'
+import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
 import { AdminServiceForm } from '@/src/features/services/api/components/admin-service-form'
 import { AdminServiceEditForm } from '@/src/features/services/api/components/admin-service-edit-form'
 
-export default async function AdminServiciosPage() {
-    const businessId = await getBusinessId()
+type AdminServiciosPageProps = {
+    params: Promise<{
+        slug: string
+    }>
+}
 
-    if (!businessId) {
-        return (
-            <main className="p-8">
-                <div className="mb-6 flex items-center justify-between">
-                    <h1 className="mb-6 text-3xl font-bold">Servicios</h1>
-                </div>
+export default async function AdminServiciosPage({
+    params,
+}: AdminServiciosPageProps) {
+    const { slug } = await params
+    const business = await getBusinessBySlug(slug)
 
-                <div className="mb-8 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800">
-                    No se encontró un business_id base.
-                </div>
-            </main>
-        )
-    }
-
-    const services = await getServicesAdmin(businessId)
+    const services = await getServicesAdmin(business.id)
 
     return (
         <main className="p-8">
             <div className="mb-6 flex items-center justify-between">
-                <h1 className="mb-6 text-3xl font-bold">Servicios</h1>
+                <div>
+                    <p className="text-sm text-slate-500">{business.name}</p>
+                    <h1 className="mb-6 text-3xl font-bold">Servicios</h1>
+                </div>
             </div>
 
-            <AdminServiceForm businessId={businessId} />
+            <AdminServiceForm businessId={business.id} />
 
             <section>
                 <h2 className="mb-4 text-xl font-semibold">Lista de servicios</h2>

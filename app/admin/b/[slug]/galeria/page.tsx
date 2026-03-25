@@ -1,30 +1,31 @@
-import { getBusinessId } from '@/src/features/business/api/get-business-id'
+import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getGalleryItemsAdmin } from '@/src/features/gallery/api/get-gallery-items-admin'
 import { AdminGalleryForm } from '@/src/features/gallery/components/admin-gallery-form'
 import { AdminGalleryEditForm } from '@/src/features/gallery/components/admin-gallery-edit-form'
 import { DeleteGalleryItemButton } from '@/src/features/gallery/components/delete-gallery-item-button'
 
-export default async function AdminGaleriaPage() {
-    const businessId = await getBusinessId()
+type AdminGaleriaPageProps = {
+    params: Promise<{
+        slug: string
+    }>
+}
 
-    if (!businessId) {
-        return (
-            <main>
-                <h1 className="mb-6 text-3xl font-bold">Galería</h1>
-                <div className="mb-8 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800">
-                    No se encontró business_id base.
-                </div>
-            </main>
-        )
-    }
+export default async function AdminGaleriaPage({
+    params,
+}: AdminGaleriaPageProps) {
+    const { slug } = await params
+    const business = await getBusinessBySlug(slug)
 
-    const items = await getGalleryItemsAdmin(businessId)
+    const items = await getGalleryItemsAdmin(business.id)
 
     return (
         <main>
-            <h1 className="mb-6 text-3xl font-bold">Galería</h1>
+            <div className="mb-6">
+                <p className="text-sm text-slate-500">{business.name}</p>
+                <h1 className="text-3xl font-bold">Galería</h1>
+            </div>
 
-            <AdminGalleryForm businessId={businessId} />
+            <AdminGalleryForm businessId={business.id} />
 
             <section>
                 <h2 className="mb-4 text-xl font-semibold">Items de galería</h2>
