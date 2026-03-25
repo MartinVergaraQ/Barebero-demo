@@ -1,14 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/src/lib/supabase/client'
-import { createAppointment } from '@/src/features/booking/api/create.appointment'
 import { getBarberWorkingHours } from '@/src/features/booking/api/get-barber-working-hours'
 import { getBarberAppointmentsByDate } from '@/src/features/booking/api/get-barber-appointments-by-date'
 import { generateTimeSlots } from '@/src/features/booking/utils/generate-time-slots'
 import { getTimeOffByBarberAndDate } from '@/src/features/time-off/api/get-time-off-by-barber-and-date'
 import { resolveWhatsAppPhone } from '@/src/features/booking/utils/whatsapp'
+import {
+    normalizeWhitespace,
+    validateClientName,
+    validateClientEmail,
+    validateClientPhone,
+    formatPhoneForStorage,
+    formatChileanPhoneInput,
+} from '@/src/features/booking/utils/validation'
+import { createAppointmentServer } from '@/src/features/booking/api/create-appointment-server'
 
 type Service = {
     id: string
@@ -163,6 +171,10 @@ export default function ReservarClient({
     const [loadingSlots, setLoadingSlots] = useState(false)
     const [submitting, setSubmitting] = useState(false)
 
+    const clientNameRef = useRef<HTMLInputElement | null>(null)
+    const clientEmailRef = useRef<HTMLInputElement | null>(null)
+    const clientPhoneRef = useRef<HTMLInputElement | null>(null)
+
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
     const [business, setBusiness] = useState<Business | null>(null)
@@ -171,6 +183,41 @@ export default function ReservarClient({
     const [availabilityMessage, setAvailabilityMessage] = useState('')
     const dateOptions = useMemo(() => getDateOptions(10), [])
     const [step, setStep] = useState<1 | 2 | 3>(1)
+    const [fieldErrors, setFieldErrors] = useState({
+        client_name: '',
+        client_email: '',
+        client_phone: '',
+    })
+    const [touchedFields, setTouchedFields] = useState({
+        client_name: false,
+        client_email: false,
+        client_phone: false,
+    })
+
+    const [form, setForm] = useState({
+        service_id: initialServiceId,
+        barber_id: initialBarberId,
+        appointment_date: '',
+        client_name: '',
+        client_email: '',
+        client_phone: '',
+    })
+
+    const normalizedClientName = normalizeWhitespace(form.client_name)
+    const normalizedClientEmail = normalizeWhitespace(form.client_email)
+
+    const isClientNameValid = !validateClientName(normalizedClientName)
+    const isClientEmailValid = !validateClientEmail(normalizedClientEmail)
+    const isClientPhoneValid = !validateClientPhone(form.client_phone)
+
+    const isStepTwoFormValid =
+        !!form.service_id &&
+        !!form.barber_id &&
+        !!form.appointment_date &&
+        !!selectedSlot &&
+        isClientNameValid &&
+        isClientEmailValid &&
+        isClientPhoneValid
 
     const [successfulReservation, setSuccessfulReservation] =
         useState<SuccessfulReservation | null>(null)
@@ -199,14 +246,87 @@ export default function ReservarClient({
 
     const hasWhatsApp = !!successfulReservation?.whatsapp_phone
 
-    const [form, setForm] = useState({
-        service_id: initialServiceId,
-        barber_id: initialBarberId,
-        appointment_date: '',
-        client_name: '',
-        client_email: '',
-        client_phone: '',
-    })
+    function focusFirstFieldError(errors: {
+        client_name: string
+        client_email: string
+        client_phone: string
+    }) {
+        if (errors.client_name) {
+            clientNameRef.current?.focus()
+            clientNameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            return
+        }
+
+        if (errors.client_email) {
+            clientEmailRef.current?.focus()
+            clientEmailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            return
+        }
+
+        if (errors.client_phone) {
+            clientPhoneRef.current?.focus()
+            clientPhoneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+    }
+
+    function validateSingleField(
+        fieldName: 'client_name' | 'client_email' | 'client_phone',
+        value: string
+    ) {
+        let error = ''
+
+        if (fieldName === 'client_name') {
+            error = validateClientName(normalizeWhitespace(value)) ?? ''
+        }
+
+        if (fieldName === 'client_email') {
+            error = validateClientEmail(normalizeWhitespace(value)) ?? ''
+        }
+
+        if (fieldName === 'client_phone') {
+            error = validateClientPhone(value) ?? ''
+        }
+
+        setFieldErrors((prev) => ({
+            ...prev,
+            [fieldName]: error,
+        }))
+
+        return error
+    }
+
+    function handleFieldBlur(
+        e: React.FocusEvent<HTMLInputElement>
+    ) {
+        const { name, value } = e.target
+
+        if (
+            name === 'client_name' ||
+            name === 'client_email' ||
+            name === 'client_phone'
+        ) {
+            setTouchedFields((prev) => ({
+                ...prev,
+                [name]: true,
+            }))
+
+            validateSingleField(name, value)
+        }
+    }
+
+    function getFieldBorderClass(
+        fieldName: 'client_name' | 'client_email' | 'client_phone'
+    ) {
+        if (fieldErrors[fieldName]) {
+            return 'border-red-400'
+        }
+
+        if (touchedFields[fieldName]) {
+            return 'border-green-500'
+        }
+
+        return 'border-slate-200'
+    }
 
     useEffect(() => {
         async function loadData() {
@@ -281,18 +401,34 @@ export default function ReservarClient({
     ) {
         const { name, value } = e.target
 
+        const nextValue =
+            name === 'client_phone'
+                ? formatChileanPhoneInput(value)
+                : value
+
         setForm((prev) => ({
             ...prev,
-            [name]: value,
+            [name]: nextValue,
         }))
+
+        if (
+            name === 'client_name' ||
+            name === 'client_email' ||
+            name === 'client_phone'
+        ) {
+            setFieldErrors((prev) => ({
+                ...prev,
+                [name]: '',
+            }))
+        }
 
         if (name === 'service_id' || name === 'barber_id') {
             setSelectedSlot(null)
             setAvailableSlots([])
             setAvailabilityMessage('')
-
         }
     }
+
     function handleDateSelect(value: string) {
         setForm((prev) => ({
             ...prev,
@@ -401,25 +537,59 @@ export default function ReservarClient({
         setSubmitting(true)
         setMessage('')
         setErrorMessage('')
+        setFieldErrors({
+            client_name: '',
+            client_email: '',
+            client_phone: '',
+        })
 
         try {
             if (!form.service_id) throw new Error('Selecciona un servicio')
             if (!form.barber_id) throw new Error('Selecciona un barbero')
             if (!form.appointment_date) throw new Error('Selecciona una fecha')
             if (!selectedSlot) throw new Error('Selecciona una hora disponible')
-            if (!form.client_name.trim()) throw new Error('Ingresa tu nombre')
-            if (!form.client_phone.trim()) throw new Error('Ingresa tu teléfono')
 
             if (!selectedBarber) throw new Error('Barbero no válido')
             if (!selectedService) throw new Error('Servicio no válido')
 
-            await createAppointment({
+            const normalizedName = normalizeWhitespace(form.client_name)
+            const normalizedEmail = normalizeWhitespace(form.client_email)
+            const formattedPhone = formatPhoneForStorage(form.client_phone)
+
+            const nextFieldErrors = {
+                client_name: validateClientName(normalizeWhitespace(form.client_name)) ?? '',
+                client_email: validateClientEmail(normalizeWhitespace(form.client_email)) ?? '',
+                client_phone: validateClientPhone(form.client_phone) ?? '',
+            }
+
+            const nameError = validateClientName(normalizedName)
+            if (nameError) nextFieldErrors.client_name = nameError
+
+            const emailError = validateClientEmail(normalizedEmail)
+            if (emailError) nextFieldErrors.client_email = emailError
+
+            const phoneError = validateClientPhone(form.client_phone)
+            if (phoneError) nextFieldErrors.client_phone = phoneError
+
+            setFieldErrors(nextFieldErrors)
+
+
+            if (
+                nextFieldErrors.client_name ||
+                nextFieldErrors.client_email ||
+                nextFieldErrors.client_phone
+            ) {
+                focusFirstFieldError(nextFieldErrors)
+                throw new Error('Revisa los campos del formulario')
+            }
+
+            await createAppointmentServer({
                 business_id: selectedBarber.business_id,
                 barber_id: form.barber_id,
                 service_id: form.service_id,
-                client_name: form.client_name.trim(),
-                client_email: form.client_email.trim() || null,
-                client_phone: form.client_phone.trim(),
+                client_name: normalizedName,
+                client_email: normalizedEmail || null,
+                client_phone: formattedPhone,
                 appointment_date: form.appointment_date,
                 start_at: selectedSlot.start_at,
                 end_at: selectedSlot.end_at,
@@ -432,9 +602,9 @@ export default function ReservarClient({
             })
 
             setSuccessfulReservation({
-                client_name: form.client_name.trim(),
-                client_phone: form.client_phone.trim(),
-                client_email: form.client_email.trim(),
+                client_name: normalizedName,
+                client_phone: formattedPhone,
+                client_email: normalizedEmail,
                 service_name: selectedService.name,
                 barber_name: selectedBarber.name,
                 appointment_date: form.appointment_date,
@@ -445,9 +615,12 @@ export default function ReservarClient({
 
             setStep(3)
         } catch (error) {
-            setErrorMessage(
+            const message =
                 error instanceof Error ? error.message : 'Ocurrió un error inesperado'
-            )
+
+            if (message !== 'Revisa los campos del formulario') {
+                setErrorMessage(message)
+            }
         } finally {
             setSubmitting(false)
         }
@@ -462,6 +635,12 @@ export default function ReservarClient({
         setSuccessfulReservation(null)
         setStep(1)
 
+        setFieldErrors({
+            client_name: '',
+            client_email: '',
+            client_phone: '',
+        })
+
         setForm({
             service_id: initialServiceId,
             barber_id: initialBarberId,
@@ -469,6 +648,12 @@ export default function ReservarClient({
             client_name: '',
             client_email: '',
             client_phone: '',
+        })
+
+        setTouchedFields({
+            client_name: false,
+            client_email: false,
+            client_phone: false,
         })
     }
 
@@ -803,7 +988,7 @@ export default function ReservarClient({
                 )}
 
                 {step === 2 && (
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} noValidate>
                         <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
                             <div className="space-y-2">
                                 <div className="flex items-end justify-between">
@@ -859,14 +1044,21 @@ export default function ReservarClient({
                                             Nombre completo
                                         </label>
                                         <input
+                                            ref={clientNameRef}
                                             id="client_name"
                                             name="client_name"
                                             type="text"
                                             value={form.client_name}
                                             onChange={handleChange}
+                                            onBlur={handleFieldBlur}
                                             placeholder="Ej. Juan Pérez"
-                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
+                                            autoComplete="name"
+                                            maxLength={80}
+                                            className={`w-full rounded-2xl border bg-white p-4 text-sm outline-none md:text-base ${getFieldBorderClass('client_name')}`}
                                         />
+                                        {!fieldErrors.client_name && touchedFields.client_name && (
+                                            <p className="mt-2 text-sm text-green-600">Nombre válido</p>
+                                        )}
                                     </div>
 
                                     <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
@@ -874,14 +1066,21 @@ export default function ReservarClient({
                                             Correo electrónico
                                         </label>
                                         <input
+                                            ref={clientEmailRef}
                                             id="client_email"
                                             name="client_email"
                                             type="email"
                                             value={form.client_email}
                                             onChange={handleChange}
+                                            onBlur={handleFieldBlur}
                                             placeholder="tu@correo.com"
-                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
+                                            autoComplete="email"
+                                            maxLength={120}
+                                            className={`w-full rounded-2xl border bg-white p-4 text-sm outline-none md:text-base ${getFieldBorderClass('client_email')}`}
                                         />
+                                        {!fieldErrors.client_email && touchedFields.client_email && form.client_email.trim() && (
+                                            <p className="mt-2 text-sm text-green-600">Correo válido</p>
+                                        )}
                                     </div>
 
                                     <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
@@ -889,14 +1088,22 @@ export default function ReservarClient({
                                             Número de celular
                                         </label>
                                         <input
+                                            ref={clientPhoneRef}
                                             id="client_phone"
                                             name="client_phone"
-                                            type="text"
+                                            type="tel"
                                             value={form.client_phone}
                                             onChange={handleChange}
+                                            onBlur={handleFieldBlur}
                                             placeholder="+56 9 1234 5678"
-                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
+                                            autoComplete="tel"
+                                            inputMode="numeric"
+                                            maxLength={15}
+                                            className={`w-full rounded-2xl border bg-white p-4 text-sm outline-none md:text-base ${getFieldBorderClass('client_phone')}`}
                                         />
+                                        {!fieldErrors.client_phone && touchedFields.client_phone && form.client_phone.trim() && (
+                                            <p className="mt-2 text-sm text-green-600">Teléfono válido</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -922,21 +1129,17 @@ export default function ReservarClient({
 
                                     <button
                                         type="submit"
-                                        disabled={
-                                            submitting ||
-                                            !form.service_id ||
-                                            !form.barber_id ||
-                                            !form.appointment_date ||
-                                            !selectedSlot ||
-                                            !form.client_name.trim() ||
-                                            !form.client_phone.trim()
-                                        }
-                                        className="flex-1 rounded-2xl px-4 py-4 text-sm font-bold text-white shadow-lg disabled:opacity-50 md:text-base"
-                                        style={{ backgroundColor: PRIMARY }}
+                                        disabled={submitting || !isStepTwoFormValid}
+                                        className="flex-1 rounded-2xl px-4 py-4 text-sm font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 md:text-base" style={{ backgroundColor: PRIMARY }}
                                     >
                                         {submitting ? 'Guardando...' : 'Confirmar reserva'}
                                     </button>
                                 </div>
+                                {!isStepTwoFormValid && (
+                                    <p className="mt-3 text-sm text-slate-500">
+                                        Completa correctamente tus datos para confirmar la reserva.
+                                    </p>
+                                )}
                             </div>
                         </footer>
                     </form>
