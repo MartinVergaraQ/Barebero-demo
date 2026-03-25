@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/src/lib/supabase/server'
 import {
     getAppointments,
     type AppointmentItem,
@@ -11,6 +13,12 @@ import { getServicesAdmin } from '@/src/features/services/api/get-services-admin
 import { AdminAppointmentEditSheet } from '@/src/features/booking/api/components/admin-appointment-edit-sheet'
 import { AdminCreateAppointmentSheet } from '@/src/features/booking/api/components/admin-create-appointment-sheet'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
+import { getBarberByProfile } from '@/src/features/barbers/api/get-barber-by-profile'
+import {
+    canAccessBusiness,
+    isBarberRole,
+    isFullAdminRole,
+} from '@/src/features/auth/utils/admin-scope'
 
 const COLORS = {
     primary: '#a87408',
@@ -203,20 +211,69 @@ export default async function AdminReservasPage({
 }: PageProps) {
     const { slug } = await params
     const query = await searchParams
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        redirect('/admin/login')
+    }
+
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, business_id, role')
+        .eq('id', user.id)
+        .single()
+
+    if (profileError || !profile) {
+        redirect('/admin')
+    }
+
     const business = await getBusinessBySlug(slug)
+
+    if (
+        !canAccessBusiness({
+            profileBusinessId: profile.business_id,
+            requestedBusinessId: business.id,
+        })
+    ) {
+        redirect('/admin')
+    }
+
+    const ownBarber = await getBarberByProfile(profile.id)
+
+    if (
+        isBarberRole(profile.role) &&
+        (!ownBarber || ownBarber.business_id !== business.id)
+    ) {
+        redirect('/admin')
+    }
 
     const selectedDate = query.date ?? ''
     const selectedStatus = query.status ?? ''
-    const selectedBarberId = query.barberId ?? ''
+
+    const effectiveBarberId = isBarberRole(profile.role)
+        ? ownBarber!.id
+        : (query.barberId ?? '')
 
     const [appointments, barbers, services] = await Promise.all([
         getAppointments({
             businessId: business.id,
             date: selectedDate,
             status: selectedStatus,
-            barberId: selectedBarberId,
+            barberId: effectiveBarberId,
         }),
-        getBarbersAdmin(business.id),
+        isFullAdminRole(profile.role)
+            ? getBarbersAdmin(business.id)
+            : Promise.resolve([
+                {
+                    id: ownBarber!.id,
+                    business_id: ownBarber!.business_id,
+                    name: ownBarber!.name,
+                },
+            ]),
         getServicesAdmin(business.id),
     ])
 
@@ -439,51 +496,6 @@ export default async function AdminReservasPage({
                                     </article>
                                 )
                             })}
-                        </div>
-
-                        <div
-                            className="flex items-center justify-between border-t px-6 py-5 text-[14px]"
-                            style={{ borderColor: '#efe8d8', color: '#4f4b45' }}
-                        >
-                            <p>
-                                Mostrando 1-{items.length} de {items.length} resultados
-                            </p>
-
-                            <div className="flex items-center gap-2">
-                                <button
-                                    className="flex h-8 w-8 items-center justify-center rounded-[3px] border bg-white"
-                                    style={{ borderColor: COLORS.border }}
-                                    type="button"
-                                >
-                                    ‹
-                                </button>
-                                <button
-                                    className="flex h-8 min-w-8 items-center justify-center rounded-[3px] px-2 text-white"
-                                    style={{ backgroundColor: COLORS.primary }}
-                                    type="button"
-                                >
-                                    1
-                                </button>
-                                <button
-                                    className="flex h-8 min-w-8 items-center justify-center rounded-[3px] px-2 text-[#2b2926]"
-                                    type="button"
-                                >
-                                    2
-                                </button>
-                                <button
-                                    className="flex h-8 min-w-8 items-center justify-center rounded-[3px] px-2 text-[#2b2926]"
-                                    type="button"
-                                >
-                                    3
-                                </button>
-                                <button
-                                    className="flex h-8 w-8 items-center justify-center rounded-[3px] border bg-white"
-                                    style={{ borderColor: COLORS.border }}
-                                    type="button"
-                                >
-                                    ›
-                                </button>
-                            </div>
                         </div>
                     </section>
 

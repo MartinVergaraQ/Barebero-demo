@@ -1,6 +1,9 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/src/lib/supabase/server'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getBusinessAdmin } from '@/src/features/business/api/get-business-admin'
 import { AdminBusinessForm } from '@/src/features/business/components/admin-business-form'
+import { canManageBusiness } from '@/src/features/auth/utils/admin-access'
 
 type AdminNegocioPageProps = {
     params: Promise<{
@@ -12,7 +15,32 @@ export default async function AdminNegocioPage({
     params,
 }: AdminNegocioPageProps) {
     const { slug } = await params
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        redirect('/admin/login')
+    }
+
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, business_id, role')
+        .eq('id', user.id)
+        .single()
+
+    if (profileError || !profile || !canManageBusiness(profile.role)) {
+        redirect('/admin')
+    }
+
     const business = await getBusinessBySlug(slug)
+
+    if (profile.business_id !== business.id) {
+        redirect('/admin')
+    }
+
     const businessData = await getBusinessAdmin(business.id)
 
     return (

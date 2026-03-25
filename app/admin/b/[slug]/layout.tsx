@@ -1,5 +1,7 @@
+import { redirect, notFound } from 'next/navigation'
+import { createClient } from '@/src/lib/supabase/server'
 import { AdminNav } from '@/src/features/admin/components/admin-nav'
-import { getAdminBusinessAccess } from '@/src/features/business/api/get-admin-business-access'
+import { canAccessAdmin } from '@/src/features/auth/utils/admin-access'
 
 export default async function AdminBusinessLayout({
     children,
@@ -9,13 +11,46 @@ export default async function AdminBusinessLayout({
     params: Promise<{ slug: string }>
 }>) {
     const { slug } = await params
-    const access = await getAdminBusinessAccess(slug)
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        redirect('/admin/login')
+    }
+
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, business_id, role, full_name')
+        .eq('id', user.id)
+        .single()
+
+    if (profileError || !profile || !canAccessAdmin(profile.role)) {
+        redirect('/admin/login')
+    }
+
+    const { data: business, error: businessError } = await supabase
+        .from('businesses')
+        .select('id, name, slug')
+        .eq('slug', slug)
+        .single()
+
+    if (businessError || !business) {
+        notFound()
+    }
+
+    if (profile.business_id !== business.id) {
+        redirect('/admin')
+    }
 
     return (
         <div className="min-h-screen bg-[#f6f3e8] text-[#1f1f1f]">
             <AdminNav
-                businessSlug={access.businessSlug}
-                businessName={access.businessName}
+                businessSlug={business.slug}
+                businessName={business.name}
+                role={profile.role}
             />
 
             <section className="min-w-0 md:ml-[254px]">

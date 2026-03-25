@@ -18,33 +18,54 @@ import {
     Settings,
 } from 'lucide-react'
 import { AdminLogoutButton } from '@/src/features/auth/components/admin-logout-button'
+import {
+    canManageAppointments,
+    canManageBusiness,
+    canManageCatalog,
+    canManageReviews,
+} from '@/src/features/auth/utils/admin-access'
 
 const PRIMARY = '#a87408'
 
-function buildLinks(slug: string) {
-    return [
-        { href: `/admin/b/${slug}/reservas`, label: 'Reservas', icon: CalendarDays },
-        { href: `/admin/b/${slug}/servicios`, label: 'Servicios', icon: Scissors },
-        { href: `/admin/b/${slug}/barberos`, label: 'Barberos', icon: User },
-        { href: `/admin/b/${slug}/horarios`, label: 'Horarios', icon: Clock3 },
-        { href: `/admin/b/${slug}/bloqueos`, label: 'Bloqueos', icon: Ban },
-        { href: `/admin/b/${slug}/galeria`, label: 'Galería', icon: ImageIcon },
-        { href: `/admin/b/${slug}/contenido`, label: 'Contenido', icon: FileText },
-        { href: `/admin/b/${slug}/reviews`, label: 'Reviews', icon: Star },
-        { href: `/admin/b/${slug}/negocio`, label: 'Negocio', icon: Settings },
-    ]
+function buildLinks(slug: string, role: string) {
+    const links = []
+
+    if (canManageAppointments(role)) {
+        links.push({ href: `/admin/b/${slug}/reservas`, label: 'Reservas', icon: CalendarDays })
+        links.push({ href: `/admin/b/${slug}/horarios`, label: 'Horarios', icon: Clock3 })
+        links.push({ href: `/admin/b/${slug}/bloqueos`, label: 'Bloqueos', icon: Ban })
+    }
+
+    if (canManageCatalog(role)) {
+        links.push({ href: `/admin/b/${slug}/servicios`, label: 'Servicios', icon: Scissors })
+        links.push({ href: `/admin/b/${slug}/barberos`, label: 'Barberos', icon: User })
+        links.push({ href: `/admin/b/${slug}/galeria`, label: 'Galería', icon: ImageIcon })
+        links.push({ href: `/admin/b/${slug}/contenido`, label: 'Contenido', icon: FileText })
+    }
+
+    if (canManageReviews(role)) {
+        links.push({ href: `/admin/b/${slug}/reviews`, label: 'Reviews', icon: Star })
+    }
+
+    if (canManageBusiness(role)) {
+        links.push({ href: `/admin/b/${slug}/negocio`, label: 'Negocio', icon: Settings })
+    }
+
+    return links
 }
 
 function NavLinks({
     pathname,
     businessSlug,
+    role,
     onNavigate,
 }: {
     pathname: string
     businessSlug: string
+    role: string
     onNavigate?: () => void
 }) {
-    const links = buildLinks(businessSlug)
+    const links = buildLinks(businessSlug, role)
 
     return (
         <nav className="flex flex-col">
@@ -79,9 +100,11 @@ function NavLinks({
 export function AdminNav({
     businessSlug,
     businessName,
+    role,
 }: {
     businessSlug: string
     businessName?: string
+    role: string
 }) {
     const pathname = usePathname()
     const [open, setOpen] = useState(false)
@@ -142,6 +165,7 @@ export function AdminNav({
                             <NavLinks
                                 pathname={pathname}
                                 businessSlug={businessSlug}
+                                role={role}
                                 onNavigate={() => setOpen(false)}
                             />
                         </div>
@@ -167,7 +191,11 @@ export function AdminNav({
                 </div>
 
                 <div className="mt-2">
-                    <NavLinks pathname={pathname} businessSlug={businessSlug} />
+                    <NavLinks
+                        pathname={pathname}
+                        businessSlug={businessSlug}
+                        role={role}
+                    />
                 </div>
 
                 <div className="mt-auto px-7 py-7">

@@ -1,6 +1,9 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/src/lib/supabase/server'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getReviewsAdmin } from '@/src/features/reviews/api/get-reviews-admin'
 import { AdminReviewActions } from '@/src/features/reviews/components/admin-review-edit-form'
+import { canManageReviews } from '@/src/features/auth/utils/admin-access'
 
 type AdminReviewsPageProps = {
     params: Promise<{
@@ -12,7 +15,31 @@ export default async function AdminReviewsPage({
     params,
 }: AdminReviewsPageProps) {
     const { slug } = await params
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        redirect('/admin/login')
+    }
+
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, business_id, role')
+        .eq('id', user.id)
+        .single()
+
+    if (profileError || !profile || !canManageReviews(profile.role)) {
+        redirect('/admin')
+    }
+
     const business = await getBusinessBySlug(slug)
+
+    if (profile.business_id !== business.id) {
+        redirect('/admin')
+    }
 
     const reviews = await getReviewsAdmin(business.id)
 

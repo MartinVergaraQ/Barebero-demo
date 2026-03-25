@@ -1,6 +1,9 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/src/lib/supabase/server'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getSiteContentMap } from '@/src/features/site-content/api/get-site-content'
 import { AdminSiteContentForm } from '@/src/features/site-content/components/admin-site-content-form'
+import { canManageCatalog } from '@/src/features/auth/utils/admin-access'
 
 type AdminContenidoPageProps = {
     params: Promise<{
@@ -12,7 +15,31 @@ export default async function AdminContenidoPage({
     params,
 }: AdminContenidoPageProps) {
     const { slug } = await params
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        redirect('/admin/login')
+    }
+
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, business_id, role')
+        .eq('id', user.id)
+        .single()
+
+    if (profileError || !profile || !canManageCatalog(profile.role)) {
+        redirect('/admin')
+    }
+
     const business = await getBusinessBySlug(slug)
+
+    if (profile.business_id !== business.id) {
+        redirect('/admin')
+    }
 
     const contentMap = await getSiteContentMap(business.id)
 
