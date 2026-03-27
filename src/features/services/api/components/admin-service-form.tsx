@@ -6,6 +6,7 @@ import { createService } from '@/src/features/services/api/create-service'
 
 type Props = {
     businessId: string
+    canCreate: boolean
 }
 
 function slugify(value: string) {
@@ -19,7 +20,7 @@ function slugify(value: string) {
         .replace(/-+/g, '-')
 }
 
-export function AdminServiceForm({ businessId }: Props) {
+export function AdminServiceForm({ businessId, canCreate }: Props) {
     const router = useRouter()
 
     const [form, setForm] = useState({
@@ -235,11 +236,16 @@ export function AdminServiceForm({ businessId }: Props) {
                 <div className="md:col-span-2">
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || !canCreate}
                         className="rounded-lg bg-black px-4 py-3 text-white disabled:opacity-50"
                     >
                         {loading ? 'Guardando...' : 'Crear servicio'}
                     </button>
+                    {!canCreate && (
+                        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-800">
+                            No puedes crear nuevos registros mientras la suscripción esté con pago pendiente o cancelada.
+                        </div>
+                    )}
                 </div>
             </form>
         </section>

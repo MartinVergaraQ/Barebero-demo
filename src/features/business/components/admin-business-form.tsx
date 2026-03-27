@@ -21,6 +21,11 @@ type Props = {
         timezone: string
         whatsapp_phone: string | null
         whatsapp_routing: 'business' | 'barber' | 'fallback' | null
+        plan_slug: string
+        subscription_status: 'trialing' | 'active' | 'past_due' | 'canceled'
+        trial_ends_at: string | null
+        max_barbers: number
+        max_services: number
     }
 }
 
@@ -58,6 +63,13 @@ export function AdminBusinessForm({ business }: Props) {
         timezone: business.timezone ?? 'America/Santiago',
         whatsapp_phone: business.whatsapp_phone ?? '',
         whatsapp_routing: business.whatsapp_routing ?? 'fallback',
+        plan_slug: business.plan_slug ?? 'starter',
+        subscription_status: business.subscription_status ?? 'trialing',
+        trial_ends_at: business.trial_ends_at
+            ? business.trial_ends_at.slice(0, 10)
+            : '',
+        max_barbers: String(business.max_barbers ?? 1),
+        max_services: String(business.max_services ?? 3),
     })
 
     function handleChange(
@@ -107,6 +119,11 @@ export function AdminBusinessForm({ business }: Props) {
                 timezone: form.timezone,
                 whatsapp_phone: form.whatsapp_phone,
                 whatsapp_routing: form.whatsapp_routing,
+                plan_slug: form.plan_slug,
+                subscription_status: form.subscription_status,
+                trial_ends_at: form.trial_ends_at || null,
+                max_barbers: Number(form.max_barbers || 1),
+                max_services: Number(form.max_services || 3),
             })
 
             const normalizedOldSlug = business.slug.trim()
@@ -313,6 +330,74 @@ export function AdminBusinessForm({ business }: Props) {
                         className="w-full rounded-lg border p-3"
                         rows={5}
                         placeholder="Describe el negocio"
+                    />
+                </div>
+
+                <div className="md:col-span-2 mt-4 border-t pt-4">
+                    <h3 className="mb-4 text-lg font-semibold">Plan y suscripción</h3>
+                </div>
+
+                <div>
+                    <label className="mb-2 block font-medium">Plan</label>
+                    <select
+                        name="plan_slug"
+                        value={form.plan_slug}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border p-3"
+                    >
+                        <option value="starter">Starter</option>
+                        <option value="pro">Pro</option>
+                        <option value="studio">Studio</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label className="mb-2 block font-medium">Estado de suscripción</label>
+                    <select
+                        name="subscription_status"
+                        value={form.subscription_status}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border p-3"
+                    >
+                        <option value="trialing">Trialing</option>
+                        <option value="active">Activa</option>
+                        <option value="past_due">Pago pendiente</option>
+                        <option value="canceled">Cancelada</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label className="mb-2 block font-medium">Trial hasta</label>
+                    <input
+                        name="trial_ends_at"
+                        type="date"
+                        value={form.trial_ends_at}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border p-3"
+                    />
+                </div>
+
+                <div>
+                    <label className="mb-2 block font-medium">Máximo de barberos</label>
+                    <input
+                        name="max_barbers"
+                        type="number"
+                        min={1}
+                        value={form.max_barbers}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border p-3"
+                    />
+                </div>
+
+                <div>
+                    <label className="mb-2 block font-medium">Máximo de servicios</label>
+                    <input
+                        name="max_services"
+                        type="number"
+                        min={1}
+                        value={form.max_services}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border p-3"
                     />
                 </div>
 

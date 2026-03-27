@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateService } from '@/src/features/services/api/update-service'
+import { updateServiceServer } from '@/src/features/services/api/update-service-server'
 
 type Props = {
     service: {
@@ -17,9 +17,10 @@ type Props = {
         is_active: boolean
         display_order: number
     }
+    canEdit: boolean
 }
 
-export function AdminServiceEditForm({ service }: Props) {
+export function AdminServiceEditForm({ service, canEdit }: Props) {
     const router = useRouter()
 
     const [editing, setEditing] = useState(false)
@@ -61,6 +62,14 @@ export function AdminServiceEditForm({ service }: Props) {
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
+
+        if (!canEdit) {
+            setErrorMessage(
+                'Tu suscripción no permite editar servicios mientras esté cancelada o con pago pendiente.'
+            )
+            return
+        }
+
         setLoading(true)
         setMessage('')
         setErrorMessage('')
@@ -71,7 +80,7 @@ export function AdminServiceEditForm({ service }: Props) {
             if (!form.duration_minutes) throw new Error('Ingresa la duración')
             if (!form.price) throw new Error('Ingresa el precio')
 
-            await updateService({
+            await updateServiceServer({
                 id: service.id,
                 name: form.name,
                 slug: form.slug,
@@ -86,7 +95,6 @@ export function AdminServiceEditForm({ service }: Props) {
 
             setMessage('Servicio actualizado correctamente')
             setEditing(false)
-
             router.refresh()
         } catch (error) {
             setErrorMessage(
@@ -102,15 +110,22 @@ export function AdminServiceEditForm({ service }: Props) {
             <div className="mt-4">
                 <button
                     type="button"
+                    disabled={!canEdit}
                     onClick={() => {
                         setEditing(true)
                         setMessage('')
                         setErrorMessage('')
                     }}
-                    className="rounded-lg border px-4 py-2"
+                    className="rounded-lg border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     Editar
                 </button>
+
+                {!canEdit && (
+                    <p className="mt-2 text-sm text-red-600">
+                        Tu suscripción no permite editar servicios mientras esté cancelada o con pago pendiente.
+                    </p>
+                )}
 
                 {message && <p className="mt-2 text-sm text-green-600">{message}</p>}
                 {errorMessage && (
@@ -134,6 +149,7 @@ export function AdminServiceEditForm({ service }: Props) {
                     name="name"
                     value={form.name}
                     onChange={handleChange}
+                    disabled={!canEdit || loading}
                     className="w-full rounded-lg border p-3"
                 />
             </div>
@@ -144,6 +160,7 @@ export function AdminServiceEditForm({ service }: Props) {
                     name="slug"
                     value={form.slug}
                     onChange={handleChange}
+                    disabled={!canEdit || loading}
                     className="w-full rounded-lg border p-3"
                 />
             </div>
@@ -154,6 +171,7 @@ export function AdminServiceEditForm({ service }: Props) {
                     name="description"
                     value={form.description}
                     onChange={handleChange}
+                    disabled={!canEdit || loading}
                     className="w-full rounded-lg border p-3"
                     rows={4}
                 />
@@ -166,6 +184,7 @@ export function AdminServiceEditForm({ service }: Props) {
                     type="number"
                     value={form.duration_minutes}
                     onChange={handleChange}
+                    disabled={!canEdit || loading}
                     className="w-full rounded-lg border p-3"
                 />
             </div>
@@ -177,6 +196,7 @@ export function AdminServiceEditForm({ service }: Props) {
                     type="number"
                     value={form.price}
                     onChange={handleChange}
+                    disabled={!canEdit || loading}
                     className="w-full rounded-lg border p-3"
                 />
             </div>
@@ -187,6 +207,7 @@ export function AdminServiceEditForm({ service }: Props) {
                     name="currency"
                     value={form.currency}
                     onChange={handleChange}
+                    disabled={!canEdit || loading}
                     className="w-full rounded-lg border p-3"
                 />
             </div>
@@ -198,6 +219,7 @@ export function AdminServiceEditForm({ service }: Props) {
                     type="number"
                     value={form.display_order}
                     onChange={handleChange}
+                    disabled={!canEdit || loading}
                     className="w-full rounded-lg border p-3"
                 />
             </div>
@@ -208,6 +230,7 @@ export function AdminServiceEditForm({ service }: Props) {
                     type="checkbox"
                     checked={form.is_popular}
                     onChange={handleChange}
+                    disabled={!canEdit || loading}
                 />
                 Popular
             </label>
@@ -218,6 +241,7 @@ export function AdminServiceEditForm({ service }: Props) {
                     type="checkbox"
                     checked={form.is_active}
                     onChange={handleChange}
+                    disabled={!canEdit || loading}
                 />
                 Activo
             </label>
@@ -225,7 +249,7 @@ export function AdminServiceEditForm({ service }: Props) {
             <div className="md:col-span-2 flex gap-3">
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={!canEdit || loading}
                     className="rounded-lg bg-black px-4 py-3 text-white disabled:opacity-50"
                 >
                     {loading ? 'Guardando...' : 'Guardar cambios'}
@@ -234,6 +258,7 @@ export function AdminServiceEditForm({ service }: Props) {
                 <button
                     type="button"
                     onClick={() => setEditing(false)}
+                    disabled={loading}
                     className="rounded-lg border px-4 py-3"
                 >
                     Cancelar

@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
                 throw new Error('No se encontró el perfil del administrador')
             }
 
-            if (!['owner', 'admin'].includes(profile.role)) {
+            if (!['owner', 'admin', 'barber'].includes(profile.role)) {
                 throw new Error('No tienes permisos para entrar al panel admin')
             }
 

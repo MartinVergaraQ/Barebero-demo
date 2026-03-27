@@ -5,6 +5,7 @@ import { getServicesAdmin } from '@/src/features/services/api/get-services-admin
 import { AdminServiceForm } from '@/src/features/services/api/components/admin-service-form'
 import { AdminServiceEditForm } from '@/src/features/services/api/components/admin-service-edit-form'
 import { canManageCatalog } from '@/src/features/auth/utils/admin-access'
+import { canCreateWithSubscription, canEditWithSubscription } from '../page'
 
 type AdminServiciosPageProps = {
     params: Promise<{
@@ -53,7 +54,10 @@ export default async function AdminServiciosPage({
                 </div>
             </div>
 
-            <AdminServiceForm businessId={business.id} />
+            <AdminServiceForm
+                businessId={business.id}
+                canCreate={canCreateWithSubscription(business.subscription_status)}
+            />
 
             <section>
                 <h2 className="mb-4 text-xl font-semibold">Lista de servicios</h2>
@@ -99,7 +103,10 @@ export default async function AdminServiciosPage({
                                     </p>
                                 </div>
 
-                                <AdminServiceEditForm service={service} />
+                                <AdminServiceEditForm
+                                    service={service}
+                                    canEdit={canEditWithSubscription(business.subscription_status)}
+                                />
                             </article>
                         ))}
                     </div>

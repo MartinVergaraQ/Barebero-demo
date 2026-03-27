@@ -15,14 +15,15 @@ export type UpdateBusinessInput = {
     description?: string | null
     timezone?: string
     whatsapp_phone?: string | null
-    whatsapp_routing?: 'business' | 'barber' | 'fallback'
+    whatsapp_routing?: 'business' | 'barber' | 'fallback' | null
+    plan_slug?: string
+    subscription_status?: 'trialing' | 'active' | 'past_due' | 'canceled'
+    trial_ends_at?: string | null
+    max_barbers?: number
+    max_services?: number
 }
 
 export async function updateBusiness(input: UpdateBusinessInput) {
-    if (!input.id) {
-        throw new Error('El id del negocio es requerido')
-    }
-
     const supabase = createClient()
 
     const payload = {
@@ -32,7 +33,7 @@ export async function updateBusiness(input: UpdateBusinessInput) {
         email: input.email?.trim() || null,
         address: input.address?.trim() || null,
         city: input.city?.trim() || null,
-        country: input.country?.trim() || 'Chile',
+        country: input.country?.trim() || null,
         instagram_url: input.instagram_url?.trim() || null,
         logo_url: input.logo_url?.trim() || null,
         cover_url: input.cover_url?.trim() || null,
@@ -40,7 +41,11 @@ export async function updateBusiness(input: UpdateBusinessInput) {
         timezone: input.timezone?.trim() || 'America/Santiago',
         whatsapp_phone: input.whatsapp_phone?.trim() || null,
         whatsapp_routing: input.whatsapp_routing ?? 'fallback',
-        updated_at: new Date().toISOString(),
+        plan_slug: input.plan_slug ?? 'starter',
+        subscription_status: input.subscription_status ?? 'trialing',
+        trial_ends_at: input.trial_ends_at || null,
+        max_barbers: input.max_barbers ?? 1,
+        max_services: input.max_services ?? 3,
     }
 
     const { data, error } = await supabase

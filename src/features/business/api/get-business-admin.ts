@@ -16,6 +16,11 @@ export type BusinessAdminItem = {
     timezone: string
     whatsapp_phone: string | null
     whatsapp_routing: 'business' | 'barber' | 'fallback' | null
+    plan_slug: string
+    max_barbers: number
+    max_services: number
+    subscription_status: 'trialing' | 'active' | 'canceled' | 'past_due'
+    trial_ends_at: string | null
 }
 
 export async function getBusinessAdmin(
@@ -44,7 +49,12 @@ export async function getBusinessAdmin(
       description,
       timezone,
       whatsapp_phone,
-      whatsapp_routing
+      whatsapp_routing,
+      plan_slug,
+      max_barbers,
+      max_services,
+      subscription_status,
+      trial_ends_at
     `)
         .eq('id', businessId)
         .single()

@@ -5,6 +5,8 @@ import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
 import { AdminBarberForm } from '@/src/features/barbers/components/admin-barber-form'
 import { AdminBarberEditForm } from '@/src/features/barbers/components/admin-barber-edit-form'
 import { canManageCatalog } from '@/src/features/auth/utils/admin-access'
+import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
+import { canCreateWithSubscription, canEditWithSubscription } from '../page'
 
 type AdminBarberosPageProps = {
     params: Promise<{
@@ -42,7 +44,17 @@ export default async function AdminBarberosPage({
         redirect('/admin')
     }
 
-    const barbers = await getBarbersAdmin(business.id)
+    const [barbers, services] = await Promise.all([
+        getBarbersAdmin(business.id),
+        getServicesAdmin(business.id),
+    ])
+
+    const serviceOptions = services.map((service) => ({
+        id: service.id,
+        name: service.name,
+        price: service.price,
+        duration_minutes: service.duration_minutes,
+    }))
 
     return (
         <main className="p-8">
@@ -53,7 +65,11 @@ export default async function AdminBarberosPage({
                 </div>
             </div>
 
-            <AdminBarberForm businessId={business.id} />
+            <AdminBarberForm
+                businessId={business.id}
+                services={serviceOptions}
+                canCreate={canCreateWithSubscription(business.subscription_status)}
+            />
 
             <section>
                 <h2 className="mb-4 text-xl font-semibold">Lista de barberos</h2>
@@ -79,7 +95,11 @@ export default async function AdminBarberosPage({
                                     <p><span className="font-medium">WhatsApp:</span> {barber.whatsapp_phone || '-'}</p>
                                 </div>
 
-                                <AdminBarberEditForm barber={barber} />
+                                <AdminBarberEditForm
+                                    barber={barber}
+                                    services={serviceOptions}
+                                    canEdit={canEditWithSubscription(business.subscription_status)}
+                                />
                             </article>
                         ))}
                     </div>

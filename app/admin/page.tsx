@@ -62,5 +62,5 @@ export default async function AdminPage() {
         )
     }
 
-    redirect(`/admin/b/${business.slug}/reservas`)
+    redirect(`/admin/b/${business.slug}`)
 }

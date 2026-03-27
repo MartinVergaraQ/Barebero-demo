@@ -3,9 +3,20 @@
 import { useState } from 'react'
 import { createBarber } from '@/src/features/barbers/api/create-barber'
 import { uploadBarberPhoto } from '@/src/features/barbers/api/upload-barber-photo'
+import { upsertBarberServices } from '@/src/features/barbers/api/upsert-barber-services'
+
+
+type ServiceOption = {
+    id: string
+    name: string
+    price: number
+    duration_minutes: number
+}
 
 type Props = {
     businessId: string
+    services: ServiceOption[]
+    canCreate: boolean
 }
 
 function slugify(value: string) {
@@ -19,7 +30,7 @@ function slugify(value: string) {
         .replace(/-+/g, '-')
 }
 
-export function AdminBarberForm({ businessId }: Props) {
+export function AdminBarberForm({ businessId, services, canCreate }: Props) {
     const [form, setForm] = useState({
         name: '',
         slug: '',
@@ -30,6 +41,14 @@ export function AdminBarberForm({ businessId }: Props) {
         is_active: true,
         display_order: '0',
     })
+
+    const [selectedServices, setSelectedServices] = useState<
+        {
+            service_id: string
+            custom_price: string
+            custom_duration_minutes: string
+        }[]
+    >([])
 
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState('')
@@ -88,6 +107,38 @@ export function AdminBarberForm({ businessId }: Props) {
         })
     }
 
+    function toggleService(serviceId: string, checked: boolean) {
+        setSelectedServices((prev) => {
+            if (checked) {
+                if (prev.some((item) => item.service_id === serviceId)) return prev
+                return [
+                    ...prev,
+                    {
+                        service_id: serviceId,
+                        custom_price: '',
+                        custom_duration_minutes: '',
+                    },
+                ]
+            }
+
+            return prev.filter((item) => item.service_id !== serviceId)
+        })
+    }
+
+    function updateSelectedService(
+        serviceId: string,
+        field: 'custom_price' | 'custom_duration_minutes',
+        value: string
+    ) {
+        setSelectedServices((prev) =>
+            prev.map((item) =>
+                item.service_id === serviceId
+                    ? { ...item, [field]: value }
+                    : item
+            )
+        )
+    }
+
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setLoading(true)
@@ -98,7 +149,7 @@ export function AdminBarberForm({ businessId }: Props) {
             if (!form.name.trim()) throw new Error('Ingresa el nombre')
             if (!form.slug.trim()) throw new Error('Ingresa el slug')
 
-            await createBarber({
+            const created = await createBarber({
                 business_id: businessId,
                 name: form.name,
                 slug: form.slug,
@@ -109,6 +160,23 @@ export function AdminBarberForm({ businessId }: Props) {
                 is_active: form.is_active,
                 display_order: Number(form.display_order || 0),
             })
+
+            const barberId = created?.[0]?.id
+
+            if (!barberId) {
+                throw new Error('No se pudo obtener el id del barbero creado')
+            }
+
+            await upsertBarberServices(
+                barberId,
+                selectedServices.map((item) => ({
+                    service_id: item.service_id,
+                    custom_price: item.custom_price ? Number(item.custom_price) : null,
+                    custom_duration_minutes: item.custom_duration_minutes
+                        ? Number(item.custom_duration_minutes)
+                        : null,
+                }))
+            )
 
             setMessage('Barbero creado correctamente')
             setForm({
@@ -121,6 +189,7 @@ export function AdminBarberForm({ businessId }: Props) {
                 is_active: true,
                 display_order: '0',
             })
+            setSelectedServices([])
         } catch (error) {
             setErrorMessage(
                 error instanceof Error ? error.message : 'Error creando barbero'
@@ -181,8 +250,18 @@ export function AdminBarberForm({ businessId }: Props) {
                 </div>
 
                 <div className="md:col-span-2">
-                    <label className="mb-2 block font-medium">Foto</label>
+                    <label className="mb-2 block font-medium">WhatsApp del barbero</label>
+                    <input
+                        name="whatsapp_phone"
+                        value={form.whatsapp_phone}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border p-3"
+                        placeholder="+56 9 1234 5678"
+                    />
+                </div>
 
+                <div className="md:col-span-2">
+                    <label className="mb-2 block font-medium">Foto</label>
                     <input
                         type="file"
                         accept="image/*"
@@ -199,7 +278,7 @@ export function AdminBarberForm({ businessId }: Props) {
                             <img
                                 src={form.photo_url}
                                 alt="Preview"
-                                className="h-32 w-32 rounded-lg object-cover border"
+                                className="h-32 w-32 rounded-lg border object-cover"
                             />
                             <p className="mt-2 break-all text-xs text-gray-500">{form.photo_url}</p>
                         </div>
@@ -240,14 +319,91 @@ export function AdminBarberForm({ businessId }: Props) {
                     Activo
                 </label>
 
+                <div className="md:col-span-2 rounded-lg border p-4">
+                    <h3 className="mb-4 font-semibold">Servicios que realiza</h3>
+
+                    <div className="space-y-4">
+                        {services.map((service) => {
+                            const selected = selectedServices.find(
+                                (item) => item.service_id === service.id
+                            )
+
+                            return (
+                                <div key={service.id} className="rounded-lg border p-4">
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={!!selected}
+                                            onChange={(e) =>
+                                                toggleService(service.id, e.target.checked)
+                                            }
+                                        />
+                                        <span className="font-medium">{service.name}</span>
+                                        <span className="text-sm text-gray-500">
+                                            (${service.price} · {service.duration_minutes} min)
+                                        </span>
+                                    </label>
+
+                                    {selected && (
+                                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium">
+                                                    Precio personalizado
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={selected.custom_price}
+                                                    onChange={(e) =>
+                                                        updateSelectedService(
+                                                            service.id,
+                                                            'custom_price',
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full rounded-lg border p-3"
+                                                    placeholder={`Base: ${service.price}`}
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium">
+                                                    Duración personalizada
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={selected.custom_duration_minutes}
+                                                    onChange={(e) =>
+                                                        updateSelectedService(
+                                                            service.id,
+                                                            'custom_duration_minutes',
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full rounded-lg border p-3"
+                                                    placeholder={`Base: ${service.duration_minutes}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+
                 <div className="md:col-span-2">
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || !canCreate}
                         className="rounded-lg bg-black px-4 py-3 text-white disabled:opacity-50"
                     >
                         {loading ? 'Guardando...' : 'Crear barbero'}
                     </button>
+                    {!canCreate && (
+                        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-800">
+                            No puedes crear nuevos registros mientras la suscripción esté con pago pendiente o cancelada.
+                        </div>
+                    )}
                 </div>
             </form>
         </section>
