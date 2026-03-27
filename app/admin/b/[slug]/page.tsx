@@ -9,6 +9,14 @@ import {
 import { canAccessAdmin } from '@/src/features/auth/utils/admin-access'
 import { getSubscriptionUi } from '@/src/features/business/utils/subscription-ui'
 import { SubscriptionBanner } from '@/src/features/business/components/subscription-banner'
+import {
+    canCreateWithSubscription,
+    canEditWithSubscription,
+    formatPlanLabel,
+    formatSubscriptionStatus,
+    formatTrialEndDate,
+} from '@/src/features/business/utils/subscription-rules'
+
 
 const COLORS = {
     primary: '#a87408',
@@ -68,39 +76,6 @@ function formatTime(value: string) {
         minute: '2-digit',
         hour12: false,
     }).format(parsed)
-}
-
-function formatPlanLabel(planSlug?: string | null) {
-    switch (planSlug) {
-        case 'pro':
-            return 'Pro'
-        case 'studio':
-            return 'Studio'
-        case 'starter':
-        default:
-            return 'Starter'
-    }
-}
-
-function formatSubscriptionStatus(status?: string | null) {
-    switch (status) {
-        case 'active':
-            return 'Activa'
-        case 'past_due':
-            return 'Pago pendiente'
-        case 'canceled':
-            return 'Cancelada'
-        case 'trialing':
-        default:
-            return 'Prueba'
-    }
-}
-export function canCreateWithSubscription(status?: string | null) {
-    return status !== 'past_due' && status !== 'canceled'
-}
-
-export function canEditWithSubscription(status?: string | null) {
-    return status !== 'past_due' && status !== 'canceled'
 }
 
 function MetricCard({
@@ -332,17 +307,17 @@ export default async function AdminBusinessDashboardPage({
                             {businessPlan.trial_ends_at && (
                                 <p className="mt-1 text-sm text-[#5e584f]">
                                     Trial hasta:{' '}
-                                    {new Date(businessPlan.trial_ends_at).toLocaleDateString('es-CL')}
+                                    {formatTrialEndDate(businessPlan.trial_ends_at)}
                                 </p>
                             )}
                         </div>
 
                         <Link
-                            href={`/admin/b/${business.slug}/negocio`}
+                            href={`/admin/b/${business.slug}/plan`}
                             className="rounded-[8px] border bg-white px-4 py-2 text-sm font-semibold text-[#2a2927]"
                             style={{ borderColor: COLORS.border }}
                         >
-                            Editar plan
+                            Ver plan
                         </Link>
                     </div>
 
@@ -390,6 +365,11 @@ export default async function AdminBusinessDashboardPage({
                         href={`/admin/b/${business.slug}/bloqueos`}
                         label="Bloqueos"
                         description="Marca descansos, feriados o ausencias."
+                    />
+                    <QuickLink
+                        href={`/admin/b/${business.slug}/plan`}
+                        label="Plan"
+                        description="Revisa estado, límites y suscripción del negocio."
                     />
                     <QuickLink
                         href={`/admin/b/${business.slug}/negocio`}
