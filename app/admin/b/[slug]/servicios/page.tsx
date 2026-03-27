@@ -5,7 +5,7 @@ import { getServicesAdmin } from '@/src/features/services/api/get-services-admin
 import { AdminServiceForm } from '@/src/features/services/api/components/admin-service-form'
 import { AdminServiceEditForm } from '@/src/features/services/api/components/admin-service-edit-form'
 import { canManageCatalog } from '@/src/features/auth/utils/admin-access'
-import { canCreateWithSubscription, canEditWithSubscription } from '../page'
+import { canCreateWithSubscription, canEditWithSubscription } from '@/src/features/business/utils/subscription-rules'
 
 type AdminServiciosPageProps = {
     params: Promise<{

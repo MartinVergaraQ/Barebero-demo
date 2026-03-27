@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/server'
+import { getCurrentBarber } from '@/src/features/barbers/api/get-current-barber'
 
 export default async function AdminPage() {
     const supabase = await createClient()
@@ -33,6 +34,14 @@ export default async function AdminPage() {
                 </div>
             </main>
         )
+    }
+
+    if (profile.role === 'barber') {
+        const barber = await getCurrentBarber()
+
+        if (barber) {
+            redirect('/admin/mi-agenda')
+        }
     }
 
     const { data: business, error: businessError } = await supabase

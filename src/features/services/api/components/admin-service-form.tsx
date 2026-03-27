@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createService } from '@/src/features/services/api/create-service'
+import { createServiceServer } from '@/src/features/services/api/create-service-server'
 
 type Props = {
     businessId: string
@@ -79,7 +79,7 @@ export function AdminServiceForm({ businessId, canCreate }: Props) {
             if (!form.duration_minutes) throw new Error('Ingresa la duración')
             if (!form.price) throw new Error('Ingresa el precio')
 
-            await createService({
+            await createServiceServer({
                 business_id: businessId,
                 name: form.name,
                 slug: form.slug,

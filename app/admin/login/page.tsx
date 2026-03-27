@@ -59,8 +59,15 @@ export default function AdminLoginPage() {
                 throw new Error('No se encontró el negocio asociado a este admin')
             }
 
+            if (profile.role === 'barber') {
+                router.push('/admin/mi-agenda')
+                router.refresh()
+                return
+            }
+
             router.push(`/admin/b/${business.slug}/reservas`)
             router.refresh()
+
         } catch (error) {
             setErrorMessage(
                 error instanceof Error ? error.message : 'No se pudo iniciar sesión'

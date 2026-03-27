@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createBarber } from '@/src/features/barbers/api/create-barber'
+import { createBarberServer } from '@/src/features/barbers/api/create-barber-server'
 import { uploadBarberPhoto } from '@/src/features/barbers/api/upload-barber-photo'
 import { upsertBarberServices } from '@/src/features/barbers/api/upsert-barber-services'
 
@@ -149,7 +149,7 @@ export function AdminBarberForm({ businessId, services, canCreate }: Props) {
             if (!form.name.trim()) throw new Error('Ingresa el nombre')
             if (!form.slug.trim()) throw new Error('Ingresa el slug')
 
-            const created = await createBarber({
+            const created = await createBarberServer({
                 business_id: businessId,
                 name: form.name,
                 slug: form.slug,

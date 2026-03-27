@@ -6,7 +6,7 @@ import { AdminBarberForm } from '@/src/features/barbers/components/admin-barber-
 import { AdminBarberEditForm } from '@/src/features/barbers/components/admin-barber-edit-form'
 import { canManageCatalog } from '@/src/features/auth/utils/admin-access'
 import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
-import { canCreateWithSubscription, canEditWithSubscription } from '../page'
+import { canCreateWithSubscription, canEditWithSubscription } from '@/src/features/business/utils/subscription-rules'
 
 type AdminBarberosPageProps = {
     params: Promise<{
