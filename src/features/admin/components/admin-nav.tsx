@@ -32,7 +32,7 @@ function buildLinks(slug: string, role: string) {
     if (role === 'barber') {
         return [
             { href: '/admin/mi-agenda', label: 'Mi agenda', icon: CalendarDays },
-            { href: '/admin/mi-reservas', label: 'Mis reservas', icon: CalendarDays },
+            { href: '/admin/mis-reservas', label: 'Mis reservas', icon: CalendarDays },
             { href: '/admin/mi-perfil', label: 'Mi perfil', icon: User },
         ]
     }

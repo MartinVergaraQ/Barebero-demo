@@ -36,7 +36,7 @@ export default async function MisReservasPage() {
     }
 
     const { data: reservations, error } = await supabase
-        .from('reservations')
+        .from('appointments')
         .select(`
             id,
             client_name,
@@ -57,7 +57,7 @@ export default async function MisReservasPage() {
         .limit(50)
 
     if (error) {
-        throw new Error('No se pudieron cargar las reservas del barbero')
+        throw new Error(`Error cargando reservas: ${error.message}`)
     }
 
     const reservationItems: ReservationItem[] = (reservations ?? []) as ReservationItem[]
