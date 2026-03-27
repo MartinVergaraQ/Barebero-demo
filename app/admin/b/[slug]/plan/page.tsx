@@ -10,10 +10,9 @@ import {
     formatPlanLabel,
     formatSubscriptionStatus,
     formatTrialEndDate,
-    getSubscriptionAction,
-    formatDateTime,
-    getPlanChangeType
+    getSubscriptionAction
 } from '@/src/features/business/utils/subscription-rules'
+import { PlanHistoryList } from '@/src/features/business/components/plan-history-list'
 
 type AdminPlanPageProps = {
     params: Promise<{
@@ -276,39 +275,13 @@ export default async function AdminPlanPage({
                     </div>
                 </section>
             )}
-            <section className="rounded-xl border bg-white p-5 shadow-sm">
-                <h2 className="text-lg font-semibold">Últimos cambios de plan</h2>
-
-                {history.length === 0 ? (
-                    <p className="mt-3 text-sm text-slate-600">
-                        Todavía no hay cambios de plan registrados.
-                    </p>
-                ) : (
-                    <div className="mt-4 space-y-3">
-                        {history.map((item) => (
-                            <div key={item.id} className="rounded-lg border p-3">
-                                <p className="text-sm font-medium text-slate-800">
-                                    {getPlanChangeType(item.previous_plan_slug, item.next_plan_slug)}
-                                </p>
-
-                                <p className="mt-1 text-sm text-slate-700">
-                                    <span className="font-medium">Cambio:</span>{' '}
-                                    {formatPlanLabel(item.previous_plan_slug)} →{' '}
-                                    {formatPlanLabel(item.next_plan_slug)}
-                                </p>
-
-                                <p className="mt-1 text-xs text-slate-500">
-                                    {formatDateTime(item.created_at)}
-                                </p>
-
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Por: {item.profiles?.[0]?.full_name ?? 'Usuario sin nombre'}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </section>
+            <PlanHistoryList history={history} />
+            <Link
+                href={`/admin/b/${business.slug}/plan/historial`}
+                className="inline-flex rounded-lg border px-4 py-2 text-sm font-medium"
+            >
+                Ver historial completo
+            </Link>
         </main>
     )
 }
