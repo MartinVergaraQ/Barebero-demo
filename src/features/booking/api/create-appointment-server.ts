@@ -102,7 +102,7 @@ export async function createAppointmentServer(input: CreateAppointmentInput) {
         .select('id, start_at, end_at, status')
         .eq('business_id', input.business_id)
         .eq('barber_id', input.barber_id)
-        .neq('status', 'cancelled')
+        .neq('status', 'canceled')
         .lt('start_at', input.end_at)
         .gt('end_at', input.start_at)
 

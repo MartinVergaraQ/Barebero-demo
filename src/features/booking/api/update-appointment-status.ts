@@ -1,8 +1,9 @@
 import { supabase } from '@/src/lib/supabase/client'
+import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
 
 export async function updateAppointmentStatus(
     appointmentId: string,
-    status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+    status: AppointmentStatus
 ) {
     const { data, error } = await supabase
         .from('appointments')

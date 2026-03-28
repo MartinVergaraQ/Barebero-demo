@@ -20,7 +20,7 @@ export async function updateAppointment(input: UpdateAppointmentInput) {
         .select('id, start_at, end_at, status')
         .eq('barber_id', input.barber_id)
         .neq('id', input.id)
-        .neq('status', 'cancelled')
+        .neq('status', 'canceled')
         .lt('start_at', input.end_at)
         .gt('end_at', input.start_at)
 

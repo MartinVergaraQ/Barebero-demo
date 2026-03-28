@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAppointment } from '@/src/features/booking/api/create.appointment'
+import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
 
 type Service = {
     id: string
@@ -42,12 +43,7 @@ export function AdminCreateAppointmentSheet({
         service_id: '',
         appointment_date: '',
         appointment_time: '',
-        status: 'confirmed' as
-            | 'pending'
-            | 'confirmed'
-            | 'completed'
-            | 'cancelled'
-            | 'no_show',
+        status: 'confirmed' as AppointmentStatus,
     })
 
     useEffect(() => {

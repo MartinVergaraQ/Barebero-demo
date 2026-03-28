@@ -3,33 +3,32 @@
 import { useState } from 'react'
 import { updateAppointmentStatus } from '@/src/features/booking/api/update-appointment-status'
 import { toast } from 'sonner'
+import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
 
 type Props = {
     appointmentId: string
-    currentStatus: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+    currentStatus: AppointmentStatus
 }
 
-const statusOptions = [
+const statusOptions: Array<{ value: AppointmentStatus; label: string }> = [
     { value: 'pending', label: 'Pendiente' },
     { value: 'confirmed', label: 'Confirmada' },
     { value: 'completed', label: 'Completada' },
-    { value: 'cancelled', label: 'Cancelada' },
+    { value: 'canceled', label: 'Cancelada' },
     { value: 'no_show', label: 'No asistió' },
-] as const
+]
 
 export function AppointmentStatusSelect({
     appointmentId,
     currentStatus,
 }: Props) {
-    const [status, setStatus] = useState(currentStatus)
+    const [status, setStatus] = useState<AppointmentStatus>(currentStatus)
     const [loading, setLoading] = useState(false)
-    const [message, setMessage] = useState('')
 
     async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-        const nextStatus = e.target.value as Props['currentStatus']
+        const nextStatus = e.target.value as AppointmentStatus
         setStatus(nextStatus)
         setLoading(true)
-        setMessage('')
 
         try {
             await updateAppointmentStatus(appointmentId, nextStatus)
@@ -59,10 +58,6 @@ export function AppointmentStatusSelect({
                     </option>
                 ))}
             </select>
-
-            {message ? (
-                <p className="text-xs text-[#6a655d]">{message}</p>
-            ) : null}
         </div>
     )
 }

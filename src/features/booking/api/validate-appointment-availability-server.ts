@@ -89,7 +89,7 @@ export async function validateAppointmentAvailabilityServer(
         .select('id, start_at, end_at, status')
         .eq('business_id', input.businessId)
         .eq('barber_id', input.barberId)
-        .neq('status', 'cancelled')
+        .neq('status', 'canceled')
         .lt('start_at', input.endAt)
         .gt('end_at', input.startAt)
 

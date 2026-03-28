@@ -13,7 +13,7 @@ const statusOptions = [
     { value: 'pending', label: 'Pendiente' },
     { value: 'confirmed', label: 'Confirmada' },
     { value: 'completed', label: 'Completada' },
-    { value: 'cancelled', label: 'Cancelada' },
+    { value: 'canceled', label: 'Cancelada' },
     { value: 'no_show', label: 'No asistió' },
 ]
 

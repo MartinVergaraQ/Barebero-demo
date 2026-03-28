@@ -1,11 +1,6 @@
 import { createClient } from '@/src/lib/supabase/server'
+import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
 
-export type AppointmentStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'completed'
-  | 'cancelled'
-  | 'no_show'
 
 export type AppointmentItem = {
   id: string
