@@ -3,8 +3,8 @@ import { createClient } from '@/src/lib/supabase/server'
 import {
     getAppointments,
     type AppointmentItem,
-    type AppointmentStatus,
 } from '@/src/features/booking/api/get-appointments'
+import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
 import { AppointmentStatusSelect } from '@/src/features/booking/api/components/appointment-status-select'
 import { AdminAppointmentsFilter } from '@/src/features/booking/api/components/admin-appointments-filter'
 import { DeleteAppointmentButton } from '@/src/features/booking/api/components/delete-appointment-button'
@@ -88,7 +88,7 @@ function getStatusBadge(status: string) {
         }
     }
 
-    if (['cancelled', 'cancelada', 'cancelado'].includes(normalized)) {
+    if (['canceled', 'cancelada', 'cancelado'].includes(normalized)) {
         return {
             label: 'Cancelada',
             style: {
@@ -285,8 +285,8 @@ export default async function AdminReservasPage({
         'confirmada',
         'confirmado',
     ])
-    const cancelledCount = countByStatus(items, [
-        'cancelled',
+    const canceledCount = countByStatus(items, [
+        'canceled',
         'cancelada',
         'cancelado',
     ])
@@ -358,7 +358,7 @@ export default async function AdminReservasPage({
                 />
                 <MetricCard
                     title="Canceladas"
-                    value={cancelledCount}
+                    value={canceledCount}
                     subtitle="Últimas 24 horas"
                     icon="✕"
                     iconBg="#ecc0bc"
