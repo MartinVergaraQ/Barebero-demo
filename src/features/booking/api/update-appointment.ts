@@ -24,6 +24,21 @@ export async function updateAppointment(input: UpdateAppointmentInput) {
         .lt('start_at', input.end_at)
         .gt('end_at', input.start_at)
 
+    const { data: barberService, error: barberServiceError } = await supabase
+        .from('barber_services')
+        .select('id')
+        .eq('barber_id', input.barber_id)
+        .eq('service_id', input.service_id)
+        .maybeSingle()
+
+    if (barberServiceError) {
+        throw new Error(barberServiceError.message)
+    }
+
+    if (!barberService) {
+        throw new Error('Este barbero no tiene asignado ese servicio')
+    }
+
     if (conflictError) {
         throw new Error(conflictError.message)
     }

@@ -27,6 +27,11 @@ type Service = {
     business_id: string
 }
 
+type BarberService = {
+    barber_id: string
+    service_id: string
+}
+
 type Barber = {
     id: string
     name: string
@@ -174,7 +179,7 @@ export default function ReservarClient({
     const clientNameRef = useRef<HTMLInputElement | null>(null)
     const clientEmailRef = useRef<HTMLInputElement | null>(null)
     const clientPhoneRef = useRef<HTMLInputElement | null>(null)
-
+    const [barberServices, setBarberServices] = useState<BarberService[]>([])
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
     const [business, setBusiness] = useState<Business | null>(null)
@@ -328,6 +333,41 @@ export default function ReservarClient({
         return 'border-slate-200'
     }
 
+    const filteredServices = useMemo(() => {
+        if (!form.barber_id) return services
+
+        const allowedServiceIds = new Set(
+            barberServices
+                .filter((item) => item.barber_id === form.barber_id)
+                .map((item) => item.service_id)
+        )
+
+        return services.filter((service) => allowedServiceIds.has(service.id))
+    }, [services, barberServices, form.barber_id])
+
+    const selectedService = useMemo(() => {
+        return filteredServices.find((service) => service.id === form.service_id) ?? null
+    }, [filteredServices, form.service_id])
+
+
+    useEffect(() => {
+        if (!form.service_id) return
+
+        const serviceStillAllowed = filteredServices.some(
+            (service) => service.id === form.service_id
+        )
+
+        if (!serviceStillAllowed) {
+            setForm((prev) => ({
+                ...prev,
+                service_id: '',
+            }))
+            setSelectedSlot(null)
+            setAvailableSlots([])
+            setAvailabilityMessage('')
+        }
+    }, [filteredServices, form.service_id])
+
     useEffect(() => {
         async function loadData() {
             setLoadingData(true)
@@ -337,6 +377,7 @@ export default function ReservarClient({
                 { data: servicesData, error: servicesError },
                 { data: barbersData, error: barbersError },
                 { data: businessData, error: businessError },
+                { data: barberServicesData, error: barberServicesError },
             ] = await Promise.all([
                 supabase
                     .from('services')
@@ -357,7 +398,17 @@ export default function ReservarClient({
                     .select('id, name, slug, whatsapp_phone, whatsapp_routing')
                     .eq('id', businessId)
                     .single(),
+
+                supabase
+                    .from('barber_services')
+                    .select('barber_id, service_id'),
             ])
+
+            if (barberServicesError) {
+                setErrorMessage(`Error cargando servicios de barbero: ${barberServicesError.message}`)
+                setLoadingData(false)
+                return
+            }
 
             if (servicesError) {
                 setErrorMessage(`Error cargando servicios: ${servicesError.message}`)
@@ -376,7 +427,7 @@ export default function ReservarClient({
                 setLoadingData(false)
                 return
             }
-
+            setBarberServices((barberServicesData ?? []) as BarberService[])
             setServices((servicesData ?? []) as Service[])
             setBarbers((barbersData ?? []) as Barber[])
             setBusiness(businessData as Business)
@@ -385,10 +436,6 @@ export default function ReservarClient({
 
         loadData()
     }, [businessId])
-
-    const selectedService = useMemo(() => {
-        return services.find((service) => service.id === form.service_id) ?? null
-    }, [services, form.service_id])
 
     const selectedBarber = useMemo(() => {
         return barbers.find((barber) => barber.id === form.barber_id) ?? null
@@ -737,7 +784,6 @@ export default function ReservarClient({
                                         <label htmlFor="service_id" className="mb-2 block text-sm font-bold text-slate-500">
                                             Servicio
                                         </label>
-
                                         <select
                                             id="service_id"
                                             name="service_id"
@@ -746,7 +792,7 @@ export default function ReservarClient({
                                             className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
                                         >
                                             <option value="">Selecciona un servicio</option>
-                                            {services.map((service) => (
+                                            {filteredServices.map((service) => (
                                                 <option key={service.id} value={service.id}>
                                                     {service.name} - {formatPrice(service.price)} - {service.duration_minutes} min
                                                 </option>
