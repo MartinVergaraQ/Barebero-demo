@@ -2,13 +2,19 @@
 
 import { useState } from 'react'
 import { uploadGalleryImage } from '@/src/features/gallery/api/upload-gallery-image'
-import { createGalleryItem } from '@/src/features/gallery/components/create-gallery-item'
+import { createGalleryItem } from '@/src/features/gallery/api/create-gallery-item'
 
 type Props = {
     businessId: string
+    barberId?: string
+    allowBarberAssignment?: boolean
+    barbers?: Array<{
+        id: string
+        name: string
+    }>
 }
 
-export function AdminGalleryForm({ businessId }: Props) {
+export function AdminGalleryForm({ businessId, barberId, allowBarberAssignment, barbers }: Props) {
     const [title, setTitle] = useState('')
     const [displayOrder, setDisplayOrder] = useState('0')
     const [isActive, setIsActive] = useState(true)
@@ -20,7 +26,7 @@ export function AdminGalleryForm({ businessId }: Props) {
     const [saving, setSaving] = useState(false)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
-
+    const [selectedBarberId, setSelectedBarberId] = useState(barberId ?? '')
     async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
         if (!file) return
@@ -53,6 +59,7 @@ export function AdminGalleryForm({ businessId }: Props) {
 
             await createGalleryItem({
                 business_id: businessId,
+                barber_id: selectedBarberId || null,
                 type: 'image',
                 title,
                 media_url: mediaUrl,
@@ -133,6 +140,23 @@ export function AdminGalleryForm({ businessId }: Props) {
                         placeholder="Corte fade clásico"
                     />
                 </div>
+                {allowBarberAssignment && (
+                    <div className="md:col-span-2">
+                        <label className="mb-2 block font-medium">Asignar a barbero</label>
+                        <select
+                            value={selectedBarberId}
+                            onChange={(e) => setSelectedBarberId(e.target.value)}
+                            className="w-full rounded-lg border p-3"
+                        >
+                            <option value="">General del negocio</option>
+                            {barbers?.map((barber) => (
+                                <option key={barber.id} value={barber.id}>
+                                    {barber.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
                 < div >
                     <label className="mb-2 block font-medium" > Orden </label>

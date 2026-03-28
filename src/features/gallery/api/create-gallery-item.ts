@@ -8,6 +8,7 @@ export type CreateGalleryItemInput = {
     public_id?: string | null
     display_order?: number
     is_active?: boolean
+    barber_id?: string | null
 }
 
 export async function createGalleryItem(input: CreateGalleryItemInput) {
@@ -21,6 +22,7 @@ export async function createGalleryItem(input: CreateGalleryItemInput) {
         public_id: input.public_id?.trim() || null,
         display_order: input.display_order ?? 0,
         is_active: input.is_active ?? true,
+        barber_id: input.barber_id || null,
     }
 
     const { data, error } = await supabase

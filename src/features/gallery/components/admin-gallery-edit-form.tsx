@@ -10,10 +10,20 @@ type Props = {
         title: string | null
         display_order: number
         is_active: boolean
+        barber_id?: string | null
     }
+    allowBarberAssignment?: boolean
+    barbers?: Array<{
+        id: string
+        name: string
+    }>
 }
 
-export function AdminGalleryEditForm({ item }: Props) {
+export function AdminGalleryEditForm({
+    item,
+    allowBarberAssignment = false,
+    barbers = [],
+}: Props) {
     const router = useRouter()
 
     const [editing, setEditing] = useState(false)
@@ -24,10 +34,11 @@ export function AdminGalleryEditForm({ item }: Props) {
         title: item.title ?? '',
         display_order: String(item.display_order),
         is_active: item.is_active,
+        barber_id: item.barber_id ?? '',
     })
 
     function handleChange(
-        e: React.ChangeEvent<HTMLInputElement>
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) {
         const { name, value, type } = e.target
 
@@ -57,6 +68,9 @@ export function AdminGalleryEditForm({ item }: Props) {
                 title: form.title,
                 display_order: Number(form.display_order || 0),
                 is_active: form.is_active,
+                ...(allowBarberAssignment
+                    ? { barber_id: form.barber_id || null }
+                    : {}),
             })
 
             setEditing(false)
@@ -99,6 +113,27 @@ export function AdminGalleryEditForm({ item }: Props) {
                     className="w-full rounded-lg border p-3"
                 />
             </div>
+
+            {allowBarberAssignment && (
+                <div>
+                    <label className="mb-2 block font-medium">
+                        Asignar a barbero
+                    </label>
+                    <select
+                        name="barber_id"
+                        value={form.barber_id}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border p-3"
+                    >
+                        <option value="">General del negocio</option>
+                        {barbers.map((barber) => (
+                            <option key={barber.id} value={barber.id}>
+                                {barber.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             <div>
                 <label className="mb-2 block font-medium">Orden</label>

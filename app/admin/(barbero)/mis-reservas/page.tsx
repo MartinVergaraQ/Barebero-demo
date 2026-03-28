@@ -2,30 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/server'
 import { getCurrentBarber } from '@/src/features/barbers/api/get-current-barber'
 import { BarberReservationStatusActions } from '@/src/features/booking/components/barber-reservation-status-actions'
+import { AppointmentCard } from '@/src/features/booking/components/appointment-card'
+import type { BarberAppointmentItem } from '@/src/features/booking/api/components/schemas/types/booking'
+import { getServiceName } from '@/src/features/booking/utils/appointment-service'
 
-type ReservationService = {
-    id: string
-    name: string
-    duration_minutes: number
-    price: number
-}
-
-type ReservationItem = {
-    id: string
-    client_name: string
-    client_phone: string | null
-    start_at: string
-    end_at: string | null
-    status: string
-    notes: string | null
-    service: ReservationService[] | ReservationService | null
-}
-
-function getServiceName(service: ReservationService[] | ReservationService | null) {
-    if (!service) return '-'
-    if (Array.isArray(service)) return service[0]?.name ?? '-'
-    return service.name
-}
 
 export default async function MisReservasPage() {
     const supabase = await createClient()
@@ -60,7 +40,7 @@ export default async function MisReservasPage() {
         throw new Error(`Error cargando reservas: ${error.message}`)
     }
 
-    const reservationItems: ReservationItem[] = (reservations ?? []) as ReservationItem[]
+    const reservationItems: BarberAppointmentItem[] = (reservations ?? []) as BarberAppointmentItem[]
 
     return (
         <main className="space-y-6 p-8">
@@ -82,40 +62,21 @@ export default async function MisReservasPage() {
                 ) : (
                     <div className="mt-4 space-y-3">
                         {reservationItems.map((item) => (
-                            <article key={item.id} className="rounded-lg border p-4">
-                                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                                    <div>
-                                        <h3 className="font-semibold">{item.client_name}</h3>
-                                        <p className="text-sm text-slate-600">
-                                            {new Date(item.start_at).toLocaleString('es-CL')}
-                                        </p>
-                                    </div>
-
-                                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                        {item.status}
-                                    </span>
-                                </div>
-
-                                <div className="mt-3 space-y-1 text-sm text-slate-700">
-                                    <p>
-                                        <span className="font-medium">Teléfono:</span>{' '}
-                                        {item.client_phone || '-'}
-                                    </p>
-                                    <p>
-                                        <span className="font-medium">Servicio:</span>{' '}
-                                        {getServiceName(item.service)}
-                                    </p>
-                                    <p>
-                                        <span className="font-medium">Notas:</span>{' '}
-                                        {item.notes || '-'}
-                                    </p>
-                                </div>
-
-                                <BarberReservationStatusActions
-                                    reservationId={item.id}
-                                    currentStatus={item.status}
-                                />
-                            </article>
+                            <AppointmentCard
+                                key={item.id}
+                                clientName={item.client_name}
+                                clientPhone={item.client_phone}
+                                startAt={item.start_at}
+                                status={item.status}
+                                serviceName={getServiceName(item.service)}
+                                notes={item.notes}
+                                actions={
+                                    <BarberReservationStatusActions
+                                        reservationId={item.id}
+                                        currentStatus={item.status}
+                                    />
+                                }
+                            />
                         ))}
                     </div>
                 )}

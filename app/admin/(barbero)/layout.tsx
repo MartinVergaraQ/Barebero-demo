@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/server'
 import { AdminNav } from '@/src/features/admin/components/admin-nav'
 import { getCurrentBarber } from '@/src/features/barbers/api/get-current-barber'
+import { canManageCatalog } from '@/src/features/auth/utils/admin-access'
+import { isBarberRole } from '@/src/features/auth/utils/admin-scope'
 
 export default async function BarberLayout({
     children,
@@ -20,11 +22,15 @@ export default async function BarberLayout({
 
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, business_id, role, full_name')
+        .select('id, business_id, role')
         .eq('id', user.id)
         .single()
 
-    if (profileError || !profile || profile.role !== 'barber') {
+    if (
+        profileError ||
+        !profile ||
+        (!canManageCatalog(profile.role) && !isBarberRole(profile.role))
+    ) {
         redirect('/admin')
     }
 
@@ -34,11 +40,21 @@ export default async function BarberLayout({
         redirect('/admin')
     }
 
+    const { data: business, error: businessError } = await supabase
+        .from('businesses')
+        .select('id, name, slug')
+        .eq('id', barber.business_id)
+        .single()
+
+    if (businessError || !business) {
+        redirect('/admin')
+    }
+
     return (
         <div className="min-h-screen bg-[#f6f3e8] text-[#1f1f1f]">
             <AdminNav
-                businessSlug={barber.slug}
-                businessName={barber.name}
+                businessSlug={business.slug}
+                businessName={business.name}
                 role={profile.role}
             />
 

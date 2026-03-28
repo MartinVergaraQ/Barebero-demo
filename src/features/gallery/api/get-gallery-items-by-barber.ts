@@ -1,15 +1,15 @@
-import { supabase } from '@/src/lib/supabase/client'
+import { createClient } from '@/src/lib/supabase/server'
 
-export type GalleryItem = {
+export type BarberGalleryItem = {
     id: string
     business_id: string
+    barber_id: string | null
     type: 'image' | 'video'
     title: string | null
     media_url: string
     public_id: string | null
     display_order: number
     is_active: boolean
-    barber_id: string | null
     created_at: string
     updated_at: string
     barber: {
@@ -18,12 +18,10 @@ export type GalleryItem = {
     } | null
 }
 
-export async function getGalleryItemsAdmin(
-    businessId: string
-): Promise<GalleryItem[]> {
-    if (!businessId) {
-        throw new Error('businessId es requerido para cargar galería')
-    }
+export async function getGalleryItemsByBarber(
+    barberId: string
+): Promise<BarberGalleryItem[]> {
+    const supabase = await createClient()
 
     const { data, error } = await supabase
         .from('gallery_items')
@@ -38,21 +36,17 @@ export async function getGalleryItemsAdmin(
       display_order,
       is_active,
       created_at,
-      updated_at,
-      barber:barber_id (
-        id,
-        name
-      )
+      updated_at
     `)
-        .eq('business_id', businessId)
+        .eq('barber_id', barberId)
         .order('display_order', { ascending: true })
 
     if (error) {
-        throw new Error('No se pudieron cargar los items de galería')
+        throw new Error('No se pudieron cargar los items de galería del barbero')
     }
 
-    return (data ?? []).map((item: any) => ({
+    return (data ?? []).map((item) => ({
         ...item,
-        barber: Array.isArray(item.barber) ? item.barber[0] ?? null : item.barber ?? null,
+        barber: null,
     }))
 }

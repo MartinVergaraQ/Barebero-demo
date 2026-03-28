@@ -34,6 +34,9 @@ function buildLinks(slug: string, role: string) {
             { href: '/admin/mi-agenda', label: 'Mi agenda', icon: CalendarDays },
             { href: '/admin/mis-reservas', label: 'Mis reservas', icon: CalendarDays },
             { href: '/admin/mi-perfil', label: 'Mi perfil', icon: User },
+            { href: `/admin/b/${slug}/horarios`, label: 'Mis horarios', icon: Clock3 },
+            { href: `/admin/b/${slug}/bloqueos`, label: 'Mis bloqueos', icon: Ban },
+            { href: `/admin/b/${slug}/galeria`, label: 'Mi galería', icon: ImageIcon }
         ]
     }
     const links = []

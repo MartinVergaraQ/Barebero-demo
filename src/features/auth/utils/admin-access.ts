@@ -9,7 +9,7 @@ export function canManageBusiness(role?: string | null) {
 }
 
 export function canManageCatalog(role?: string | null) {
-    return role === 'owner' || role === 'admin'
+    return role === 'owner' || role === 'admin' || role === 'barber'
 }
 
 export function canManageAppointments(role?: string | null) {

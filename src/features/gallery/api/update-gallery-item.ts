@@ -5,15 +5,25 @@ export type UpdateGalleryItemInput = {
     title?: string | null
     display_order?: number
     is_active?: boolean
+    barber_id?: string | null
 }
 
 export async function updateGalleryItem(input: UpdateGalleryItemInput) {
     const supabase = createClient()
 
-    const payload = {
+    const payload: {
+        title: string | null
+        display_order: number
+        is_active: boolean
+        barber_id?: string | null
+    } = {
         title: input.title?.trim() || null,
         display_order: input.display_order ?? 0,
         is_active: input.is_active ?? true,
+    }
+
+    if (input.barber_id !== undefined) {
+        payload.barber_id = input.barber_id || null
     }
 
     const { data, error } = await supabase

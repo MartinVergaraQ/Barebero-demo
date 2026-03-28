@@ -1,8 +1,12 @@
 'use server'
 
 import { createClient } from '@/src/lib/supabase/server'
+import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
 
-type AllowedStatus = 'pending' | 'confirmed' | 'completed' | 'canceled'
+type AllowedStatus = Extract<
+    AppointmentStatus,
+    'pending' | 'confirmed' | 'completed' | 'canceled'
+>
 
 type Input = {
     reservationId: string

@@ -2,10 +2,17 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/server'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getGalleryItemsAdmin } from '@/src/features/gallery/api/get-gallery-items-admin'
+import { getGalleryItemsByBarber } from '@/src/features/gallery/api/get-gallery-items-by-barber'
 import { AdminGalleryForm } from '@/src/features/gallery/components/admin-gallery-form'
 import { AdminGalleryEditForm } from '@/src/features/gallery/components/admin-gallery-edit-form'
 import { DeleteGalleryItemButton } from '@/src/features/gallery/components/delete-gallery-item-button'
 import { canManageCatalog } from '@/src/features/auth/utils/admin-access'
+import { getBarberByProfile } from '@/src/features/barbers/api/get-barber-by-profile'
+import {
+    isBarberRole,
+    isFullAdminRole,
+} from '@/src/features/auth/utils/admin-scope'
+import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
 
 type AdminGaleriaPageProps = {
     params: Promise<{
@@ -43,19 +50,42 @@ export default async function AdminGaleriaPage({
         redirect('/admin')
     }
 
-    const items = await getGalleryItemsAdmin(business.id)
+    const ownBarber = await getBarberByProfile(profile.id)
 
+    if (
+        isBarberRole(profile.role) &&
+        (!ownBarber || ownBarber.business_id !== business.id)
+    ) {
+        redirect('/admin')
+    }
+
+    const items = isFullAdminRole(profile.role)
+        ? await getGalleryItemsAdmin(business.id)
+        : await getGalleryItemsByBarber(ownBarber!.id)
+
+    const barbers = isFullAdminRole(profile.role)
+        ? await getBarbersAdmin(business.id)
+        : []
     return (
         <main>
             <div className="mb-6">
                 <p className="text-sm text-slate-500">{business.name}</p>
-                <h1 className="text-3xl font-bold">Galería</h1>
+                <h1 className="text-3xl font-bold">
+                    {isBarberRole(profile.role) ? 'Mi galería' : 'Galería'}
+                </h1>
             </div>
 
-            <AdminGalleryForm businessId={business.id} />
+            <AdminGalleryForm
+                businessId={business.id}
+                barberId={isBarberRole(profile.role) ? ownBarber!.id : undefined}
+                barbers={barbers}
+                allowBarberAssignment={isFullAdminRole(profile.role)}
+            />
 
             <section>
-                <h2 className="mb-4 text-xl font-semibold">Items de galería</h2>
+                <h2 className="mb-4 text-xl font-semibold">
+                    {isBarberRole(profile.role) ? 'Mis trabajos' : 'Items de galería'}
+                </h2>
 
                 {items.length === 0 ? (
                     <p>No hay imágenes todavía.</p>
@@ -69,7 +99,14 @@ export default async function AdminGaleriaPage({
                                     className="mb-3 h-48 w-full rounded-lg object-cover"
                                 />
                                 <p className="font-medium">{item.title || 'Sin título'}</p>
-                                <p className="text-sm text-gray-600">Orden: {item.display_order}</p>
+                                <p className="text-sm text-gray-600">
+                                    Orden: {item.display_order}
+                                </p>
+                                {isFullAdminRole(profile.role) && (
+                                    <p className="text-sm text-gray-600">
+                                        Barbero: {item.barber?.name ?? 'General del negocio'}
+                                    </p>
+                                )}
                                 <p className="text-sm text-gray-600">
                                     Activa: {item.is_active ? 'Sí' : 'No'}
                                 </p>
@@ -80,7 +117,10 @@ export default async function AdminGaleriaPage({
                                         title: item.title,
                                         display_order: item.display_order,
                                         is_active: item.is_active,
+                                        barber_id: item.barber_id,
                                     }}
+                                    barbers={barbers}
+                                    allowBarberAssignment={isFullAdminRole(profile.role)}
                                 />
 
                                 <DeleteGalleryItemButton
