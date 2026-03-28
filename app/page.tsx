@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
 export default function HomePage() {
-  redirect('/b/barberia-el-padrino')
+  redirect('/b/demo-barber-studio')
 }
