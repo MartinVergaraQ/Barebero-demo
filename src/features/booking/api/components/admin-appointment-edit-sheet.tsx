@@ -6,6 +6,12 @@ import { X } from 'lucide-react'
 import { updateAppointment } from '@/src/features/booking/api/update-appointment'
 import { toast } from 'sonner'
 
+import {
+    utcToBusinessTime,
+    businessLocalToUtcIso,
+} from '@/src/features/booking/utils/datetime'
+
+
 type Service = {
     id: string
     name: string
@@ -33,10 +39,7 @@ type Props = {
 }
 
 function toLocalTimeInputValue(dateString: string) {
-    const date = new Date(dateString)
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${hours}:${minutes}`
+    return utcToBusinessTime(dateString)
 }
 
 export function AdminAppointmentEditSheet({
@@ -123,8 +126,12 @@ export function AdminAppointmentEditSheet({
                 throw new Error('Servicio no válido')
             }
 
-            const startLocal = `${form.appointment_date}T${form.appointment_time}:00`
-            const startDate = new Date(startLocal)
+            const startAtIso = businessLocalToUtcIso(
+                form.appointment_date,
+                form.appointment_time
+            )
+
+            const startDate = new Date(startAtIso)
 
             if (Number.isNaN(startDate.getTime())) {
                 throw new Error('La fecha u hora no son válidas')
@@ -145,11 +152,18 @@ export function AdminAppointmentEditSheet({
                 start_at: startDate.toISOString(),
                 end_at: endDate.toISOString(),
             })
+
             toast.success('Reserva actualizada correctamente')
             setOpen(false)
             router.refresh()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Error actualizando reserva')
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : 'Error actualizando reserva'
+
+            setErrorMessage(message)
+            toast.error(message)
         } finally {
             setLoading(false)
         }

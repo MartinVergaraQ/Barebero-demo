@@ -19,6 +19,12 @@ import {
     isBarberRole,
     isFullAdminRole,
 } from '@/src/features/auth/utils/admin-scope'
+import { utcToBusinessTime } from '@/src/features/booking/utils/datetime'
+import {
+    normalizeAppointmentStatus,
+    formatAppointmentStatus,
+    getAppointmentStatusClasses,
+} from '@/src/features/booking/utils/appointment-status'
 
 const COLORS = {
     primary: '#a87408',
@@ -45,76 +51,13 @@ function getRelationName(
     return relation.name
 }
 
-function normalizeStatus(status: string | null | undefined) {
-    return (status ?? '').toLowerCase().trim()
-}
-
-function countByStatus(appointments: AppointmentItem[], expected: string[]) {
-    return appointments.filter((appointment) =>
-        expected.includes(normalizeStatus(appointment.status))
+function countByStatus(
+    appointments: AppointmentItem[],
+    expected: AppointmentStatus
+) {
+    return appointments.filter(
+        (appointment) => normalizeAppointmentStatus(appointment.status) === expected
     ).length
-}
-
-function getStatusBadge(status: string) {
-    const normalized = normalizeStatus(status)
-
-    if (['confirmed', 'confirmada', 'confirmado'].includes(normalized)) {
-        return {
-            label: 'Confirmada',
-            style: {
-                backgroundColor: COLORS.blueSoft,
-                color: COLORS.blueText,
-            },
-        }
-    }
-
-    if (['pending', 'pendiente'].includes(normalized)) {
-        return {
-            label: 'Pendiente',
-            style: {
-                backgroundColor: COLORS.pendingSoft,
-                color: COLORS.pendingText,
-            },
-        }
-    }
-
-    if (['completed', 'completada', 'completado'].includes(normalized)) {
-        return {
-            label: 'Completada',
-            style: {
-                backgroundColor: COLORS.doneSoft,
-                color: COLORS.doneText,
-            },
-        }
-    }
-
-    if (['canceled', 'cancelada', 'cancelado'].includes(normalized)) {
-        return {
-            label: 'Cancelada',
-            style: {
-                backgroundColor: COLORS.dangerSoft,
-                color: COLORS.dangerText,
-            },
-        }
-    }
-
-    if (['no_show', 'noshow', 'no-show'].includes(normalized)) {
-        return {
-            label: 'No asistió',
-            style: {
-                backgroundColor: '#efe2d1',
-                color: '#8a5a2b',
-            },
-        }
-    }
-
-    return {
-        label: status || 'Sin estado',
-        style: {
-            backgroundColor: '#ececec',
-            color: '#555',
-        },
-    }
 }
 
 function formatShortDate(date: string) {
@@ -133,15 +76,7 @@ function formatShortDate(date: string) {
 
 function formatTime(value: string) {
     if (!value) return '-'
-
-    const parsed = new Date(value)
-    if (Number.isNaN(parsed.getTime())) return value
-
-    return new Intl.DateTimeFormat('es-CL', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    }).format(parsed)
+    return utcToBusinessTime(value)
 }
 
 function getInitials(name: string) {
@@ -279,17 +214,9 @@ export default async function AdminReservasPage({
 
     const items = appointments as AppointmentItem[]
 
-    const pendingCount = countByStatus(items, ['pending', 'pendiente'])
-    const confirmedCount = countByStatus(items, [
-        'confirmed',
-        'confirmada',
-        'confirmado',
-    ])
-    const canceledCount = countByStatus(items, [
-        'canceled',
-        'cancelada',
-        'cancelado',
-    ])
+    const pendingCount = countByStatus(items, 'pending')
+    const confirmedCount = countByStatus(items, 'confirmed')
+    const canceledCount = countByStatus(items, 'canceled')
 
     return (
         <main className="space-y-6 md:space-y-8">
@@ -409,13 +336,22 @@ export default async function AdminReservasPage({
 
                         <div>
                             {items.map((appointment, index) => {
-                                const badge = getStatusBadge(appointment.status)
-                                const barberName = getRelationName(appointment.barbers)
+                                const badgeLabel = formatAppointmentStatus(
+                                    appointment.status
+                                )
+                                const badgeClasses = getAppointmentStatusClasses(
+                                    appointment.status
+                                )
+                                const barberName = getRelationName(
+                                    appointment.barbers
+                                )
 
                                 return (
                                     <article
                                         key={appointment.id}
-                                        className={`grid grid-cols-[1.25fr_1.05fr_1fr_1fr_0.9fr_1.35fr] gap-4 px-6 py-6 ${index !== items.length - 1 ? 'border-b' : ''
+                                        className={`grid grid-cols-[1.25fr_1.05fr_1fr_1fr_0.9fr_1.35fr] gap-4 px-6 py-6 ${index !== items.length - 1
+                                                ? 'border-b'
+                                                : ''
                                             }`}
                                         style={{ borderColor: '#f1ebde' }}
                                     >
@@ -439,12 +375,16 @@ export default async function AdminReservasPage({
                                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#d9e2e8] text-[11px] font-bold text-[#56656d]">
                                                 {getInitials(barberName)}
                                             </div>
-                                            <p className="text-[15px] text-[#3b3833]">{barberName}</p>
+                                            <p className="text-[15px] text-[#3b3833]">
+                                                {barberName}
+                                            </p>
                                         </div>
 
                                         <div>
                                             <p className="text-[15px] font-semibold text-[#1a1a1a]">
-                                                {formatShortDate(appointment.appointment_date)}
+                                                {formatShortDate(
+                                                    appointment.appointment_date
+                                                )}
                                             </p>
                                             <p className="mt-1 text-[14px] text-[#4f4b45]">
                                                 {formatTime(appointment.start_at)} -{' '}
@@ -454,10 +394,9 @@ export default async function AdminReservasPage({
 
                                         <div className="flex items-center">
                                             <span
-                                                className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em]"
-                                                style={badge.style}
+                                                className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${badgeClasses}`}
                                             >
-                                                {badge.label}
+                                                {badgeLabel}
                                             </span>
                                         </div>
 
@@ -471,26 +410,40 @@ export default async function AdminReservasPage({
                                                 <AdminAppointmentEditSheet
                                                     appointment={{
                                                         id: appointment.id,
-                                                        barber_id: appointment.barber_id,
-                                                        service_id: appointment.service_id,
-                                                        client_name: appointment.client_name,
-                                                        client_email: appointment.client_email,
-                                                        client_phone: appointment.client_phone,
-                                                        appointment_date: appointment.appointment_date,
-                                                        start_at: appointment.start_at,
+                                                        barber_id:
+                                                            appointment.barber_id,
+                                                        service_id:
+                                                            appointment.service_id,
+                                                        client_name:
+                                                            appointment.client_name,
+                                                        client_email:
+                                                            appointment.client_email,
+                                                        client_phone:
+                                                            appointment.client_phone,
+                                                        appointment_date:
+                                                            appointment.appointment_date,
+                                                        start_at:
+                                                            appointment.start_at,
                                                     }}
-                                                    barbers={barbers.map((barber) => ({
-                                                        id: barber.id,
-                                                        name: barber.name,
-                                                    }))}
-                                                    services={services.map((service) => ({
-                                                        id: service.id,
-                                                        name: service.name,
-                                                        duration_minutes: service.duration_minutes,
-                                                    }))}
+                                                    barbers={barbers.map(
+                                                        (barber) => ({
+                                                            id: barber.id,
+                                                            name: barber.name,
+                                                        })
+                                                    )}
+                                                    services={services.map(
+                                                        (service) => ({
+                                                            id: service.id,
+                                                            name: service.name,
+                                                            duration_minutes:
+                                                                service.duration_minutes,
+                                                        })
+                                                    )}
                                                 />
 
-                                                <DeleteAppointmentButton id={appointment.id} />
+                                                <DeleteAppointmentButton
+                                                    id={appointment.id}
+                                                />
                                             </div>
                                         </div>
                                     </article>
@@ -501,7 +454,12 @@ export default async function AdminReservasPage({
 
                     <section className="grid gap-4 xl:hidden">
                         {items.map((appointment) => {
-                            const badge = getStatusBadge(appointment.status)
+                            const badgeLabel = formatAppointmentStatus(
+                                appointment.status
+                            )
+                            const badgeClasses = getAppointmentStatusClasses(
+                                appointment.status
+                            )
 
                             return (
                                 <article
@@ -524,29 +482,38 @@ export default async function AdminReservasPage({
 
                                         <div className="shrink-0">
                                             <span
-                                                className="inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em]"
-                                                style={badge.style}
+                                                className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${badgeClasses}`}
                                             >
-                                                {badge.label}
+                                                {badgeLabel}
                                             </span>
                                         </div>
                                     </div>
 
                                     <div className="mt-5 grid gap-3 text-sm text-[#3b3833]">
                                         <p>
-                                            <span className="font-semibold">Servicio:</span>{' '}
+                                            <span className="font-semibold">
+                                                Servicio:
+                                            </span>{' '}
                                             {getRelationName(appointment.services)}
                                         </p>
                                         <p>
-                                            <span className="font-semibold">Barbero:</span>{' '}
+                                            <span className="font-semibold">
+                                                Barbero:
+                                            </span>{' '}
                                             {getRelationName(appointment.barbers)}
                                         </p>
                                         <p>
-                                            <span className="font-semibold">Fecha:</span>{' '}
-                                            {formatShortDate(appointment.appointment_date)}
+                                            <span className="font-semibold">
+                                                Fecha:
+                                            </span>{' '}
+                                            {formatShortDate(
+                                                appointment.appointment_date
+                                            )}
                                         </p>
                                         <p>
-                                            <span className="font-semibold">Hora:</span>{' '}
+                                            <span className="font-semibold">
+                                                Hora:
+                                            </span>{' '}
                                             {formatTime(appointment.start_at)} -{' '}
                                             {formatTime(appointment.end_at)}
                                         </p>
@@ -565,26 +532,40 @@ export default async function AdminReservasPage({
                                             <AdminAppointmentEditSheet
                                                 appointment={{
                                                     id: appointment.id,
-                                                    barber_id: appointment.barber_id,
-                                                    service_id: appointment.service_id,
-                                                    client_name: appointment.client_name,
-                                                    client_email: appointment.client_email,
-                                                    client_phone: appointment.client_phone,
-                                                    appointment_date: appointment.appointment_date,
-                                                    start_at: appointment.start_at,
+                                                    barber_id:
+                                                        appointment.barber_id,
+                                                    service_id:
+                                                        appointment.service_id,
+                                                    client_name:
+                                                        appointment.client_name,
+                                                    client_email:
+                                                        appointment.client_email,
+                                                    client_phone:
+                                                        appointment.client_phone,
+                                                    appointment_date:
+                                                        appointment.appointment_date,
+                                                    start_at:
+                                                        appointment.start_at,
                                                 }}
-                                                barbers={barbers.map((barber) => ({
-                                                    id: barber.id,
-                                                    name: barber.name,
-                                                }))}
-                                                services={services.map((service) => ({
-                                                    id: service.id,
-                                                    name: service.name,
-                                                    duration_minutes: service.duration_minutes,
-                                                }))}
+                                                barbers={barbers.map(
+                                                    (barber) => ({
+                                                        id: barber.id,
+                                                        name: barber.name,
+                                                    })
+                                                )}
+                                                services={services.map(
+                                                    (service) => ({
+                                                        id: service.id,
+                                                        name: service.name,
+                                                        duration_minutes:
+                                                            service.duration_minutes,
+                                                    })
+                                                )}
                                             />
 
-                                            <DeleteAppointmentButton id={appointment.id} />
+                                            <DeleteAppointmentButton
+                                                id={appointment.id}
+                                            />
                                         </div>
                                     </div>
                                 </article>

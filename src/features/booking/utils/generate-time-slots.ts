@@ -1,6 +1,8 @@
 import type { WorkingHour } from '@/src/features/booking/api/get-barber-working-hours'
 import type { BarberAppointment } from '@/src/features/booking/api/get-barber-appointments-by-date'
 import type { TimeOffRange } from '@/src/features/time-off/api/get-time-off-by-barber-and-date'
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
+import { BUSINESS_TIME_ZONE } from '@/src/features/booking/utils/datetime'
 
 type GenerateTimeSlotsInput = {
     date: string
@@ -18,23 +20,14 @@ export type TimeSlot = {
 }
 
 function formatHourLabel(date: Date) {
-    return date.toLocaleTimeString('es-CL', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    })
+    return formatInTimeZone(date, BUSINESS_TIME_ZONE, 'HH:mm')
 }
 
 function combineDateAndTime(date: string, time: string) {
-    return new Date(`${date}T${time}:00`)
+    return fromZonedTime(`${date} ${time}`, BUSINESS_TIME_ZONE)
 }
 
-function overlaps(
-    startA: Date,
-    endA: Date,
-    startB: Date,
-    endB: Date
-) {
+function overlaps(startA: Date, endA: Date, startB: Date, endB: Date) {
     return startA < endB && endA > startB
 }
 
@@ -68,7 +61,6 @@ export function generateTimeSlots({
                 slotStart.getTime() + serviceDurationMinutes * 60 * 1000
             )
 
-            // si el servicio no alcanza a terminar dentro del bloque, no ofrecer
             if (slotEnd > blockEnd) {
                 break
             }
@@ -76,14 +68,12 @@ export function generateTimeSlots({
             const collidesWithAppointment = appointments.some((appointment) => {
                 const appointmentStart = new Date(appointment.start_at)
                 const appointmentEnd = new Date(appointment.end_at)
-
                 return overlaps(slotStart, slotEnd, appointmentStart, appointmentEnd)
             })
 
             const collidesWithTimeOff = timeOffRanges.some((range) => {
                 const rangeStart = new Date(range.start_at)
                 const rangeEnd = new Date(range.end_at)
-
                 return overlaps(slotStart, slotEnd, rangeStart, rangeEnd)
             })
 
