@@ -1,21 +1,14 @@
-import { supabase } from '@/src/lib/supabase/client'
+import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
+import { getActiveGalleryItems } from '@/src/features/gallery/api/get-gallery-items'
 
-export default async function GaleriaPage() {
-    const { data, error } = await supabase
-        .from('gallery_items')
-        .select('id, title, media_url, display_order')
-        .eq('is_active', true)
-        .eq('type', 'image')
-        .order('display_order', { ascending: true })
-
-    if (error) {
-        return (
-            <main className="p-8">
-                <h1 className="text-3xl font-bold">Galería</h1>
-                <p className="mt-4 text-red-600">{error.message}</p>
-            </main>
-        )
-    }
+export default async function GaleriaPage({
+    params,
+}: {
+    params: Promise<{ slug: string }>
+}) {
+    const { slug } = await params
+    const business = await getBusinessBySlug(slug)
+    const data = await getActiveGalleryItems(business.id)
 
     return (
         <main className="p-8">
