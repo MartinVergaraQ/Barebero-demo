@@ -175,7 +175,7 @@ export default function ReservarClient({
     const [loadingData, setLoadingData] = useState(true)
     const [loadingSlots, setLoadingSlots] = useState(false)
     const [submitting, setSubmitting] = useState(false)
-
+    const [serviceHint, setServiceHint] = useState('')
     const clientNameRef = useRef<HTMLInputElement | null>(null)
     const clientEmailRef = useRef<HTMLInputElement | null>(null)
     const clientPhoneRef = useRef<HTMLInputElement | null>(null)
@@ -346,8 +346,80 @@ export default function ReservarClient({
     }, [services, barberServices, form.barber_id])
 
     const selectedService = useMemo(() => {
-        return filteredServices.find((service) => service.id === form.service_id) ?? null
-    }, [filteredServices, form.service_id])
+        return services.find((service) => service.id === form.service_id) ?? null
+    }, [services, form.service_id])
+
+    useEffect(() => {
+        setForm((prev) => {
+            const nextServiceId = initialServiceId || ''
+            const nextBarberId = initialBarberId || ''
+
+            if (
+                prev.service_id === nextServiceId &&
+                prev.barber_id === nextBarberId
+            ) {
+                return prev
+            }
+
+            return {
+                ...prev,
+                service_id: nextServiceId,
+                barber_id: nextBarberId,
+                appointment_date: '',
+            }
+        })
+
+        setSelectedSlot(null)
+        setAvailableSlots([])
+        setAvailabilityMessage('')
+        setServiceHint('')
+        setErrorMessage('')
+        setMessage('')
+    }, [initialServiceId, initialBarberId])
+
+    useEffect(() => {
+        if (!initialServiceId) return
+        if (loadingData) return
+        if (form.barber_id) return
+
+        const barbersForInitialService = barberServices
+            .filter((item) => item.service_id === initialServiceId)
+            .map((item) => item.barber_id)
+
+        const uniqueBarberIds = [...new Set(barbersForInitialService)]
+
+        if (uniqueBarberIds.length === 1) {
+            setForm((prev) => ({
+                ...prev,
+                barber_id: uniqueBarberIds[0],
+                service_id: initialServiceId,
+            }))
+            setServiceHint('')
+            return
+        }
+
+        if (uniqueBarberIds.length === 0) {
+            const initialService = services.find((service) => service.id === initialServiceId)
+
+            setForm((prev) => ({
+                ...prev,
+                service_id: '',
+                barber_id: '',
+            }))
+
+            setServiceHint(
+                initialService
+                    ? `El servicio "${initialService.name}" no está disponible con ningún barbero activo.`
+                    : 'El servicio seleccionado no está disponible.'
+            )
+            return
+        }
+
+        setForm((prev) => ({
+            ...prev,
+            service_id: initialServiceId,
+        }))
+    }, [initialServiceId, loadingData, form.barber_id, barberServices, services])
 
 
     useEffect(() => {
@@ -358,6 +430,14 @@ export default function ReservarClient({
         )
 
         if (!serviceStillAllowed) {
+            const previousService = services.find(
+                (service) => service.id === form.service_id
+            )
+
+            const currentBarber = barbers.find(
+                (barber) => barber.id === form.barber_id
+            )
+
             setForm((prev) => ({
                 ...prev,
                 service_id: '',
@@ -365,8 +445,18 @@ export default function ReservarClient({
             setSelectedSlot(null)
             setAvailableSlots([])
             setAvailabilityMessage('')
+
+            setServiceHint(
+                previousService && currentBarber
+                    ? `${currentBarber.name} no tiene asignado el servicio "${previousService.name}". Selecciona otro servicio.`
+                    : 'El barbero seleccionado no tiene asignado ese servicio. Selecciona otro servicio.'
+            )
+        } else {
+            setServiceHint('')
         }
-    }, [filteredServices, form.service_id])
+    }, [filteredServices, form.service_id, services, barbers, form.barber_id])
+
+    const availableServiceCount = filteredServices.length
 
     useEffect(() => {
         async function loadData() {
@@ -473,6 +563,12 @@ export default function ReservarClient({
             setSelectedSlot(null)
             setAvailableSlots([])
             setAvailabilityMessage('')
+        }
+        if (name === 'service_id') {
+            setServiceHint('')
+        }
+        if (name === 'barber_id') {
+            setServiceHint('')
         }
     }
 
@@ -781,9 +877,18 @@ export default function ReservarClient({
                             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
                                 <div className="min-w-0 space-y-5">
                                     <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
-                                        <label htmlFor="service_id" className="mb-2 block text-sm font-bold text-slate-500">
-                                            Servicio
-                                        </label>
+                                        <div className="mb-2 flex items-center justify-between gap-3">
+                                            <label htmlFor="service_id" className="block text-sm font-bold text-slate-500">
+                                                Servicio
+                                            </label>
+
+                                            {form.barber_id && (
+                                                <span className="text-xs font-medium text-slate-400">
+                                                    {filteredServices.length} disponible{filteredServices.length === 1 ? '' : 's'}
+                                                </span>
+                                            )}
+                                        </div>
+
                                         <select
                                             id="service_id"
                                             name="service_id"
@@ -791,13 +896,29 @@ export default function ReservarClient({
                                             onChange={handleChange}
                                             className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
                                         >
-                                            <option value="">Selecciona un servicio</option>
+                                            <option value="">
+                                                {!form.barber_id
+                                                    ? initialServiceId
+                                                        ? 'Servicio preseleccionado. Ahora elige un barbero'
+                                                        : 'Primero selecciona un barbero'
+                                                    : filteredServices.length > 0
+                                                        ? 'Selecciona un servicio'
+                                                        : 'Este barbero no tiene servicios disponibles'}
+                                            </option>
+
                                             {filteredServices.map((service) => (
                                                 <option key={service.id} value={service.id}>
-                                                    {service.name} - {formatPrice(service.price)} - {service.duration_minutes} min
+                                                    {service.name} · {service.duration_minutes} min · {formatPrice(service.price)}
                                                 </option>
                                             ))}
                                         </select>
+
+                                        {serviceHint && (
+                                            <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                                <p className="font-semibold">Servicio no disponible para este barbero</p>
+                                                <p className="mt-1">{serviceHint}</p>
+                                            </div>
+                                        )}
 
                                         {selectedService && (
                                             <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">

@@ -10,6 +10,7 @@ import {
 import { AppointmentCard } from '@/src/features/booking/components/appointment-card'
 import type { BarberAppointmentItem } from '@/src/features/booking/api/components/schemas/types/booking'
 import { getServiceName } from '@/src/features/booking/utils/appointment-service'
+import { BarberReservationStatusActions } from '@/src/features/booking/components/barber-reservation-status-actions'
 
 export default async function MiAgendaPage() {
     const supabase = await createClient()
@@ -35,6 +36,7 @@ export default async function MiAgendaPage() {
         .select(`
             id,
             client_name,
+            client_phone,
             start_at,
             status,
             service:service_id (
@@ -97,6 +99,35 @@ export default async function MiAgendaPage() {
             </section>
 
             <section className="rounded-xl border bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-semibold">Reservas de hoy</h2>
+
+                {todayAppointments.length === 0 ? (
+                    <p className="mt-4 text-sm text-slate-600">
+                        No tienes reservas para hoy.
+                    </p>
+                ) : (
+                    <div className="mt-4 space-y-3">
+                        {todayAppointments.map((item) => (
+                            <AppointmentCard
+                                key={item.id}
+                                clientName={item.client_name}
+                                clientPhone={item.client_phone}
+                                startAt={item.start_at}
+                                status={item.status}
+                                serviceName={getServiceName(item.service)}
+                                actions={
+                                    <BarberReservationStatusActions
+                                        reservationId={item.id}
+                                        currentStatus={item.status}
+                                    />
+                                }
+                            />
+                        ))}
+                    </div>
+                )}
+            </section>
+
+            <section className="rounded-xl border bg-white p-5 shadow-sm">
                 <h2 className="text-lg font-semibold">Próximas reservas</h2>
 
                 {nextAppointments.length === 0 ? (
@@ -109,9 +140,16 @@ export default async function MiAgendaPage() {
                             <AppointmentCard
                                 key={item.id}
                                 clientName={item.client_name}
+                                clientPhone={item.client_phone}
                                 startAt={item.start_at}
                                 status={item.status}
                                 serviceName={getServiceName(item.service)}
+                                actions={
+                                    <BarberReservationStatusActions
+                                        reservationId={item.id}
+                                        currentStatus={item.status}
+                                    />
+                                }
                             />
                         ))}
                     </div>

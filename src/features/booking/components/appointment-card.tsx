@@ -3,10 +3,6 @@ import {
     getAppointmentStatusClasses,
 } from '@/src/features/booking/utils/appointment-status'
 
-type AppointmentService = {
-    name: string
-}
-
 type AppointmentCardProps = {
     clientName: string
     clientPhone?: string | null
@@ -26,13 +22,26 @@ export function AppointmentCard({
     notes,
     actions,
 }: AppointmentCardProps) {
+
+    function formatAppointmentDateTime(value: string) {
+        const date = new Date(value)
+
+        return new Intl.DateTimeFormat('es-CL', {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(date)
+    }
     return (
         <article className="rounded-lg border p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
                     <h3 className="font-semibold">{clientName}</h3>
                     <p className="mt-1 text-sm text-slate-600">
-                        {new Date(startAt).toLocaleString('es-CL')}
+                        {formatAppointmentDateTime(startAt)}
                     </p>
 
                     {serviceName && (

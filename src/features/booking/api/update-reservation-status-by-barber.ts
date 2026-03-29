@@ -38,7 +38,7 @@ export async function updateReservationStatusByBarber({
     }
 
     const { data: reservation, error: reservationError } = await supabase
-        .from('reservations')
+        .from('appointments')
         .select('id, barber_id, status')
         .eq('id', reservationId)
         .single()
@@ -52,7 +52,7 @@ export async function updateReservationStatusByBarber({
     }
 
     const { error: updateError } = await supabase
-        .from('reservations')
+        .from('appointments')
         .update({ status: nextStatus })
         .eq('id', reservationId)
 

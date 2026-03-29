@@ -3,6 +3,7 @@
 import { createClient } from '@/src/lib/supabase/server'
 
 type Input = {
+    name: string
     specialty: string
     bio: string
     whatsapp_phone: string
@@ -10,6 +11,7 @@ type Input = {
 }
 
 export async function updateCurrentBarberProfile({
+    name,
     specialty,
     bio,
     whatsapp_phone,
@@ -38,6 +40,7 @@ export async function updateCurrentBarberProfile({
     const { error: updateError } = await supabase
         .from('barbers')
         .update({
+            name: name.trim(),
             specialty: specialty.trim() || null,
             bio: bio.trim() || null,
             whatsapp_phone: whatsapp_phone.trim() || null,

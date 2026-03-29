@@ -31,7 +31,10 @@ function formatDateTimeLocal(date: Date) {
 }
 
 export function AdminTimeOffForm({ barbers }: Props) {
-    const [selectedBarberId, setSelectedBarberId] = useState('')
+    const isSingleBarber = barbers.length === 1
+    const [selectedBarberId, setSelectedBarberId] = useState(
+        isSingleBarber ? barbers[0].id : ''
+    )
     const [items, setItems] = useState<TimeOffItem[]>([])
 
     const [form, setForm] = useState({
@@ -48,6 +51,12 @@ export function AdminTimeOffForm({ barbers }: Props) {
     const selectedBarber = barbers.find(
         (barber) => barber.id === selectedBarberId
     )
+
+    useEffect(() => {
+        if (isSingleBarber && barbers[0] && selectedBarberId !== barbers[0].id) {
+            setSelectedBarberId(barbers[0].id)
+        }
+    }, [isSingleBarber, barbers, selectedBarberId])
 
     async function loadItems(barberId: string) {
         setLoadingList(true)
@@ -140,48 +149,54 @@ export function AdminTimeOffForm({ barbers }: Props) {
     }
 
     return (
-        <section className="rounded-xl border p-4" >
-            <h2 className="mb-4 text-xl font-semibold" > Bloqueos puntuales </h2>
+        <section className="rounded-xl border p-4">
+            <h2 className="mb-2 text-xl font-semibold">
+                {isSingleBarber ? 'Mis bloqueos' : 'Bloqueos puntuales'}
+            </h2>
 
-            {
-                errorMessage && (
-                    <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700" >
-                        {errorMessage}
-                    </div>
-                )
-            }
+            {selectedBarber && (
+                <p className="mb-4 text-sm text-slate-600">
+                    {isSingleBarber
+                        ? 'Configura tus bloqueos puntuales para horas o tramos en que no atenderás.'
+                        : `Editando bloqueos de ${selectedBarber.name}.`}
+                </p>
+            )}
 
-            {
-                message && (
-                    <div className="mb-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-700" >
-                        {message}
-                    </div>
-                )
-            }
+            {errorMessage && (
+                <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700">
+                    {errorMessage}
+                </div>
+            )}
 
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2" >
-                <div className="md:col-span-2" >
-                    <label className="mb-2 block font-medium" > Barbero </label>
-                    < select
-                        name="barber_id"
-                        value={selectedBarberId}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border p-3"
-                    >
-                        <option value="" > Selecciona un barbero </option>
-                        {
-                            barbers.map((barber) => (
-                                <option key={barber.id} value={barber.id} >
+            {message && (
+                <div className="mb-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-700">
+                    {message}
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+                {!isSingleBarber && (
+                    <div className="md:col-span-2">
+                        <label className="mb-2 block font-medium">Barbero</label>
+                        <select
+                            name="barber_id"
+                            value={selectedBarberId}
+                            onChange={handleChange}
+                            className="w-full rounded-lg border p-3"
+                        >
+                            <option value="">Selecciona un barbero</option>
+                            {barbers.map((barber) => (
+                                <option key={barber.id} value={barber.id}>
                                     {barber.name}
                                 </option>
-                            ))
-                        }
-                    </select>
-                </div>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
-                < div >
-                    <label className="mb-2 block font-medium" > Inicio </label>
-                    < input
+                <div>
+                    <label className="mb-2 block font-medium">Inicio</label>
+                    <input
                         name="start_at"
                         type="datetime-local"
                         value={form.start_at}
@@ -190,9 +205,9 @@ export function AdminTimeOffForm({ barbers }: Props) {
                     />
                 </div>
 
-                < div >
-                    <label className="mb-2 block font-medium" > Fin </label>
-                    < input
+                <div>
+                    <label className="mb-2 block font-medium">Fin</label>
+                    <input
                         name="end_at"
                         type="datetime-local"
                         value={form.end_at}
@@ -201,9 +216,9 @@ export function AdminTimeOffForm({ barbers }: Props) {
                     />
                 </div>
 
-                < div className="md:col-span-2" >
-                    <label className="mb-2 block font-medium" > Motivo </label>
-                    < textarea
+                <div className="md:col-span-2">
+                    <label className="mb-2 block font-medium">Motivo</label>
+                    <textarea
                         name="reason"
                         value={form.reason}
                         onChange={handleChange}
@@ -213,7 +228,7 @@ export function AdminTimeOffForm({ barbers }: Props) {
                     />
                 </div>
 
-                < div className="md:col-span-2" >
+                <div className="md:col-span-2">
                     <button
                         type="submit"
                         disabled={saving}
@@ -224,44 +239,45 @@ export function AdminTimeOffForm({ barbers }: Props) {
                 </div>
             </form>
 
-            < div className="mt-8" >
-                <h3 className="mb-4 text-lg font-semibold" > Bloqueos existentes </h3>
+            <div className="mt-8">
+                <h3 className="mb-4 text-lg font-semibold">
+                    {isSingleBarber ? 'Mis bloqueos existentes' : 'Bloqueos existentes'}
+                </h3>
 
-                {
-                    !selectedBarberId ? (
-                        <p>Selecciona un barbero para ver sus bloqueos.</p>
-                    ) : loadingList ? (
-                        <p>Cargando bloqueos...</p>
-                    ) : items.length === 0 ? (
-                        <p>No hay bloqueos registrados.</p>
-                    ) : (
-                        <div className="space-y-3" >
-                            {
-                                items.map((item) => (
-                                    <article key={item.id} className="rounded-lg border p-4" >
-                                        <p>
-                                            <span className="font-medium" > Inicio: </span>{' '}
-                                            {formatDateTimeLocal(new Date(item.start_at))
-                                            }
-                                        </p>
-                                        < p >
-                                            <span className="font-medium" > Fin: </span>{' '}
-                                            {formatDateTimeLocal(new Date(item.end_at))}
-                                        </p>
-                                        < p >
-                                            <span className="font-medium" > Motivo: </span>{' '}
-                                            {item.reason || '-'}
-                                        </p>
-                                        <DeleteTimeOffButton
-                                            id={item.id}
-                                            onDeleted={() => loadItems(item.barber_id)}
-                                        />
-                                    </article>
-                                ))
-                            }
-                        </div>
-                    )
-                }
+                {!selectedBarberId ? (
+                    <p>Selecciona un barbero para ver sus bloqueos.</p>
+                ) : loadingList ? (
+                    <p>Cargando bloqueos...</p>
+                ) : items.length === 0 ? (
+                    <p>
+                        {isSingleBarber
+                            ? 'No tienes bloqueos registrados.'
+                            : 'No hay bloqueos registrados.'}
+                    </p>
+                ) : (
+                    <div className="space-y-3">
+                        {items.map((item) => (
+                            <article key={item.id} className="rounded-lg border p-4">
+                                <p>
+                                    <span className="font-medium">Inicio:</span>{' '}
+                                    {formatDateTimeLocal(new Date(item.start_at))}
+                                </p>
+                                <p>
+                                    <span className="font-medium">Fin:</span>{' '}
+                                    {formatDateTimeLocal(new Date(item.end_at))}
+                                </p>
+                                <p>
+                                    <span className="font-medium">Motivo:</span>{' '}
+                                    {item.reason || '-'}
+                                </p>
+                                <DeleteTimeOffButton
+                                    id={item.id}
+                                    onDeleted={() => loadItems(item.barber_id)}
+                                />
+                            </article>
+                        ))}
+                    </div>
+                )}
             </div>
         </section>
     )

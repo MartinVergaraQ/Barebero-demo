@@ -27,6 +27,7 @@ export function BarberProfileForm({ barber }: Props) {
     const [uploadingImage, setUploadingImage] = useState(false)
 
     const [form, setForm] = useState({
+        name: barber.name ?? '',
         specialty: barber.specialty ?? '',
         bio: barber.bio ?? '',
         whatsapp_phone: barber.whatsapp_phone ?? '',
@@ -55,6 +56,19 @@ export function BarberProfileForm({ barber }: Props) {
             setUploadingImage(false)
         }
     }
+    const initialForm = {
+        name: barber.name ?? '',
+        specialty: barber.specialty ?? '',
+        bio: barber.bio ?? '',
+        whatsapp_phone: barber.whatsapp_phone ?? '',
+        photo_url: barber.photo_url ?? '',
+    }
+    const hasChanges =
+        form.name !== initialForm.name ||
+        form.specialty !== initialForm.specialty ||
+        form.bio !== initialForm.bio ||
+        form.whatsapp_phone !== initialForm.whatsapp_phone ||
+        form.photo_url !== initialForm.photo_url
 
     function handleChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -92,6 +106,16 @@ export function BarberProfileForm({ barber }: Props) {
 
             <section className="rounded-xl border bg-white p-5 shadow-sm">
                 <h2 className="text-lg font-semibold">Editar perfil</h2>
+                <div>
+                    <label className="mb-2 block text-sm font-medium">Nombre</label>
+                    <input
+                        name="name"
+                        value={form.name}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border p-3"
+                        placeholder="Nombre visible del barbero"
+                    />
+                </div>
 
                 <div className="mt-4 space-y-4">
                     <div>
@@ -162,6 +186,22 @@ export function BarberProfileForm({ barber }: Props) {
                             />
                         </div>
                     </div>
+                    {form.photo_url && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setForm((prev) => ({
+                                    ...prev,
+                                    photo_url: '',
+                                }))
+                                setSuccess('')
+                                setError('')
+                            }}
+                            className="rounded-lg border border-red-300 px-4 py-3 text-red-700"
+                        >
+                            Eliminar foto
+                        </button>
+                    )}
 
                     {form.photo_url && (
                         <div>
@@ -170,7 +210,7 @@ export function BarberProfileForm({ barber }: Props) {
                             </p>
                             <img
                                 src={form.photo_url}
-                                alt={barber.name}
+                                alt={form.name || 'Foto de perfil'}
                                 className="h-32 w-32 rounded-lg border object-cover"
                             />
                         </div>
@@ -179,7 +219,7 @@ export function BarberProfileForm({ barber }: Props) {
                     <div className="flex flex-wrap gap-3">
                         <button
                             type="button"
-                            disabled={isPending}
+                            disabled={isPending || uploadingImage || !hasChanges}
                             onClick={() => {
                                 setError('')
                                 setSuccess('')

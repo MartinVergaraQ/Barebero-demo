@@ -1,7 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getWorkingHoursByBarber, type WorkingHourItem } from '@/src/features/working-hours/api/get-working-hours-by-barberos'
+import {
+    getWorkingHoursByBarber,
+    type WorkingHourItem,
+} from '@/src/features/working-hours/api/get-working-hours-by-barberos'
 import { upsertWorkingHour } from '@/src/features/working-hours/api/upsert-working-hour'
 
 type Barber = {
@@ -33,7 +36,11 @@ type WorkingHourFormRow = {
 }
 
 export function AdminWorkingHoursForm({ barbers }: Props) {
-    const [selectedBarberId, setSelectedBarberId] = useState('')
+    const isSingleBarber = barbers.length === 1
+    const [selectedBarberId, setSelectedBarberId] = useState(
+        isSingleBarber ? barbers[0].id : ''
+    )
+
     const [rows, setRows] = useState<WorkingHourFormRow[]>(
         weekDays.map((day) => ({
             day_of_week: day.value,
@@ -49,6 +56,12 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
     const [errorMessage, setErrorMessage] = useState('')
 
     const selectedBarber = barbers.find((barber) => barber.id === selectedBarberId)
+
+    useEffect(() => {
+        if (isSingleBarber && barbers[0] && selectedBarberId !== barbers[0].id) {
+            setSelectedBarberId(barbers[0].id)
+        }
+    }, [isSingleBarber, barbers, selectedBarberId])
 
     useEffect(() => {
         async function loadWorkingHours() {
@@ -129,9 +142,14 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                         ? { ...row, is_active: false }
                         : row
 
-                if (normalizedRow.is_active && normalizedRow.start_time >= normalizedRow.end_time) {
+                if (
+                    normalizedRow.is_active &&
+                    normalizedRow.start_time >= normalizedRow.end_time
+                ) {
                     throw new Error(
-                        `El horario del día ${weekDays.find((d) => d.value === normalizedRow.day_of_week)?.label} no es válido`
+                        `El horario del día ${weekDays.find((d) => d.value === normalizedRow.day_of_week)
+                            ?.label
+                        } no es válido`
                     )
                 }
 
@@ -158,7 +176,17 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
 
     return (
         <section className="rounded-xl border p-4">
-            <h2 className="mb-4 text-xl font-semibold">Horarios por barbero</h2>
+            <h2 className="mb-2 text-xl font-semibold">
+                {isSingleBarber ? 'Mis horarios' : 'Horarios por barbero'}
+            </h2>
+
+            {selectedBarber && (
+                <p className="mb-4 text-sm text-slate-600">
+                    {isSingleBarber
+                        ? `Configura tus horarios de atención.`
+                        : `Editando horarios de ${selectedBarber.name}.`}
+                </p>
+            )}
 
             {errorMessage && (
                 <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700">
@@ -172,21 +200,23 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                 </div>
             )}
 
-            <div className="mb-6">
-                <label className="mb-2 block font-medium">Barbero</label>
-                <select
-                    value={selectedBarberId}
-                    onChange={(e) => setSelectedBarberId(e.target.value)}
-                    className="w-full rounded-lg border p-3"
-                >
-                    <option value="">Selecciona un barbero</option>
-                    {barbers.map((barber) => (
-                        <option key={barber.id} value={barber.id}>
-                            {barber.name}
-                        </option>
-                    ))}
-                </select>
-            </div>
+            {!isSingleBarber && (
+                <div className="mb-6">
+                    <label className="mb-2 block font-medium">Barbero</label>
+                    <select
+                        value={selectedBarberId}
+                        onChange={(e) => setSelectedBarberId(e.target.value)}
+                        className="w-full rounded-lg border p-3"
+                    >
+                        <option value="">Selecciona un barbero</option>
+                        {barbers.map((barber) => (
+                            <option key={barber.id} value={barber.id}>
+                                {barber.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             {selectedBarberId && (
                 <>
@@ -196,8 +226,8 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                         <div className="space-y-4">
                             {rows.map((row) => {
                                 const dayLabel =
-                                    weekDays.find((day) => day.value === row.day_of_week)?.label ??
-                                    row.day_of_week
+                                    weekDays.find((day) => day.value === row.day_of_week)
+                                        ?.label ?? row.day_of_week
 
                                 return (
                                     <div
@@ -210,10 +240,16 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                                             <label className="flex items-center gap-2">
                                                 <input
                                                     type="checkbox"
-                                                    checked={row.day_of_week === 0 ? false : row.is_active}
+                                                    checked={
+                                                        row.day_of_week === 0 ? false : row.is_active
+                                                    }
                                                     disabled={row.day_of_week === 0}
                                                     onChange={(e) =>
-                                                        updateRow(row.day_of_week, 'is_active', e.target.checked)
+                                                        updateRow(
+                                                            row.day_of_week,
+                                                            'is_active',
+                                                            e.target.checked
+                                                        )
                                                     }
                                                 />
                                                 Activo
@@ -231,7 +267,11 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                                             value={row.start_time}
                                             disabled={!row.is_active || row.day_of_week === 0}
                                             onChange={(e) =>
-                                                updateRow(row.day_of_week, 'start_time', e.target.value)
+                                                updateRow(
+                                                    row.day_of_week,
+                                                    'start_time',
+                                                    e.target.value
+                                                )
                                             }
                                             className="rounded-lg border p-3 disabled:opacity-50"
                                         />
@@ -241,7 +281,11 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                                             value={row.end_time}
                                             disabled={!row.is_active || row.day_of_week === 0}
                                             onChange={(e) =>
-                                                updateRow(row.day_of_week, 'end_time', e.target.value)
+                                                updateRow(
+                                                    row.day_of_week,
+                                                    'end_time',
+                                                    e.target.value
+                                                )
                                             }
                                             className="rounded-lg border p-3 disabled:opacity-50"
                                         />
