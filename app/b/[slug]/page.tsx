@@ -7,6 +7,7 @@ import { getActiveBarbers } from '@/src/features/barbers/api/get-barber'
 import { getPublicReviews } from '@/src/features/reviews/api/get-public-reviews'
 import { getActiveGalleryItems } from '@/src/features/gallery/api/get-gallery-items'
 import { ReviewsSection } from '@/src/features/reviews/components/reviews-section'
+import { PublicGallerySection } from '@/src/features/gallery/components/PublicGallerySection'
 
 type BusinessRow = {
     id: string
@@ -291,40 +292,13 @@ export default async function BusinessPage({
                         )}
 
                         {tab === 'gallery' && (
-                            <div className="space-y-5 pb-4">
-                                <div>
-                                    <h2 className="text-2xl font-black md:text-3xl">Trabajos recientes</h2>
-                                    <p className="mt-2 text-sm text-slate-500 md:text-base">
-                                        Mira cortes, estilos y resultados reales del negocio.
-                                    </p>
-                                </div>
-
-                                {galleryItems.length === 0 ? (
-                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500">
-                                        No hay fotos de trabajos todavía.
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                                        {galleryItems.map((item) => (
-                                            <article
-                                                key={item.id}
-                                                className="overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm"
-                                            >
-                                                <img
-                                                    src={item.media_url}
-                                                    alt={item.title || 'Trabajo de barbería'}
-                                                    className="h-44 w-full object-cover md:h-52"
-                                                />
-                                                {item.title && (
-                                                    <div className="p-3">
-                                                        <p className="text-sm font-semibold text-slate-800">{item.title}</p>
-                                                    </div>
-                                                )}
-                                            </article>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                            <PublicGallerySection
+                                items={galleryItems}
+                                barbers={barbers.map((barber) => ({
+                                    id: barber.id,
+                                    name: barber.name,
+                                }))}
+                            />
                         )}
 
                         {tab === 'reviews' && (
@@ -384,46 +358,61 @@ export default async function BusinessPage({
                                     </div>
 
                                     <div className="space-y-8">
-                                        <section>
-                                            <h3 className="text-xl font-black">Barberos</h3>
+                                        <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
+                                            <div className="mb-5">
+                                                <p
+                                                    className="text-xs font-bold uppercase tracking-[0.18em]"
+                                                    style={{ color: PRIMARY }}
+                                                >
+                                                    Equipo
+                                                </p>
+                                                <h3 className="mt-2 text-2xl font-black">Reserva con tu barbero ideal</h3>
+                                                <p className="mt-2 text-sm text-slate-500 md:text-base">
+                                                    Conoce al equipo y agenda directamente con el profesional que prefieras.
+                                                </p>
+                                            </div>
+
                                             {barbers.length === 0 ? (
-                                                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
-                                                    No hay barberos activos.
+                                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                                                    No hay barberos activos por ahora.
                                                 </div>
                                             ) : (
-                                                <div className="mt-3 space-y-3">
+                                                <div className="grid gap-4 sm:grid-cols-2">
                                                     {barbers.slice(0, 4).map((barber) => (
                                                         <article
                                                             key={barber.id}
-                                                            className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4"
+                                                            className="group overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                                                         >
-                                                            <div className="h-14 w-14 overflow-hidden rounded-full bg-slate-200">
+                                                            <div className="relative h-48 w-full overflow-hidden bg-slate-100">
                                                                 {barber.photo_url ? (
                                                                     <img
                                                                         src={barber.photo_url}
                                                                         alt={barber.name}
-                                                                        className="h-full w-full object-cover"
+                                                                        className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
                                                                     />
                                                                 ) : (
-                                                                    <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-500">
+                                                                    <div className="flex h-full w-full items-center justify-center text-2xl font-black text-slate-500">
                                                                         {getInitials(barber.name)}
                                                                     </div>
                                                                 )}
                                                             </div>
 
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="font-bold">{barber.name}</p>
-                                                                <p className="text-sm text-slate-500">
+                                                            <div className="p-4">
+                                                                <p className="text-lg font-black text-slate-900">{barber.name}</p>
+                                                                <p className="mt-1 text-sm text-slate-500">
                                                                     {barber.specialty || 'Barbero profesional'}
                                                                 </p>
-                                                            </div>
 
-                                                            <Link
-                                                                href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
-                                                                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold"
-                                                            >
-                                                                Reservar
-                                                            </Link>
+                                                                <div className="mt-4">
+                                                                    <Link
+                                                                        href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
+                                                                        className="inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm"
+                                                                        style={{ backgroundColor: PRIMARY }}
+                                                                    >
+                                                                        Reservar con {barber.name.split(' ')[0]}
+                                                                    </Link>
+                                                                </div>
+                                                            </div>
                                                         </article>
                                                     ))}
                                                 </div>
