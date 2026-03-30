@@ -312,7 +312,7 @@ export default async function BusinessPage({
                         )}
 
                         {tab === 'details' && (
-                            <div className="pb-4">
+                            <div className="pb-8 md:pb-4">
                                 <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
                                     <div className="space-y-8">
                                         <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
@@ -337,27 +337,6 @@ export default async function BusinessPage({
                                             </Link>
                                         </div>
 
-                                        <section>
-                                            <h3 className="text-xl font-black">Sobre nosotros</h3>
-                                            <p className="mt-3 leading-7 text-slate-600">{aboutText}</p>
-                                        </section>
-
-                                        <section>
-                                            <h3 className="text-xl font-black">Ubicación</h3>
-                                            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                                                <div className="flex h-44 items-center justify-center bg-slate-100">
-                                                    <div className="px-6 text-center">
-                                                        <p className="text-lg font-bold text-slate-800">{businessAddress}</p>
-                                                        <p className="mt-2 text-sm text-slate-500">
-                                                            Atención presencial y reserva online
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </section>
-                                    </div>
-
-                                    <div className="space-y-8">
                                         <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
                                             <div className="mb-5">
                                                 <p
@@ -421,7 +400,7 @@ export default async function BusinessPage({
                                             )}
                                         </section>
 
-                                        <section>
+                                        <section className="lg:hidden">
                                             <h3 className="text-xl font-black">Horarios</h3>
                                             <div className="mt-3 rounded-2xl border border-slate-100 bg-white p-4">
                                                 {[
@@ -438,11 +417,65 @@ export default async function BusinessPage({
                                                         className="flex items-center justify-between border-b border-slate-100 py-3 last:border-b-0"
                                                     >
                                                         <span className="text-slate-600">{day}</span>
-                                                        <span className={`font-medium ${day === 'Domingo' ? 'text-slate-400' : ''}`}>
+                                                        <span
+                                                            className={`font-medium ${day === 'Domingo' ? 'text-slate-400' : ''
+                                                                }`}
+                                                        >
                                                             {hours}
                                                         </span>
                                                     </div>
                                                 ))}
+                                            </div>
+                                        </section>
+
+                                        <section>
+                                            <h3 className="text-xl font-black">Sobre nosotros</h3>
+                                            <p className="mt-3 leading-7 text-slate-600">{aboutText}</p>
+                                        </section>
+                                    </div>
+
+                                    <div className="space-y-8">
+                                        <section className="hidden lg:block">
+                                            <h3 className="text-xl font-black">Horarios</h3>
+                                            <div className="mt-3 rounded-2xl border border-slate-100 bg-white p-4">
+                                                {[
+                                                    ['Lunes', '09:00 - 20:00'],
+                                                    ['Martes', '09:00 - 20:00'],
+                                                    ['Miércoles', '09:00 - 20:00'],
+                                                    ['Jueves', '09:00 - 20:00'],
+                                                    ['Viernes', '09:00 - 21:00'],
+                                                    ['Sábado', '10:00 - 15:00'],
+                                                    ['Domingo', 'Cerrado'],
+                                                ].map(([day, hours]) => (
+                                                    <div
+                                                        key={day}
+                                                        className="flex items-center justify-between border-b border-slate-100 py-3 last:border-b-0"
+                                                    >
+                                                        <span className="text-slate-600">{day}</span>
+                                                        <span
+                                                            className={`font-medium ${day === 'Domingo' ? 'text-slate-400' : ''
+                                                                }`}
+                                                        >
+                                                            {hours}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </section>
+
+                                        <section>
+                                            <h3 className="text-xl font-black">Ubicación</h3>
+                                            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                                <div className="flex h-36 items-center justify-center bg-slate-100 md:h-44">
+                                                    <div className="px-6 text-center">
+                                                        <p className="text-lg font-bold text-slate-800">
+                                                            {businessAddress}
+                                                        </p>
+                                                        <p className="mt-2 text-sm text-slate-500">
+                                                            Atención presencial y reserva online
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </section>
                                     </div>
