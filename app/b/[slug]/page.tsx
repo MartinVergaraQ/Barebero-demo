@@ -8,6 +8,8 @@ import { getPublicReviews } from '@/src/features/reviews/api/get-public-reviews'
 import { getActiveGalleryItems } from '@/src/features/gallery/api/get-gallery-items'
 import { ReviewsSection } from '@/src/features/reviews/components/reviews-section'
 import { PublicGallerySection } from '@/src/features/gallery/components/PublicGallerySection'
+import { formatInTimeZone } from 'date-fns-tz'
+import { BUSINESS_TIME_ZONE } from '@/src/features/booking/utils/datetime'
 
 type BusinessRow = {
     id: string
@@ -147,6 +149,58 @@ export default async function BusinessPage({
         { key: 'reviews', label: 'Reseñas' },
         { key: 'details', label: 'Detalles' },
     ]
+
+    const schedule = [
+        { dayKey: 'monday', label: 'Lunes', open: '09:00', close: '20:00', closed: false },
+        { dayKey: 'tuesday', label: 'Martes', open: '09:00', close: '20:00', closed: false },
+        { dayKey: 'wednesday', label: 'Miércoles', open: '09:00', close: '20:00', closed: false },
+        { dayKey: 'thursday', label: 'Jueves', open: '09:00', close: '20:00', closed: false },
+        { dayKey: 'friday', label: 'Viernes', open: '09:00', close: '21:00', closed: false },
+        { dayKey: 'saturday', label: 'Sábado', open: '10:00', close: '15:00', closed: false },
+        { dayKey: 'sunday', label: 'Domingo', open: null, close: null, closed: true },
+    ] as const
+
+    const weekdayMap: Record<string, string> = {
+        Monday: 'monday',
+        Tuesday: 'tuesday',
+        Wednesday: 'wednesday',
+        Thursday: 'thursday',
+        Friday: 'friday',
+        Saturday: 'saturday',
+        Sunday: 'sunday',
+    }
+
+    function toMinutes(time: string) {
+        const [hours, minutes] = time.split(':').map(Number)
+        return hours * 60 + minutes
+    }
+
+    const now = new Date()
+    const currentWeekday = weekdayMap[
+        formatInTimeZone(now, BUSINESS_TIME_ZONE, 'EEEE')
+    ]
+    const currentTime = formatInTimeZone(now, BUSINESS_TIME_ZONE, 'HH:mm')
+    const currentMinutes = toMinutes(currentTime)
+
+    const todaySchedule = schedule.find((item) => item.dayKey === currentWeekday)
+
+    const isOpenNow =
+        !!todaySchedule &&
+        !todaySchedule.closed &&
+        !!todaySchedule.open &&
+        !!todaySchedule.close &&
+        currentMinutes >= toMinutes(todaySchedule.open) &&
+        currentMinutes < toMinutes(todaySchedule.close)
+
+    const hoursStatus = !todaySchedule
+        ? 'Horarios no disponibles'
+        : todaySchedule.closed
+            ? 'Hoy está cerrado'
+            : isOpenNow
+                ? `Abierto ahora · Cierra a las ${todaySchedule.close}`
+                : currentMinutes < toMinutes(todaySchedule.open!)
+                    ? `Cerrado ahora · Abre hoy a las ${todaySchedule.open}`
+                    : 'Cerrado por hoy'
 
     return (
         <main className="min-h-screen bg-[#f8f6f6] text-slate-900">
@@ -320,25 +374,53 @@ export default async function BusinessPage({
                                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] xl:gap-9">
                                     <div className="space-y-8">
                                         <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
-                                            <div className="mb-3 flex items-center justify-between">
-                                                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                                                    Abierto ahora
-                                                </span>
-                                                <span className="text-sm font-bold text-slate-700">
-                                                    {averageRating} ★ ({reviews.length})
-                                                </span>
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="min-w-0">
+                                                    <span
+                                                        className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${isOpenNow
+                                                            ? 'bg-green-100 text-green-700'
+                                                            : 'bg-slate-100 text-slate-600'
+                                                            }`}
+                                                    >
+                                                        {isOpenNow ? 'Abierto ahora' : 'Cerrado ahora'}
+                                                    </span>
+
+                                                    <h2 className="mt-4 text-2xl font-black md:text-3xl">
+                                                        {businessName}
+                                                    </h2>
+                                                    <p className="mt-1 text-sm text-slate-500">{businessCategory}</p>
+
+                                                    <p className="mt-3 text-sm font-medium text-slate-600">
+                                                        {hoursStatus}
+                                                    </p>
+                                                </div>
+
+                                                <div className="shrink-0 text-right">
+                                                    <p className="text-lg font-black text-slate-900 md:text-xl">
+                                                        {averageRating} ★
+                                                    </p>
+                                                    <p className="text-xs font-medium text-slate-500">
+                                                        {reviews.length} reseña{reviews.length === 1 ? '' : 's'}
+                                                    </p>
+                                                </div>
                                             </div>
 
-                                            <h2 className="text-2xl font-black md:text-3xl">{businessName}</h2>
-                                            <p className="mt-1 text-sm text-slate-500">{businessCategory}</p>
+                                            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                                <Link
+                                                    href={`/b/${businessSlug}/reservar`}
+                                                    className="inline-flex w-full items-center justify-center rounded-2xl px-4 py-4 text-base font-bold text-white"
+                                                    style={{ backgroundColor: PRIMARY }}
+                                                >
+                                                    Reservar ahora
+                                                </Link>
 
-                                            <Link
-                                                href={`/b/${businessSlug}/reservar`}
-                                                className="mt-5 inline-flex w-full items-center justify-center rounded-2xl px-4 py-4 text-base font-bold text-white"
-                                                style={{ backgroundColor: PRIMARY }}
-                                            >
-                                                Reservar ahora
-                                            </Link>
+                                                <Link
+                                                    href={`/b/${businessSlug}?tab=details`}
+                                                    className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base font-bold text-slate-800"
+                                                >
+                                                    Ver horarios
+                                                </Link>
+                                            </div>
                                         </div>
 
                                         <section>
@@ -472,30 +554,67 @@ export default async function BusinessPage({
                                         </section>
 
                                         <section>
-                                            <h3 className="text-xl font-black">Horarios</h3>
-                                            <div className="mt-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                                                {[
-                                                    ['Lunes', '09:00 - 20:00'],
-                                                    ['Martes', '09:00 - 20:00'],
-                                                    ['Miércoles', '09:00 - 20:00'],
-                                                    ['Jueves', '09:00 - 20:00'],
-                                                    ['Viernes', '09:00 - 21:00'],
-                                                    ['Sábado', '10:00 - 15:00'],
-                                                    ['Domingo', 'Cerrado'],
-                                                ].map(([day, hours]) => (
-                                                    <div
-                                                        key={day}
-                                                        className="flex items-center justify-between border-b border-slate-100 py-3 last:border-b-0"
-                                                    >
-                                                        <span className="text-slate-600">{day}</span>
-                                                        <span
-                                                            className={`font-medium ${day === 'Domingo' ? 'text-slate-400' : ''
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <h3 className="text-xl font-black">Horarios</h3>
+                                                    <p className="mt-1 text-sm text-slate-500">{hoursStatus}</p>
+                                                </div>
+
+                                                {isOpenNow ? (
+                                                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+                                                        Abierto
+                                                    </span>
+                                                ) : (
+                                                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                                                        Cerrado
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+                                                <div className="grid grid-cols-[1.3fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+                                                    <span>Día</span>
+                                                    <span className="text-center">Apertura</span>
+                                                    <span className="text-center">Cierre</span>
+                                                </div>
+
+                                                {schedule.map((item) => {
+                                                    const isToday = item.dayKey === currentWeekday
+
+                                                    return (
+                                                        <div
+                                                            key={item.dayKey}
+                                                            className={`grid grid-cols-[1.3fr_1fr_1fr] items-center px-4 py-3 text-sm border-b border-slate-100 last:border-b-0 ${isToday ? 'bg-amber-50/50' : ''
                                                                 }`}
                                                         >
-                                                            {hours}
-                                                        </span>
-                                                    </div>
-                                                ))}
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <span className={`truncate ${isToday ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
+                                                                    {item.label}
+                                                                </span>
+
+                                                                {isToday && (
+                                                                    <span
+                                                                        className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                                                                        style={{
+                                                                            backgroundColor: PRIMARY_SOFT,
+                                                                            color: PRIMARY,
+                                                                        }}
+                                                                    >
+                                                                        Hoy
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            <span className="text-center font-medium text-slate-700">
+                                                                {item.closed ? '—' : item.open}
+                                                            </span>
+
+                                                            <span className={`text-center font-medium ${item.closed ? 'text-slate-400' : 'text-slate-900'}`}>
+                                                                {item.closed ? 'Cerrado' : item.close}
+                                                            </span>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                         </section>
                                     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { PublicReviewForm } from '@/src/features/reviews/components/public-review-form'
 
 type Review = {
@@ -62,28 +62,96 @@ export function ReviewsSection({
     const [open, setOpen] = useState(false)
 
     const visibleReviews = reviews.length > 0 ? reviews.slice(0, 6) : mockReviews
+    const sourceReviews = reviews.length > 0 ? reviews : mockReviews
     const visibleAverage = reviews.length > 0 ? averageRating : '5.0'
-    const visibleCount = reviews.length > 0 ? reviews.length : mockReviews.length
+    const visibleCount = sourceReviews.length
+
+    const ratingBreakdown = useMemo(() => {
+        return [5, 4, 3, 2, 1].map((stars) => {
+            const count = sourceReviews.filter(
+                (review) => Number(review.rating) === stars
+            ).length
+
+            const percentage = visibleCount > 0 ? (count / visibleCount) * 100 : 0
+
+            return {
+                stars,
+                count,
+                percentage,
+            }
+        })
+    }, [sourceReviews, visibleCount])
 
     return (
         <>
             <div className="space-y-5 pb-4">
-                <div className="flex items-center justify-between rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
-                    <div>
-                        <p className="text-5xl font-black">{visibleAverage}</p>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Basado en {visibleCount} opiniones
-                        </p>
+                <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
+                    <div className="mb-5 flex items-start justify-between gap-4">
+                        <div>
+                            <h2 className="text-2xl font-black md:text-3xl">Reseñas</h2>
+                            <p className="mt-2 text-sm text-slate-500 md:text-base">
+                                Lo que opinan clientes reales del negocio.
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={() => setOpen(true)}
+                            className="rounded-2xl px-4 py-3 text-sm font-bold shrink-0"
+                            style={{ backgroundColor: primarySoft, color: primary }}
+                        >
+                            Escribir reseña
+                        </button>
                     </div>
 
-                    <button
-                        onClick={() => setOpen(true)}
-                        className="rounded-2xl px-4 py-3 text-sm font-bold"
-                        style={{ backgroundColor: primarySoft, color: primary }}
-                    >
-                        Escribir reseña
-                    </button>
-                </div>
+                    <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
+                        <div className="text-center md:text-left">
+                            <div
+                                className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-3xl md:mx-0"
+                                style={{ backgroundColor: primarySoft, color: primary }}
+                            >
+                                ★
+                            </div>
+
+                            <p className="mt-4 text-5xl font-black leading-none text-slate-900">
+                                {visibleAverage}
+                            </p>
+                            <p className="mt-2 text-sm text-slate-500">
+                                {visibleCount} reseña{visibleCount === 1 ? '' : 's'}
+                            </p>
+                        </div>
+
+                        <div className="space-y-3">
+                            {ratingBreakdown.map((item) => (
+                                <div
+                                    key={item.stars}
+                                    className="grid grid-cols-[24px_18px_minmax(0,1fr)_36px] items-center gap-3"
+                                >
+                                    <span className="text-sm font-bold text-slate-700">
+                                        {item.stars}
+                                    </span>
+
+                                    <span className="text-sm" style={{ color: primary }}>
+                                        ★
+                                    </span>
+
+                                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                                        <div
+                                            className="h-full rounded-full transition-all"
+                                            style={{
+                                                width: `${item.percentage}%`,
+                                                backgroundColor: primary,
+                                            }}
+                                        />
+                                    </div>
+
+                                    <span className="text-right text-sm font-medium text-slate-500">
+                                        {item.count}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {visibleReviews.map((review) => (
