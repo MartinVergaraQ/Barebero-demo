@@ -237,16 +237,35 @@ export default async function BusinessPage({
 
                         <div className="mt-6 grid grid-cols-3 border-t border-slate-100 pt-6 text-center">
                             <div>
-                                <p className="text-2xl font-black md:text-3xl">{averageRating}</p>
-                                <p className="text-xs uppercase tracking-wide text-slate-400 md:text-sm">Rating</p>
+                                <div className="flex items-center justify-center gap-1">
+                                    <p className="text-2xl font-black leading-none md:text-3xl">
+                                        {averageRating}
+                                    </p>
+                                    <span
+                                        className="text-sm leading-none md:text-base"
+                                        style={{ color: PRIMARY }}
+                                    >
+                                        ★
+                                    </span>
+                                </div>
+
+                                <p className="mt-1 text-xs uppercase tracking-wide text-slate-400 md:text-sm">
+                                    Rating
+                                </p>
                             </div>
+
                             <div className="border-x border-slate-100">
                                 <p className="text-2xl font-black md:text-3xl">{services.length}</p>
-                                <p className="text-xs uppercase tracking-wide text-slate-400 md:text-sm">Servicios</p>
+                                <p className="text-xs uppercase tracking-wide text-slate-400 md:text-sm">
+                                    Servicios
+                                </p>
                             </div>
+
                             <div>
                                 <p className="text-2xl font-black md:text-3xl">{reviews.length}</p>
-                                <p className="text-xs uppercase tracking-wide text-slate-400 md:text-sm">Reseñas</p>
+                                <p className="text-xs uppercase tracking-wide text-slate-400 md:text-sm">
+                                    Reseñas
+                                </p>
                             </div>
                         </div>
                     </div>
