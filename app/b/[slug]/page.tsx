@@ -366,9 +366,11 @@ export default async function BusinessPage({
                                                 >
                                                     Equipo
                                                 </p>
-                                                <h3 className="mt-2 text-2xl font-black">Reserva con tu barbero ideal</h3>
-                                                <p className="mt-2 text-sm text-slate-500 md:text-base">
-                                                    Conoce al equipo y agenda directamente con el profesional que prefieras.
+                                                <h3 className="mt-2 text-xl font-black md:text-2xl">
+                                                    Elige tu barbero
+                                                </h3>
+                                                <p className="mt-2 text-sm text-slate-500">
+                                                    Reserva directamente con el profesional que prefieras.
                                                 </p>
                                             </div>
 
@@ -377,18 +379,18 @@ export default async function BusinessPage({
                                                     No hay barberos activos por ahora.
                                                 </div>
                                             ) : (
-                                                <div className="grid gap-4 sm:grid-cols-2">
+                                                <div className="space-y-4 xl:grid xl:grid-cols-2 xl:gap-4 xl:space-y-0">
                                                     {barbers.slice(0, 4).map((barber) => (
                                                         <article
                                                             key={barber.id}
-                                                            className="group overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                                                            className="overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm"
                                                         >
-                                                            <div className="relative h-48 w-full overflow-hidden bg-slate-100">
+                                                            <div className="relative h-36 w-full overflow-hidden bg-slate-100 md:h-40">
                                                                 {barber.photo_url ? (
                                                                     <img
                                                                         src={barber.photo_url}
                                                                         alt={barber.name}
-                                                                        className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                                                                        className="h-full w-full object-cover"
                                                                     />
                                                                 ) : (
                                                                     <div className="flex h-full w-full items-center justify-center text-2xl font-black text-slate-500">
@@ -398,20 +400,20 @@ export default async function BusinessPage({
                                                             </div>
 
                                                             <div className="p-4">
-                                                                <p className="text-lg font-black text-slate-900">{barber.name}</p>
+                                                                <p className="text-lg font-black text-slate-900">
+                                                                    {barber.name}
+                                                                </p>
                                                                 <p className="mt-1 text-sm text-slate-500">
                                                                     {barber.specialty || 'Barbero profesional'}
                                                                 </p>
 
-                                                                <div className="mt-4">
-                                                                    <Link
-                                                                        href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
-                                                                        className="inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm"
-                                                                        style={{ backgroundColor: PRIMARY }}
-                                                                    >
-                                                                        Reservar con {barber.name.split(' ')[0]}
-                                                                    </Link>
-                                                                </div>
+                                                                <Link
+                                                                    href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
+                                                                    className="mt-4 inline-flex w-full items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-bold text-white"
+                                                                    style={{ backgroundColor: PRIMARY }}
+                                                                >
+                                                                    Reservar con {barber.name.split(' ')[0]}
+                                                                </Link>
                                                             </div>
                                                         </article>
                                                     ))}
