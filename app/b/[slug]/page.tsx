@@ -125,6 +125,10 @@ export default async function BusinessPage({
         typedBusiness.address ||
         'Av. Providencia 1234, Santiago'
 
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        businessAddress
+    )}`
+
     const aboutText =
         (contentMap.about_text as string) ||
         typedBusiness.description ||
@@ -312,10 +316,10 @@ export default async function BusinessPage({
                         )}
 
                         {tab === 'details' && (
-                            <div className="pb-8 md:pb-4">
-                                <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+                            <div className="mx-auto max-w-5xl pb-8 md:pb-4 xl:max-w-[1100px]">
+                                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] xl:gap-9">
                                     <div className="space-y-8">
-                                        <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
+                                        <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
                                             <div className="mb-3 flex items-center justify-between">
                                                 <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
                                                     Abierto ahora
@@ -325,7 +329,7 @@ export default async function BusinessPage({
                                                 </span>
                                             </div>
 
-                                            <h2 className="text-2xl font-black">{businessName}</h2>
+                                            <h2 className="text-2xl font-black md:text-3xl">{businessName}</h2>
                                             <p className="mt-1 text-sm text-slate-500">{businessCategory}</p>
 
                                             <Link
@@ -333,12 +337,79 @@ export default async function BusinessPage({
                                                 className="mt-5 inline-flex w-full items-center justify-center rounded-2xl px-4 py-4 text-base font-bold text-white"
                                                 style={{ backgroundColor: PRIMARY }}
                                             >
-                                                Reservar cita
+                                                Reservar ahora
                                             </Link>
                                         </div>
 
+                                        <section>
+                                            <h3 className="text-xl font-black">Sobre nosotros</h3>
+                                            <p className="mt-3 max-w-2xl leading-7 text-slate-600">{aboutText}</p>
+                                        </section>
+
+                                        <section>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <h3 className="text-xl font-black">Ubicación</h3>
+
+                                                <a
+                                                    href={mapsUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 md:inline-flex md:items-center md:justify-center"
+                                                >
+                                                    Cómo llegar
+                                                </a>
+                                            </div>
+
+                                            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                                <div className="h-64 w-full bg-slate-100 md:h-72">
+                                                    <iframe
+                                                        title={`Mapa de ${businessName}`}
+                                                        src={`https://www.google.com/maps?q=${encodeURIComponent(
+                                                            businessAddress
+                                                        )}&z=15&output=embed`}
+                                                        className="h-full w-full border-0"
+                                                        loading="lazy"
+                                                        referrerPolicy="no-referrer-when-downgrade"
+                                                    />
+                                                </div>
+
+                                                <div className="border-t border-slate-100 px-5 py-4">
+                                                    <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">
+                                                        Dirección
+                                                    </p>
+                                                    <p className="mt-2 text-lg font-bold text-slate-900">
+                                                        {businessAddress}
+                                                    </p>
+                                                    <p className="mt-1 text-sm text-slate-500">
+                                                        Atención presencial y reserva online
+                                                    </p>
+
+                                                    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                                                        <a
+                                                            href={mapsUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex flex-1 items-center justify-center rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm"
+                                                            style={{ backgroundColor: PRIMARY }}
+                                                        >
+                                                            Cómo llegar
+                                                        </a>
+
+                                                        <Link
+                                                            href={`/b/${businessSlug}/reservar`}
+                                                            className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800"
+                                                        >
+                                                            Reservar cita
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </section>
+                                    </div>
+
+                                    <div className="space-y-8">
                                         <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
-                                            <div className="mb-5">
+                                            <div className="mb-5 max-w-md">
                                                 <p
                                                     className="text-xs font-bold uppercase tracking-[0.18em]"
                                                     style={{ color: PRIMARY }}
@@ -348,7 +419,7 @@ export default async function BusinessPage({
                                                 <h3 className="mt-2 text-xl font-black md:text-2xl">
                                                     Elige tu barbero
                                                 </h3>
-                                                <p className="mt-2 text-sm text-slate-500">
+                                                <p className="mt-2 text-sm text-slate-500 md:text-base">
                                                     Reserva directamente con el profesional que prefieras.
                                                 </p>
                                             </div>
@@ -358,18 +429,18 @@ export default async function BusinessPage({
                                                     No hay barberos activos por ahora.
                                                 </div>
                                             ) : (
-                                                <div className="space-y-4 xl:grid xl:grid-cols-2 xl:gap-4 xl:space-y-0">
+                                                <div className="space-y-4 2xl:grid 2xl:grid-cols-2 2xl:gap-4 2xl:space-y-0">
                                                     {barbers.slice(0, 4).map((barber) => (
                                                         <article
                                                             key={barber.id}
-                                                            className="overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm"
+                                                            className="mx-auto w-full max-w-[360px] overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md xl:max-w-[380px]"
                                                         >
-                                                            <div className="relative h-36 w-full overflow-hidden bg-slate-100 md:h-40">
+                                                            <div className="relative h-40 w-full overflow-hidden bg-slate-100 lg:h-[120px] xl:h-[130px] 2xl:h-[140px]">
                                                                 {barber.photo_url ? (
                                                                     <img
                                                                         src={barber.photo_url}
                                                                         alt={barber.name}
-                                                                        className="h-full w-full object-cover"
+                                                                        className="h-full w-full object-cover object-center"
                                                                     />
                                                                 ) : (
                                                                     <div className="flex h-full w-full items-center justify-center text-2xl font-black text-slate-500">
@@ -378,8 +449,8 @@ export default async function BusinessPage({
                                                                 )}
                                                             </div>
 
-                                                            <div className="p-4">
-                                                                <p className="text-lg font-black text-slate-900">
+                                                            <div className="p-4 lg:p-3 xl:p-4">
+                                                                <p className="text-lg font-black text-slate-900 lg:text-base xl:text-lg">
                                                                     {barber.name}
                                                                 </p>
                                                                 <p className="mt-1 text-sm text-slate-500">
@@ -388,7 +459,7 @@ export default async function BusinessPage({
 
                                                                 <Link
                                                                     href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
-                                                                    className="mt-4 inline-flex w-full items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-bold text-white"
+                                                                    className="mt-3 inline-flex w-full items-center justify-center rounded-2xl px-4 py-2 text-sm font-bold text-white"
                                                                     style={{ backgroundColor: PRIMARY }}
                                                                 >
                                                                     Reservar con {barber.name.split(' ')[0]}
@@ -400,9 +471,9 @@ export default async function BusinessPage({
                                             )}
                                         </section>
 
-                                        <section className="lg:hidden">
+                                        <section>
                                             <h3 className="text-xl font-black">Horarios</h3>
-                                            <div className="mt-3 rounded-2xl border border-slate-100 bg-white p-4">
+                                            <div className="mt-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                                                 {[
                                                     ['Lunes', '09:00 - 20:00'],
                                                     ['Martes', '09:00 - 20:00'],
@@ -425,57 +496,6 @@ export default async function BusinessPage({
                                                         </span>
                                                     </div>
                                                 ))}
-                                            </div>
-                                        </section>
-
-                                        <section>
-                                            <h3 className="text-xl font-black">Sobre nosotros</h3>
-                                            <p className="mt-3 leading-7 text-slate-600">{aboutText}</p>
-                                        </section>
-                                    </div>
-
-                                    <div className="space-y-8">
-                                        <section className="hidden lg:block">
-                                            <h3 className="text-xl font-black">Horarios</h3>
-                                            <div className="mt-3 rounded-2xl border border-slate-100 bg-white p-4">
-                                                {[
-                                                    ['Lunes', '09:00 - 20:00'],
-                                                    ['Martes', '09:00 - 20:00'],
-                                                    ['Miércoles', '09:00 - 20:00'],
-                                                    ['Jueves', '09:00 - 20:00'],
-                                                    ['Viernes', '09:00 - 21:00'],
-                                                    ['Sábado', '10:00 - 15:00'],
-                                                    ['Domingo', 'Cerrado'],
-                                                ].map(([day, hours]) => (
-                                                    <div
-                                                        key={day}
-                                                        className="flex items-center justify-between border-b border-slate-100 py-3 last:border-b-0"
-                                                    >
-                                                        <span className="text-slate-600">{day}</span>
-                                                        <span
-                                                            className={`font-medium ${day === 'Domingo' ? 'text-slate-400' : ''
-                                                                }`}
-                                                        >
-                                                            {hours}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-
-                                        <section>
-                                            <h3 className="text-xl font-black">Ubicación</h3>
-                                            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                                                <div className="flex h-36 items-center justify-center bg-slate-100 md:h-44">
-                                                    <div className="px-6 text-center">
-                                                        <p className="text-lg font-bold text-slate-800">
-                                                            {businessAddress}
-                                                        </p>
-                                                        <p className="mt-2 text-sm text-slate-500">
-                                                            Atención presencial y reserva online
-                                                        </p>
-                                                    </div>
-                                                </div>
                                             </div>
                                         </section>
                                     </div>
