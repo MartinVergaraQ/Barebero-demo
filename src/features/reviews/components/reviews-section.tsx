@@ -85,7 +85,7 @@ export function ReviewsSection({
     return (
         <>
             <div className="space-y-5 pb-4">
-                <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
+                <section className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm md:p-7">
                     <div className="mb-5 flex items-start justify-between gap-4">
                         <div>
                             <h2 className="text-2xl font-black md:text-3xl">Reseñas</h2>
@@ -96,23 +96,27 @@ export function ReviewsSection({
 
                         <button
                             onClick={() => setOpen(true)}
-                            className="rounded-2xl px-4 py-3 text-sm font-bold shrink-0"
-                            style={{ backgroundColor: primarySoft, color: primary }}
+                            className="shrink-0 rounded-2xl border px-4 py-3 text-sm font-bold transition hover:opacity-90"
+                            style={{
+                                backgroundColor: primarySoft,
+                                color: primary,
+                                borderColor: primarySoft,
+                            }}
                         >
                             Escribir reseña
                         </button>
                     </div>
 
-                    <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
+                    <div className="grid gap-8 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
                         <div className="text-center md:text-left">
                             <div
-                                className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-3xl md:mx-0"
-                                style={{ backgroundColor: primarySoft, color: primary }}
+                                className="mx-auto text-6xl leading-none md:mx-0 md:text-7xl"
+                                style={{ color: primary }}
                             >
                                 ★
                             </div>
 
-                            <p className="mt-4 text-5xl font-black leading-none text-slate-900">
+                            <p className="mt-3 text-6xl font-black leading-none text-slate-900 md:text-7xl">
                                 {visibleAverage}
                             </p>
                             <p className="mt-2 text-sm text-slate-500">
@@ -134,9 +138,9 @@ export function ReviewsSection({
                                         ★
                                     </span>
 
-                                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
                                         <div
-                                            className="h-full rounded-full transition-all"
+                                            className="h-full rounded-full transition-all duration-500"
                                             style={{
                                                 width: `${item.percentage}%`,
                                                 backgroundColor: primary,
@@ -176,7 +180,7 @@ export function ReviewsSection({
                                     </div>
                                 </div>
 
-                                <div className="flex gap-0.5 text-yellow-500">
+                                <div className="flex gap-0.5 text-sm" style={{ color: primary }}>
                                     {getStars(review.rating).map((filled, index) => (
                                         <span key={index}>{filled ? '★' : '☆'}</span>
                                     ))}
