@@ -6,6 +6,7 @@ export type UpdateGalleryItemInput = {
     display_order?: number
     is_active?: boolean
     barber_id?: string | null
+    service_id?: string | null
 }
 
 export async function updateGalleryItem(input: UpdateGalleryItemInput) {
@@ -16,6 +17,7 @@ export async function updateGalleryItem(input: UpdateGalleryItemInput) {
         display_order: number
         is_active: boolean
         barber_id?: string | null
+        service_id?: string | null
     } = {
         title: input.title?.trim() || null,
         display_order: input.display_order ?? 0,
@@ -24,6 +26,10 @@ export async function updateGalleryItem(input: UpdateGalleryItemInput) {
 
     if (input.barber_id !== undefined) {
         payload.barber_id = input.barber_id || null
+    }
+
+    if (input.service_id !== undefined) {
+        payload.service_id = input.service_id || null
     }
 
     const { data, error } = await supabase

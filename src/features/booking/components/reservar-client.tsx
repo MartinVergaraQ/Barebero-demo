@@ -322,15 +322,19 @@ export default function ReservarClient({
     function getFieldBorderClass(
         fieldName: 'client_name' | 'client_email' | 'client_phone'
     ) {
-        if (fieldErrors[fieldName]) {
-            return 'border-red-400'
+        if (fieldErrors[fieldName] && touchedFields[fieldName]) {
+            return 'border-red-400 focus:border-red-400 focus:shadow-[0_0_0_4px_rgba(248,113,113,0.12)]'
         }
 
-        if (touchedFields[fieldName]) {
-            return 'border-green-500'
+        if (
+            touchedFields[fieldName] &&
+            !fieldErrors[fieldName] &&
+            form[fieldName].trim()
+        ) {
+            return 'border-emerald-400 focus:border-emerald-400 focus:shadow-[0_0_0_4px_rgba(52,211,153,0.12)]'
         }
 
-        return 'border-slate-200'
+        return 'border-slate-200 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)]'
     }
 
     const filteredServices = useMemo(() => {
@@ -380,6 +384,7 @@ export default function ReservarClient({
     useEffect(() => {
         if (!initialServiceId) return
         if (loadingData) return
+        if (initialBarberId) return
         if (form.barber_id) return
 
         const barbersForInitialService = barberServices
@@ -419,15 +424,29 @@ export default function ReservarClient({
             ...prev,
             service_id: initialServiceId,
         }))
-    }, [initialServiceId, loadingData, form.barber_id, barberServices, services])
+    }, [
+        initialServiceId,
+        initialBarberId,
+        loadingData,
+        form.barber_id,
+        barberServices,
+        services,
+    ])
+
 
 
     useEffect(() => {
+        if (loadingData) return
         if (!form.service_id) return
+        if (!form.barber_id) return
 
-        const serviceStillAllowed = filteredServices.some(
-            (service) => service.id === form.service_id
+        const allowedServiceIds = new Set(
+            barberServices
+                .filter((item) => item.barber_id === form.barber_id)
+                .map((item) => item.service_id)
         )
+
+        const serviceStillAllowed = allowedServiceIds.has(form.service_id)
 
         if (!serviceStillAllowed) {
             const previousService = services.find(
@@ -442,6 +461,7 @@ export default function ReservarClient({
                 ...prev,
                 service_id: '',
             }))
+
             setSelectedSlot(null)
             setAvailableSlots([])
             setAvailabilityMessage('')
@@ -451,10 +471,19 @@ export default function ReservarClient({
                     ? `${currentBarber.name} no tiene asignado el servicio "${previousService.name}". Selecciona otro servicio.`
                     : 'El barbero seleccionado no tiene asignado ese servicio. Selecciona otro servicio.'
             )
-        } else {
-            setServiceHint('')
+
+            return
         }
-    }, [filteredServices, form.service_id, services, barbers, form.barber_id])
+
+        setServiceHint('')
+    }, [
+        loadingData,
+        form.service_id,
+        form.barber_id,
+        barberServices,
+        services,
+        barbers,
+    ])
 
     const availableServiceCount = filteredServices.length
 
@@ -462,6 +491,7 @@ export default function ReservarClient({
         async function loadData() {
             setLoadingData(true)
             setErrorMessage('')
+
 
             const [
                 { data: servicesData, error: servicesError },
@@ -517,7 +547,13 @@ export default function ReservarClient({
                 setLoadingData(false)
                 return
             }
-            setBarberServices((barberServicesData ?? []) as BarberService[])
+            const activeBarberIds = (barbersData ?? []).map((barber) => barber.id)
+
+            const barberServicesFiltered = (barberServicesData ?? []).filter((item) =>
+                activeBarberIds.includes(item.barber_id)
+            )
+
+            setBarberServices(barberServicesFiltered as BarberService[])
             setServices((servicesData ?? []) as Service[])
             setBarbers((barbersData ?? []) as Barber[])
             setBusiness(businessData as Business)
@@ -527,11 +563,40 @@ export default function ReservarClient({
         loadData()
     }, [businessId])
 
+
+
     const selectedBarber = useMemo(() => {
         return barbers.find((barber) => barber.id === form.barber_id) ?? null
     }, [barbers, form.barber_id])
 
+    const selectedDateLabel = form.appointment_date
+        ? formatHumanDate(form.appointment_date)
+        : ''
+
+    const canShowFooterSummary =
+        !!selectedBarber || !!selectedService || !!form.appointment_date || !!selectedSlot
+
+    function getServicesCountByBarber(barberId: string) {
+        return barberServices.filter((item) => item.barber_id === barberId).length
+    }
+
     const hasLockedBarber = !!initialBarberId
+    const hasInitialService = !!initialServiceId
+    const hasInitialBarber = !!initialBarberId
+
+    const shouldPickBarberFirst = !hasInitialService && !hasInitialBarber
+    const canShowServicePicker = !!form.barber_id || hasInitialService
+
+    const selectedBarberServiceIds = useMemo(() => {
+        if (!form.barber_id) return new Set<string>()
+
+        return new Set(
+            barberServices
+                .filter((item) => item.barber_id === form.barber_id)
+                .map((item) => item.service_id)
+        )
+    }, [barberServices, form.barber_id])
+    const shouldSelectBarberFirst = !hasLockedBarber && !hasInitialService
 
     function handleChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -802,10 +867,158 @@ export default function ReservarClient({
 
     if (loadingData) {
         return (
-            <main className="min-h-screen bg-[#f8f6f6] p-6 text-slate-900">
-                <div className="mx-auto max-w-6xl">
-                    <h1 className="text-2xl font-black md:text-3xl">Reservar cita</h1>
-                    <p className="mt-4 text-slate-500">Cargando datos...</p>
+            <main className="min-h-screen overflow-hidden bg-[#f8f6f6] pb-28 text-slate-900">
+                <div className="mx-auto w-full max-w-7xl">
+                    <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f8f6f6]/90 backdrop-blur">
+                        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
+                            <div className="h-10 w-10 rounded-full bg-white shadow-sm ring-1 ring-slate-100" />
+
+                            <div className="h-7 w-40 rounded-full bg-slate-200/80" />
+
+                            <div className="w-10" />
+                        </div>
+                    </header>
+
+                    <section className="mx-auto max-w-6xl px-4 pt-7 md:px-6 lg:px-8">
+                        <div className="space-y-3">
+                            <div
+                                className="h-3 w-24 rounded-full"
+                                style={{ backgroundColor: `${PRIMARY}33` }}
+                            />
+
+                            <div className="h-10 w-64 rounded-2xl bg-slate-200/90 md:h-12 md:w-80" />
+
+                            <div className="flex items-center gap-3">
+                                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
+                                    <div
+                                        className="h-full w-1/2 rounded-full"
+                                        style={{ backgroundColor: PRIMARY }}
+                                    />
+                                </div>
+
+                                <div className="h-5 w-10 rounded-full bg-slate-200/90" />
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
+                        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                            <div className="min-w-0 space-y-5">
+                                <div className="rounded-[28px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <div>
+                                            <div
+                                                className="h-3 w-32 rounded-full"
+                                                style={{ backgroundColor: `${PRIMARY}33` }}
+                                            />
+                                            <div className="mt-3 h-4 w-56 rounded-full bg-slate-200/80" />
+                                        </div>
+
+                                        <div className="h-8 w-28 rounded-full bg-slate-100" />
+                                    </div>
+
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        {[1, 2].map((item) => (
+                                            <div
+                                                key={item}
+                                                className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm"
+                                            >
+                                                <div className="mx-auto h-20 w-20 rounded-full bg-slate-200/90" />
+                                                <div className="mx-auto mt-4 h-4 w-24 rounded-full bg-slate-200/90" />
+                                                <div className="mx-auto mt-2 h-3 w-20 rounded-full bg-slate-100" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="rounded-[28px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <div>
+                                            <div
+                                                className="h-3 w-20 rounded-full"
+                                                style={{ backgroundColor: `${PRIMARY}33` }}
+                                            />
+                                            <div className="mt-3 h-4 w-64 rounded-full bg-slate-200/80" />
+                                        </div>
+
+                                        <div className="h-8 w-28 rounded-full bg-slate-100" />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {[1, 2, 3].map((item) => (
+                                            <div
+                                                key={item}
+                                                className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm"
+                                            >
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="h-3 w-20 rounded-full bg-slate-100" />
+                                                        <div className="mt-3 h-6 w-48 rounded-full bg-slate-200/90" />
+                                                        <div className="mt-3 h-4 w-full max-w-sm rounded-full bg-slate-100" />
+                                                    </div>
+
+                                                    <div className="h-7 w-24 rounded-full bg-slate-200/80" />
+                                                </div>
+
+                                                <div className="mt-4 h-14 rounded-2xl bg-slate-50" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="rounded-[28px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+                                    <div
+                                        className="h-3 w-20 rounded-full"
+                                        style={{ backgroundColor: `${PRIMARY}33` }}
+                                    />
+
+                                    <div className="mt-4 flex gap-3 overflow-hidden">
+                                        {[1, 2, 3, 4, 5].map((item) => (
+                                            <div
+                                                key={item}
+                                                className="h-16 min-w-[88px] rounded-2xl border border-slate-100 bg-slate-50"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <aside className="min-w-0 rounded-[28px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] xl:sticky xl:top-28 xl:h-fit">
+                                <div
+                                    className="h-3 w-40 rounded-full"
+                                    style={{ backgroundColor: `${PRIMARY}33` }}
+                                />
+
+                                <div className="mt-5 grid grid-cols-3 gap-3">
+                                    {Array.from({ length: 9 }).map((_, index) => (
+                                        <div
+                                            key={index}
+                                            className="h-12 rounded-2xl border border-slate-100 bg-slate-50"
+                                        />
+                                    ))}
+                                </div>
+                            </aside>
+                        </div>
+                    </section>
+
+                    <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur">
+                        <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
+                            <div className="min-w-0 shrink-0">
+                                <div className="h-3 w-24 rounded-full bg-slate-200" />
+                                <div className="mt-2 h-8 w-28 rounded-xl bg-slate-200/90" />
+                            </div>
+
+                            <div
+                                className="h-14 flex-1 rounded-2xl opacity-70 md:max-w-sm"
+                                style={{ backgroundColor: PRIMARY }}
+                            />
+                        </div>
+                    </footer>
+
+                    <div className="pointer-events-none fixed inset-0 overflow-hidden">
+                        <div className="absolute left-1/2 top-24 h-64 w-64 -translate-x-1/2 rounded-full bg-amber-200/20 blur-3xl" />
+                        <div className="absolute bottom-24 right-20 h-72 w-72 rounded-full bg-slate-300/20 blur-3xl" />
+                    </div>
                 </div>
             </main>
         )
@@ -857,18 +1070,34 @@ export default function ReservarClient({
                             <div className="space-y-2">
                                 <div className="flex items-end justify-between">
                                     <div>
-                                        <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: PRIMARY }}>
+                                        <p
+                                            className="text-xs font-bold uppercase tracking-[0.18em]"
+                                            style={{ color: PRIMARY }}
+                                        >
                                             Paso 1 de 2
                                         </p>
+
                                         <h2 className="text-2xl font-black md:text-4xl">
-                                            {hasLockedBarber ? 'Reserva con tu barbero' : 'Selección de cita'}
+                                            {hasLockedBarber
+                                                ? 'Reserva con tu barbero'
+                                                : !form.barber_id
+                                                    ? 'Elige tu barbero'
+                                                    : !form.service_id
+                                                        ? 'Elige tu servicio'
+                                                        : 'Selecciona fecha y hora'}
                                         </h2>
                                     </div>
-                                    <span className="text-sm font-medium text-slate-500 md:text-base">50%</span>
+
+                                    <span className="text-sm font-medium text-slate-500 md:text-base">
+                                        50%
+                                    </span>
                                 </div>
 
                                 <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                                    <div className="h-full w-1/2 rounded-full" style={{ backgroundColor: PRIMARY }} />
+                                    <div
+                                        className="h-full w-1/2 rounded-full"
+                                        style={{ backgroundColor: PRIMARY }}
+                                    />
                                 </div>
                             </div>
                         </section>
@@ -876,68 +1105,6 @@ export default function ReservarClient({
                         <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
                             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
                                 <div className="min-w-0 space-y-5">
-                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
-                                        <div className="mb-2 flex items-center justify-between gap-3">
-                                            <label htmlFor="service_id" className="block text-sm font-bold text-slate-500">
-                                                Servicio
-                                            </label>
-
-                                            {form.barber_id && (
-                                                <span className="text-xs font-medium text-slate-400">
-                                                    {filteredServices.length} disponible{filteredServices.length === 1 ? '' : 's'}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <select
-                                            id="service_id"
-                                            name="service_id"
-                                            value={form.service_id}
-                                            onChange={handleChange}
-                                            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none md:text-base"
-                                        >
-                                            <option value="">
-                                                {!form.barber_id
-                                                    ? initialServiceId
-                                                        ? 'Servicio preseleccionado. Ahora elige un barbero'
-                                                        : 'Primero selecciona un barbero'
-                                                    : filteredServices.length > 0
-                                                        ? 'Selecciona un servicio'
-                                                        : 'Este barbero no tiene servicios disponibles'}
-                                            </option>
-
-                                            {filteredServices.map((service) => (
-                                                <option key={service.id} value={service.id}>
-                                                    {service.name} · {service.duration_minutes} min · {formatPrice(service.price)}
-                                                </option>
-                                            ))}
-                                        </select>
-
-                                        {serviceHint && (
-                                            <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                                                <p className="font-semibold">Servicio no disponible para este barbero</p>
-                                                <p className="mt-1">{serviceHint}</p>
-                                            </div>
-                                        )}
-
-                                        {selectedService && (
-                                            <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">
-                                                <h3 className="text-lg font-black md:text-2xl">{selectedService.name}</h3>
-                                                <p className="mt-1 text-sm text-slate-500 md:text-base">
-                                                    {selectedService.description || 'Servicio profesional de barbería.'}
-                                                </p>
-                                                <div className="mt-3 flex items-center gap-3">
-                                                    <span className="text-sm text-slate-400 md:text-base">
-                                                        {selectedService.duration_minutes} min
-                                                    </span>
-                                                    <span className="text-lg font-black md:text-2xl" style={{ color: PRIMARY }}>
-                                                        {formatPrice(selectedService.price)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
                                     {hasLockedBarber ? (
                                         <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
                                             <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -945,8 +1112,20 @@ export default function ReservarClient({
                                             </h3>
 
                                             {selectedBarber ? (
-                                                <div className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">
-                                                    <div className="h-16 w-16 overflow-hidden rounded-full bg-slate-200 md:h-20 md:w-20">
+                                                <div
+                                                    className="flex items-center gap-4 rounded-[22px] border p-4 md:p-5"
+                                                    style={{
+                                                        borderColor: PRIMARY_SOFT,
+                                                        background:
+                                                            'linear-gradient(135deg, rgba(244,231,211,0.55), rgba(255,255,255,0.95))',
+                                                    }}
+                                                >
+                                                    <div
+                                                        className="h-16 w-16 overflow-hidden rounded-full bg-slate-200 ring-2 ring-offset-2 md:h-20 md:w-20"
+                                                        style={{
+                                                            boxShadow: `0 0 0 2px white, 0 0 0 4px ${PRIMARY}`,
+                                                        }}
+                                                    >
                                                         {selectedBarber.photo_url ? (
                                                             <img
                                                                 src={selectedBarber.photo_url}
@@ -961,64 +1140,130 @@ export default function ReservarClient({
                                                     </div>
 
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="text-lg font-black md:text-2xl">{selectedBarber.name}</p>
+                                                        <p className="text-lg font-black md:text-2xl">
+                                                            {selectedBarber.name}
+                                                        </p>
+
                                                         <p className="text-sm text-slate-500 md:text-base">
                                                             {selectedBarber.specialty || 'Barbero profesional'}
+                                                        </p>
+
+                                                        <p
+                                                            className="mt-2 text-xs font-black uppercase tracking-[0.16em]"
+                                                            style={{ color: PRIMARY }}
+                                                        >
+                                                            Profesional elegido desde galería
                                                         </p>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <p className="text-sm text-slate-500">Cargando barbero...</p>
+                                                <p className="text-sm text-slate-500">
+                                                    Cargando barbero...
+                                                </p>
                                             )}
                                         </div>
                                     ) : (
                                         <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
-                                            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
-                                                Seleccionar barbero
-                                            </h3>
+                                            <div className="mb-4">
+                                                <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                                                    Seleccionar barbero
+                                                </h3>
 
-                                            <div className="flex w-full max-w-full gap-4 overflow-x-auto overflow-y-hidden pb-2 [-webkit-overflow-scrolling:touch] xl:grid xl:grid-cols-4 xl:overflow-visible">
+                                                <p className="mt-1 text-sm text-slate-500">
+                                                    Primero elige quién realizará el servicio.
+                                                </p>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
                                                 {barbers.map((barber) => {
                                                     const isSelected = barber.id === form.barber_id
+                                                    const servicesCount = getServicesCountByBarber(barber.id)
 
                                                     return (
                                                         <button
                                                             key={barber.id}
                                                             type="button"
                                                             onClick={() => {
-                                                                setForm((prev) => ({ ...prev, barber_id: barber.id }))
+                                                                setForm((prev) => ({
+                                                                    ...prev,
+                                                                    barber_id: barber.id,
+                                                                    service_id: '',
+                                                                    appointment_date: '',
+                                                                }))
                                                                 setSelectedSlot(null)
                                                                 setAvailableSlots([])
                                                                 setAvailabilityMessage('')
-
+                                                                setServiceHint('')
                                                             }}
-                                                            className={`flex min-w-[88px] shrink-0 snap-start flex-col items-center gap-2 xl:min-w-0 ${isSelected ? '' : 'opacity-70'
+                                                            className={`group relative min-w-[145px] shrink-0 overflow-hidden rounded-[24px] border bg-white p-4 text-left transition duration-300 active:scale-[0.98] xl:min-w-0 ${isSelected
+                                                                ? 'border-amber-400 bg-amber-50/45 shadow-[0_18px_45px_rgba(183,121,31,0.18)]'
+                                                                : 'border-slate-100 shadow-sm hover:-translate-y-1 hover:border-amber-200 hover:shadow-[0_16px_40px_rgba(15,23,42,0.10)]'
                                                                 }`}
                                                         >
                                                             <div
-                                                                className={`relative h-16 w-16 overflow-hidden rounded-full bg-slate-200 md:h-20 md:w-20 ${isSelected ? 'ring-2 ring-offset-2' : ''
+                                                                className={`pointer-events-none absolute inset-0 opacity-0 transition duration-300 ${isSelected ? 'opacity-100' : 'group-hover:opacity-100'
                                                                     }`}
-                                                                style={
-                                                                    isSelected
-                                                                        ? ({ ringColor: PRIMARY } as React.CSSProperties)
-                                                                        : undefined
-                                                                }
-                                                            >
-                                                                {barber.photo_url ? (
-                                                                    <img
-                                                                        src={barber.photo_url}
-                                                                        alt={barber.name}
-                                                                        className="block h-full w-full object-cover"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600 md:text-lg">
-                                                                        {getInitials(barber.name)}
+                                                                style={{
+                                                                    background:
+                                                                        'radial-gradient(circle at top right, rgba(183,121,31,0.14), transparent 38%)',
+                                                                }}
+                                                            />
+
+                                                            <div className="relative">
+                                                                <div className="mb-3 flex items-start justify-between gap-3">
+                                                                    <span
+                                                                        className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${servicesCount > 0
+                                                                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+                                                                            : 'bg-slate-100 text-slate-500 ring-1 ring-slate-100'
+                                                                            }`}
+                                                                    >
+                                                                        {servicesCount > 0 ? 'Disponible' : 'Sin servicios'}
+                                                                    </span>
+
+                                                                    <span
+                                                                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-black transition ${isSelected
+                                                                            ? 'text-white'
+                                                                            : 'border border-slate-200 bg-white text-slate-300'
+                                                                            }`}
+                                                                        style={isSelected ? { backgroundColor: PRIMARY } : undefined}
+                                                                    >
+                                                                        {isSelected ? '✓' : ''}
+                                                                    </span>
+                                                                </div>
+
+                                                                <div className="flex flex-col items-center text-center">
+                                                                    <div
+                                                                        className={`relative h-20 w-20 overflow-hidden rounded-full bg-slate-100 p-1 transition duration-300 ${isSelected ? 'shadow-[0_0_0_3px_rgba(183,121,31,0.28)]' : ''
+                                                                            }`}
+                                                                    >
+                                                                        <div className="h-full w-full overflow-hidden rounded-full">
+                                                                            {barber.photo_url ? (
+                                                                                <img
+                                                                                    src={barber.photo_url}
+                                                                                    alt={barber.name}
+                                                                                    className="block h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="flex h-full w-full items-center justify-center text-lg font-black text-slate-600">
+                                                                                    {getInitials(barber.name)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                )}
+
+                                                                    <p className="mt-3 text-base font-black text-slate-950">
+                                                                        {barber.name.split(' ')[0]}
+                                                                    </p>
+
+                                                                    <p className="mt-1 line-clamp-2 min-h-[36px] text-xs leading-5 text-slate-500">
+                                                                        {barber.specialty || 'Barbero profesional'}
+                                                                    </p>
+
+                                                                    <div className="mt-3 rounded-full bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-500 ring-1 ring-slate-100">
+                                                                        {servicesCount} servicio{servicesCount === 1 ? '' : 's'}
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <span className="text-xs font-bold md:text-sm">
-                                                                {barber.name.split(' ')[0]}
-                                                            </span>
                                                         </button>
                                                     )
                                                 })}
@@ -1027,18 +1272,191 @@ export default function ReservarClient({
                                     )}
 
                                     <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                        <div className="mb-4 flex items-start justify-between gap-3">
+                                            <div>
+                                                <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
+                                                    Servicio
+                                                </h3>
+
+                                                <p className="mt-1 text-sm text-slate-500">
+                                                    {form.barber_id
+                                                        ? 'Elige uno de los servicios disponibles para este barbero.'
+                                                        : 'Primero selecciona un barbero para ver sus servicios.'}
+                                                </p>
+                                            </div>
+
+                                            {form.barber_id && (
+                                                <span className="shrink-0 rounded-full bg-slate-50 px-4 py-2 text-xs font-black text-slate-500">
+                                                    {availableServiceCount} disponible
+                                                    {availableServiceCount === 1 ? '' : 's'}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {!form.barber_id ? (
+                                            <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+                                                <p className="text-lg font-black text-slate-950">
+                                                    Elige tu barbero primero
+                                                </p>
+
+                                                <p className="mt-2 text-sm text-slate-500">
+                                                    Así mostramos solo los servicios que ese profesional tiene disponibles.
+                                                </p>
+                                            </div>
+                                        ) : filteredServices.length === 0 ? (
+                                            <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-5 py-6">
+                                                <p className="font-black text-amber-800">
+                                                    Este barbero no tiene servicios disponibles
+                                                </p>
+
+                                                <p className="mt-1 text-sm text-amber-700">
+                                                    Selecciona otro barbero para continuar.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-[430px] space-y-3 overflow-y-auto pr-1">
+                                                {filteredServices.map((service) => {
+                                                    const isSelected = form.service_id === service.id
+
+                                                    return (
+                                                        <button
+                                                            key={service.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setForm((prev) => ({
+                                                                    ...prev,
+                                                                    service_id: service.id,
+                                                                    appointment_date: '',
+                                                                }))
+
+                                                                setSelectedSlot(null)
+                                                                setAvailableSlots([])
+                                                                setAvailabilityMessage('')
+                                                                setServiceHint('')
+                                                            }}
+                                                            className={`group w-full rounded-[22px] border p-4 text-left transition duration-300 ${isSelected
+                                                                ? 'bg-amber-50/60 shadow-[0_14px_35px_rgba(183,121,31,0.12)]'
+                                                                : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-sm'
+                                                                }`}
+                                                            style={
+                                                                isSelected
+                                                                    ? {
+                                                                        borderColor: PRIMARY,
+                                                                    }
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            <div className="flex items-start justify-between gap-4">
+                                                                <div className="min-w-0">
+                                                                    <div className="mb-2 flex items-center gap-2">
+                                                                        <span
+                                                                            className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-black ${isSelected
+                                                                                ? 'border-transparent text-white'
+                                                                                : 'border-slate-300 text-transparent'
+                                                                                }`}
+                                                                            style={
+                                                                                isSelected
+                                                                                    ? { backgroundColor: PRIMARY }
+                                                                                    : undefined
+                                                                            }
+                                                                        >
+                                                                            ✓
+                                                                        </span>
+
+                                                                        <span
+                                                                            className="text-[10px] font-black uppercase tracking-[0.22em]"
+                                                                            style={{ color: PRIMARY }}
+                                                                        >
+                                                                            Servicio
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <h4 className="text-lg font-black leading-tight text-slate-950 md:text-xl">
+                                                                        {service.name}
+                                                                    </h4>
+
+                                                                    <p className="mt-2 line-clamp-2 text-sm leading-5 text-slate-500">
+                                                                        {service.description || 'Servicio profesional de barbería.'}
+                                                                    </p>
+                                                                </div>
+
+                                                                <div className="shrink-0 text-right">
+                                                                    <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                                                                        Precio
+                                                                    </p>
+
+                                                                    <p
+                                                                        className="mt-1 text-2xl font-black"
+                                                                        style={{ color: PRIMARY }}
+                                                                    >
+                                                                        {formatPrice(service.price)}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                                                                <div>
+                                                                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                                                        Duración
+                                                                    </p>
+
+                                                                    <p className="mt-1 text-sm font-black text-slate-900">
+                                                                        {service.duration_minutes} min
+                                                                    </p>
+                                                                </div>
+
+                                                                <span
+                                                                    className={`rounded-full px-4 py-2 text-xs font-black transition ${isSelected
+                                                                        ? 'bg-white text-amber-700 shadow-sm'
+                                                                        : 'bg-white text-slate-600 group-hover:text-slate-950'
+                                                                        }`}
+                                                                >
+                                                                    {isSelected ? 'Seleccionado' : 'Elegir'}
+                                                                </span>
+                                                            </div>
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {serviceHint && (
+                                            <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                                <p className="font-semibold">
+                                                    Servicio no disponible para este barbero
+                                                </p>
+
+                                                <p className="mt-1">{serviceHint}</p>
+                                            </div>
+                                        )}
+
+                                        {selectedService && (
+                                            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800">
+                                                Servicio seleccionado:{' '}
+                                                <span className="font-black">{selectedService.name}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
                                         <div className="mb-3 flex items-center justify-between gap-3">
                                             <div>
                                                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
                                                     Fecha
                                                 </p>
+
                                                 <p className="mt-1 text-sm text-slate-500">
-                                                    Selecciona una fecha disponible
+                                                    {form.service_id
+                                                        ? 'Selecciona una fecha disponible.'
+                                                        : 'Primero elige un servicio para continuar.'}
                                                 </p>
                                             </div>
 
                                             {form.appointment_date && (
-                                                <span className="text-sm font-semibold" style={{ color: PRIMARY }}>
+                                                <span
+                                                    className="text-sm font-semibold"
+                                                    style={{ color: PRIMARY }}
+                                                >
                                                     {formatHumanDate(form.appointment_date)}
                                                 </span>
                                             )}
@@ -1047,13 +1465,15 @@ export default function ReservarClient({
                                         <div className="flex w-full max-w-full snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden pb-2 [-webkit-overflow-scrolling:touch]">
                                             {dateOptions.map((option) => {
                                                 const isSelected = form.appointment_date === option.value
+                                                const disabled = !form.service_id || !form.barber_id
 
                                                 return (
                                                     <button
                                                         key={option.value}
                                                         type="button"
+                                                        disabled={disabled}
                                                         onClick={() => handleDateSelect(option.value)}
-                                                        className={`min-w-[88px] shrink-0 snap-start rounded-2xl border px-3 py-3 text-center transition ${isSelected
+                                                        className={`min-w-[88px] shrink-0 snap-start rounded-2xl border px-3 py-3 text-center transition disabled:cursor-not-allowed disabled:opacity-40 ${isSelected
                                                             ? 'bg-white'
                                                             : 'border-slate-200 bg-white text-slate-700'
                                                             }`}
@@ -1083,49 +1503,151 @@ export default function ReservarClient({
                                     </div>
                                 </div>
 
-                                <div className="min-w-0 rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5 xl:sticky xl:top-28 xl:h-fit">
-                                    <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-slate-500">
-                                        Horas disponibles
-                                    </h3>
-                                    {loadingSlots ? (
-                                        <p className="text-sm text-slate-500">Cargando horarios...</p>
-                                    ) : availableSlots.length > 0 ? (
-                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3">
-                                            {availableSlots.map((slot) => {
-                                                const isSelected = selectedSlot?.start_at === slot.start_at
+                                <div className="min-w-0 rounded-[28px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] xl:sticky xl:top-28 xl:h-fit">
+                                    <div className="mb-5 flex items-start justify-between gap-4">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-400">
+                                                Horas disponibles
+                                            </p>
 
-                                                return (
-                                                    <button
-                                                        key={slot.start_at}
-                                                        type="button"
-                                                        onClick={() => setSelectedSlot(slot)}
-                                                        className={`w-full min-w-0 rounded-xl border px-3 py-3 text-sm font-bold transition sm:px-4 md:text-base ${isSelected
-                                                            ? 'bg-white'
-                                                            : 'border-slate-200 bg-white text-slate-700'
-                                                            }`}
-                                                        style={
-                                                            isSelected
-                                                                ? {
-                                                                    borderColor: PRIMARY,
-                                                                    backgroundColor: PRIMARY_SOFT,
-                                                                    color: PRIMARY,
-                                                                }
-                                                                : undefined
-                                                        }
-                                                    >
-                                                        {slot.label}
-                                                    </button>
-                                                )
-                                            })}
+                                            <h3 className="mt-2 text-xl font-black text-slate-950">
+                                                {form.appointment_date
+                                                    ? formatHumanDate(form.appointment_date)
+                                                    : 'Elige fecha y hora'}
+                                            </h3>
+
+                                            <p className="mt-1 text-sm text-slate-500">
+                                                {form.service_id && form.barber_id && form.appointment_date
+                                                    ? 'Selecciona el horario que más te acomode.'
+                                                    : 'Selecciona barbero, servicio y fecha para ver disponibilidad.'}
+                                            </p>
+                                        </div>
+
+                                        {availableSlots.length > 0 && (
+                                            <span
+                                                className="shrink-0 rounded-full px-4 py-2 text-xs font-black shadow-sm"
+                                                style={{
+                                                    backgroundColor: PRIMARY_SOFT,
+                                                    color: PRIMARY,
+                                                }}
+                                            >
+                                                {availableSlots.length} hora{availableSlots.length === 1 ? '' : 's'}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {loadingSlots ? (
+                                        <div className="space-y-3">
+                                            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+                                            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+                                            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+                                        </div>
+                                    ) : availableSlots.length > 0 ? (
+                                        <div className="space-y-5">
+                                            {[
+                                                {
+                                                    title: 'Mañana',
+                                                    range: availableSlots.filter((slot) => {
+                                                        const hour = Number(slot.label.split(':')[0])
+                                                        return hour < 12
+                                                    }),
+                                                },
+                                                {
+                                                    title: 'Tarde',
+                                                    range: availableSlots.filter((slot) => {
+                                                        const hour = Number(slot.label.split(':')[0])
+                                                        return hour >= 12 && hour < 18
+                                                    }),
+                                                },
+                                                {
+                                                    title: 'Noche',
+                                                    range: availableSlots.filter((slot) => {
+                                                        const hour = Number(slot.label.split(':')[0])
+                                                        return hour >= 18
+                                                    }),
+                                                },
+                                            ]
+                                                .filter((group) => group.range.length > 0)
+                                                .map((group) => (
+                                                    <div key={group.title}>
+                                                        <div className="mb-3 flex items-center gap-3">
+                                                            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">
+                                                                {group.title}
+                                                            </p>
+                                                            <div className="h-px flex-1 bg-slate-100" />
+                                                        </div>
+
+                                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                                            {group.range.map((slot) => {
+                                                                const isSelected = selectedSlot?.start_at === slot.start_at
+
+                                                                return (
+                                                                    <button
+                                                                        key={slot.start_at}
+                                                                        type="button"
+                                                                        onClick={() => setSelectedSlot(slot)}
+                                                                        className={`group relative w-full rounded-2xl border px-4 py-4 text-center text-base font-black transition duration-300 active:scale-[0.98] ${isSelected
+                                                                            ? 'shadow-[0_14px_30px_rgba(183,121,31,0.18)]'
+                                                                            : 'border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-sm'
+                                                                            }`}
+                                                                        style={
+                                                                            isSelected
+                                                                                ? {
+                                                                                    borderColor: PRIMARY,
+                                                                                    backgroundColor: PRIMARY_SOFT,
+                                                                                    color: PRIMARY,
+                                                                                }
+                                                                                : undefined
+                                                                        }
+                                                                    >
+                                                                        <span>{slot.label}</span>
+
+                                                                        {isSelected && (
+                                                                            <span
+                                                                                className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white"
+                                                                                style={{ backgroundColor: PRIMARY }}
+                                                                            >
+                                                                                ✓
+                                                                            </span>
+                                                                        )}
+                                                                    </button>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+
+                                            {selectedSlot && (
+                                                <div
+                                                    className="rounded-2xl border px-4 py-3 text-sm font-semibold"
+                                                    style={{
+                                                        borderColor: PRIMARY,
+                                                        backgroundColor: PRIMARY_SOFT,
+                                                        color: PRIMARY,
+                                                    }}
+                                                >
+                                                    Hora seleccionada: <span className="font-black">{selectedSlot.label}</span>
+                                                </div>
+                                            )}
+
+                                            <p className="text-xs font-medium leading-5 text-slate-400">
+                                                Los horarios disponibles pueden cambiar si otro cliente reserva antes de confirmar.
+                                            </p>
                                         </div>
                                     ) : availabilityMessage ? (
-                                        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-700">
-                                            {availabilityMessage}
+                                        <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+                                            <p className="font-black">Sin horarios disponibles</p>
+                                            <p className="mt-1">{availabilityMessage}</p>
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-slate-500">
-                                            Selecciona servicio, barbero y fecha para ver horarios disponibles.
-                                        </p>
+                                        <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                                            <p className="text-lg font-black text-slate-950">
+                                                Aún no hay horarios para mostrar
+                                            </p>
+                                            <p className="mt-2 text-sm leading-6 text-slate-500">
+                                                Primero selecciona barbero, servicio y fecha.
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -1134,7 +1656,10 @@ export default function ReservarClient({
                         <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur">
                             <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
                                 <div className="min-w-0 shrink-0">
-                                    <p className="text-xs font-medium text-slate-500 md:text-sm">Total estimado</p>
+                                    <p className="text-xs font-medium text-slate-500 md:text-sm">
+                                        Total estimado
+                                    </p>
+
                                     <p className="text-2xl font-black md:text-3xl">
                                         {selectedService ? formatPrice(selectedService.price) : '$0'}
                                     </p>
@@ -1176,37 +1701,72 @@ export default function ReservarClient({
 
                         <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
                             <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-                                <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm xl:sticky xl:top-28 xl:h-fit">
-                                    <h3 className="text-xl font-black md:text-2xl">
-                                        {selectedService?.name || 'Servicio'}
-                                    </h3>
+                                <div className="overflow-hidden rounded-[30px] border border-white bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)] xl:sticky xl:top-28 xl:h-fit">
+                                    <div
+                                        className="relative p-5 md:p-6"
+                                        style={{
+                                            background:
+                                                'radial-gradient(circle at top right, rgba(183,121,31,0.14), transparent 36%), linear-gradient(135deg, rgba(255,255,255,1), rgba(250,247,241,0.82))',
+                                        }}
+                                    >
+                                        <p
+                                            className="text-xs font-black uppercase tracking-[0.22em]"
+                                            style={{ color: PRIMARY }}
+                                        >
+                                            Resumen de reserva
+                                        </p>
 
-                                    <div className="mt-3 space-y-2 text-sm text-slate-600 md:text-base">
-                                        <p>
-                                            <span className="font-bold text-slate-900">Barbero:</span>{' '}
-                                            {selectedBarber?.name || '-'}
+                                        <h3 className="mt-3 text-2xl font-black text-slate-950 md:text-3xl">
+                                            {selectedService?.name || 'Servicio'}
+                                        </h3>
+
+                                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                                            Revisa los datos antes de confirmar tu cita.
                                         </p>
-                                        <p>
-                                            <span className="font-bold text-slate-900">Fecha:</span>{' '}
-                                            {formatHumanDate(form.appointment_date)}
-                                        </p>
-                                        <p>
-                                            <span className="font-bold text-slate-900">Hora:</span>{' '}
-                                            {selectedSlot?.label || '-'}
-                                        </p>
-                                        <p>
-                                            <span className="font-bold text-slate-900">Duración:</span>{' '}
-                                            {selectedService?.duration_minutes ?? 0} min
-                                        </p>
-                                        <p>
-                                            <span className="font-bold text-slate-900">Total:</span>{' '}
-                                            {selectedService ? formatPrice(selectedService.price) : '$0'}
-                                        </p>
+
+                                        <div className="mt-5 space-y-3">
+                                            <div className="flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 ring-1 ring-slate-100">
+                                                <span className="text-sm font-bold text-slate-500">Barbero</span>
+                                                <span className="text-sm font-black text-slate-950">
+                                                    {selectedBarber?.name || '-'}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 ring-1 ring-slate-100">
+                                                <span className="text-sm font-bold text-slate-500">Fecha</span>
+                                                <span className="text-right text-sm font-black text-slate-950">
+                                                    {formatHumanDate(form.appointment_date)}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 ring-1 ring-slate-100">
+                                                <span className="text-sm font-bold text-slate-500">Hora</span>
+                                                <span className="text-sm font-black text-slate-950">
+                                                    {selectedSlot?.label || '-'}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 ring-1 ring-slate-100">
+                                                <span className="text-sm font-bold text-slate-500">Duración</span>
+                                                <span className="text-sm font-black text-slate-950">
+                                                    {selectedService?.duration_minutes ?? 0} min
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-5 rounded-3xl px-5 py-4 text-white shadow-[0_18px_40px_rgba(183,121,31,0.25)]" style={{ backgroundColor: PRIMARY }}>
+                                            <p className="text-xs font-black uppercase tracking-[0.2em] text-white/75">
+                                                Total
+                                            </p>
+                                            <p className="mt-1 text-3xl font-black">
+                                                {selectedService ? formatPrice(selectedService.price) : '$0'}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                    <div className="rounded-[28px] border border-white bg-white p-4 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition duration-300 focus-within:-translate-y-0.5 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.11)] md:p-5">
                                         <label htmlFor="client_name" className="mb-2 block text-sm font-bold text-slate-600">
                                             Nombre completo
                                         </label>
@@ -1221,14 +1781,14 @@ export default function ReservarClient({
                                             placeholder="Ej. Juan Pérez"
                                             autoComplete="name"
                                             maxLength={80}
-                                            className={`w-full rounded-2xl border bg-white p-4 text-sm outline-none md:text-base ${getFieldBorderClass('client_name')}`}
+                                            className={`w-full rounded-2xl border bg-white px-4 py-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_name')}`}
                                         />
                                         {!fieldErrors.client_name && touchedFields.client_name && (
                                             <p className="mt-2 text-sm text-green-600">Nombre válido</p>
                                         )}
                                     </div>
 
-                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                    <div className="rounded-[28px] border border-white bg-white p-4 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition duration-300 focus-within:-translate-y-0.5 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.11)] md:p-5">
                                         <label htmlFor="client_email" className="mb-2 block text-sm font-bold text-slate-600">
                                             Correo electrónico
                                         </label>
@@ -1243,14 +1803,14 @@ export default function ReservarClient({
                                             placeholder="tu@correo.com"
                                             autoComplete="email"
                                             maxLength={120}
-                                            className={`w-full rounded-2xl border bg-white p-4 text-sm outline-none md:text-base ${getFieldBorderClass('client_email')}`}
+                                            className={`w-full rounded-2xl border bg-white px-4 py-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_email')}`}
                                         />
                                         {!fieldErrors.client_email && touchedFields.client_email && form.client_email.trim() && (
                                             <p className="mt-2 text-sm text-green-600">Correo válido</p>
                                         )}
                                     </div>
 
-                                    <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+                                    <div className="rounded-[28px] border border-white bg-white p-4 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition duration-300 focus-within:-translate-y-0.5 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.11)] md:p-5">
                                         <label htmlFor="client_phone" className="mb-2 block text-sm font-bold text-slate-600">
                                             Número de celular
                                         </label>
@@ -1266,7 +1826,7 @@ export default function ReservarClient({
                                             autoComplete="tel"
                                             inputMode="numeric"
                                             maxLength={15}
-                                            className={`w-full rounded-2xl border bg-white p-4 text-sm outline-none md:text-base ${getFieldBorderClass('client_phone')}`}
+                                            className={`w-full rounded-2xl border bg-white px-4 py-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_phone')}`}
                                         />
                                         {!fieldErrors.client_phone && touchedFields.client_phone && form.client_phone.trim() && (
                                             <p className="mt-2 text-sm text-green-600">Teléfono válido</p>
@@ -1276,20 +1836,51 @@ export default function ReservarClient({
                             </div>
                         </section>
 
-                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur">
-                            <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
-                                <div className="min-w-0 shrink-0">
-                                    <span className="text-sm font-medium text-slate-500">Total a pagar</span>
-                                    <p className="text-2xl font-black md:text-3xl">
-                                        {selectedService ? formatPrice(selectedService.price) : '$0'}
-                                    </p>
+                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/92 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-18px_45px_rgba(15,23,42,0.08)] backdrop-blur">
+                            <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 md:flex-row md:items-center">
+                                <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 md:grid-cols-4">
+                                    <div className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                                            Barbero
+                                        </p>
+                                        <p className="mt-1 truncate text-sm font-black text-slate-950">
+                                            {selectedBarber?.name || '-'}
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                                            Servicio
+                                        </p>
+                                        <p className="mt-1 truncate text-sm font-black text-slate-950">
+                                            {selectedService?.name || '-'}
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                                            Hora
+                                        </p>
+                                        <p className="mt-1 truncate text-sm font-black text-slate-950">
+                                            {selectedSlot?.label || '-'}
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-amber-50 px-3 py-2 ring-1 ring-amber-100">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">
+                                            Total
+                                        </p>
+                                        <p className="mt-1 truncate text-xl font-black text-slate-950">
+                                            {selectedService ? formatPrice(selectedService.price) : '$0'}
+                                        </p>
+                                    </div>
                                 </div>
 
-                                <div className="flex w-full max-w-md gap-3">
+                                <div className="flex w-full gap-3 md:w-auto">
                                     <button
                                         type="button"
                                         onClick={() => setStep(1)}
-                                        className="flex-1 rounded-2xl border border-slate-300 px-4 py-4 text-sm font-bold text-slate-800 md:text-base"
+                                        className="w-32 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black text-slate-800 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-slate-300 active:scale-[0.98]"
                                     >
                                         Volver
                                     </button>
@@ -1297,16 +1888,12 @@ export default function ReservarClient({
                                     <button
                                         type="submit"
                                         disabled={submitting || !isStepTwoFormValid}
-                                        className="flex-1 rounded-2xl px-4 py-4 text-sm font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 md:text-base" style={{ backgroundColor: PRIMARY }}
+                                        className="flex-1 rounded-2xl px-6 py-4 text-sm font-black text-white shadow-[0_16px_35px_rgba(183,121,31,0.26)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:w-[260px]"
+                                        style={{ backgroundColor: PRIMARY }}
                                     >
                                         {submitting ? 'Guardando...' : 'Confirmar reserva'}
                                     </button>
                                 </div>
-                                {!isStepTwoFormValid && (
-                                    <p className="mt-3 text-sm text-slate-500">
-                                        Completa correctamente tus datos para confirmar la reserva.
-                                    </p>
-                                )}
                             </div>
                         </footer>
                     </form>

@@ -4,6 +4,7 @@ export type BarberGalleryItem = {
     id: string
     business_id: string
     barber_id: string | null
+    service_id: string | null
     type: 'image' | 'video'
     title: string | null
     media_url: string
@@ -13,6 +14,10 @@ export type BarberGalleryItem = {
     created_at: string
     updated_at: string
     barber: {
+        id: string
+        name: string
+    } | null
+    service: {
         id: string
         name: string
     } | null
@@ -26,18 +31,23 @@ export async function getGalleryItemsByBarber(
     const { data, error } = await supabase
         .from('gallery_items')
         .select(`
-      id,
-      business_id,
-      barber_id,
-      type,
-      title,
-      media_url,
-      public_id,
-      display_order,
-      is_active,
-      created_at,
-      updated_at
-    `)
+            id,
+            business_id,
+            barber_id,
+            service_id,
+            type,
+            title,
+            media_url,
+            public_id,
+            display_order,
+            is_active,
+            created_at,
+            updated_at,
+            service:service_id (
+                id,
+                name
+            )
+        `)
         .eq('barber_id', barberId)
         .order('display_order', { ascending: true })
 
@@ -45,8 +55,11 @@ export async function getGalleryItemsByBarber(
         throw new Error('No se pudieron cargar los items de galería del barbero')
     }
 
-    return (data ?? []).map((item) => ({
+    return (data ?? []).map((item: any) => ({
         ...item,
         barber: null,
+        service: Array.isArray(item.service)
+            ? item.service[0] ?? null
+            : item.service ?? null,
     }))
 }

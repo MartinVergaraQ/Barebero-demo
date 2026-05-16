@@ -10,6 +10,8 @@ import { ReviewsSection } from '@/src/features/reviews/components/reviews-sectio
 import { PublicGallerySection } from '@/src/features/gallery/components/PublicGallerySection'
 import { formatInTimeZone } from 'date-fns-tz'
 import { BUSINESS_TIME_ZONE } from '@/src/features/booking/utils/datetime'
+import { PublicServicesExplorer } from './components/public-services-explorer'
+
 
 type BusinessRow = {
     id: string
@@ -26,8 +28,8 @@ type BusinessRow = {
     cover_url: string | null
     description: string | null
     timezone: string | null
+    updated_at: string | null
 }
-
 type BusinessPageProps = {
     params: Promise<{
         slug: string
@@ -79,24 +81,24 @@ export default async function BusinessPage({
     const { data: business, error: businessError } = await supabase
         .from('businesses')
         .select(`
-      id,
-      name,
-      slug,
-      phone,
-      email,
-      address,
-      city,
-      country,
-      instagram_url,
-      whatsapp_url,
-      logo_url,
-      cover_url,
-      description,
-      timezone
-    `)
+    id,
+    name,
+    slug,
+    phone,
+    email,
+    address,
+    city,
+    country,
+    instagram_url,
+    whatsapp_url,
+    logo_url,
+    cover_url,
+    description,
+    timezone,
+    updated_at
+  `)
         .eq('slug', slug)
         .single()
-
     if (businessError || !business) {
         notFound()
     }
@@ -135,11 +137,6 @@ export default async function BusinessPage({
         (contentMap.about_text as string) ||
         typedBusiness.description ||
         'Somos una barbería moderna enfocada en entregar una experiencia profesional, cercana y fácil de reservar.'
-
-    const heroImage =
-        (contentMap.hero_image_url as string) ||
-        typedBusiness.cover_url ||
-        'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1200&q=80'
 
     const averageRating = getAverageRating(reviews)
 
@@ -202,76 +199,174 @@ export default async function BusinessPage({
                     ? `Cerrado ahora · Abre hoy a las ${todaySchedule.open}`
                     : 'Cerrado por hoy'
 
+    const FALLBACK_HERO_IMAGE =
+        'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1600&q=85'
+
+    function withCacheBuster(url: string, version?: string | null) {
+        if (!version) return url
+
+        const separator = url.includes('?') ? '&' : '?'
+        return `${url}${separator}v=${encodeURIComponent(version)}`
+    }
+
+    const rawHeroImage = typedBusiness.cover_url || FALLBACK_HERO_IMAGE
+    const heroImage = withCacheBuster(rawHeroImage, typedBusiness.updated_at)
+
     return (
+
         <main className="min-h-screen bg-[#f8f6f6] text-slate-900">
             <div className="mx-auto w-full max-w-7xl bg-[#f8f6f6] pb-28">
-                <section className="relative h-64 w-full overflow-hidden bg-slate-900 md:h-80 lg:h-[420px]">
-                    <div
-                        className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: `url('${heroImage}')` }}
+                <section className="relative h-64 w-full overflow-hidden bg-slate-950 md:h-80 lg:h-[420px]">
+                    <img
+                        src={heroImage}
+                        alt={businessName}
+                        className="absolute inset-0 h-full w-full object-cover object-center"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent" />
 
-                    <div className="absolute left-4 right-4 top-4 flex items-center justify-between md:left-6 md:right-6 lg:left-8 lg:right-8">
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/15 to-black/45" />
+
+                    <div className="absolute left-4 right-4 top-4 z-10 flex items-center justify-between md:left-6 md:right-6 lg:left-8 lg:right-8">
                         <Link
                             href={`/b/${businessSlug}?tab=services`}
-                            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur"
+                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/25 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 active:translate-y-0 active:scale-95"
+                            aria-label="Volver"
                         >
-                            ←
+                            <span className="text-2xl leading-none transition duration-300 group-hover:-translate-x-0.5">
+                                ←
+                            </span>
                         </Link>
+
+                        <a
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/25 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 active:translate-y-0 active:scale-95 md:w-auto md:px-4"
+                            aria-label="Abrir ubicación"
+                        >
+                            <span className="hidden text-sm font-black uppercase tracking-[0.16em] md:inline">
+                                Mapa
+                            </span>
+
+                            <span className="text-lg leading-none transition duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 md:ml-2">
+                                ↗
+                            </span>
+                        </a>
                     </div>
                 </section>
 
-                <section className="relative -mt-12 px-4 md:px-6 lg:px-8">
-                    <div className="mx-auto max-w-5xl rounded-[24px] border border-slate-100 bg-white p-6 shadow-xl md:p-8">
-                        <div className="text-center">
-                            <h1 className="text-3xl font-black md:text-4xl">{businessName}</h1>
-                            <p
-                                className="mt-2 text-sm font-bold uppercase tracking-[0.18em] md:text-base"
-                                style={{ color: PRIMARY }}
-                            >
-                                {businessCategory}
-                            </p>
-                            <p className="mt-3 text-sm text-slate-500 md:text-base">{businessAddress}</p>
-                        </div>
+                <section className="relative z-10 -mt-12 px-4 md:px-6 lg:px-8">
+                    <div className="mx-auto max-w-5xl">
+                        <div className="group overflow-hidden rounded-[34px] border border-white/70 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] transition duration-500 motion-safe:animate-[heroCardIn_700ms_ease-out] hover:shadow-[0_30px_90px_rgba(15,23,42,0.20)]">
+                            <div className="relative">
+                                <div
+                                    className="pointer-events-none absolute inset-0"
+                                    style={{
+                                        background:
+                                            'radial-gradient(circle at top left, rgba(183,121,31,0.16), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.95), rgba(250,247,241,0.78))',
+                                    }}
+                                />
 
-                        <div className="mt-6 grid grid-cols-3 border-t border-slate-100 pt-6 text-center">
-                            <div>
-                                <div className="flex items-center justify-center gap-1">
-                                    <p className="text-2xl font-black leading-none md:text-3xl">
-                                        {averageRating}
-                                    </p>
-                                    <span
-                                        className="text-sm leading-none md:text-base"
+                                <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
+
+                                <div className="relative px-6 py-7 text-center md:px-10 md:py-8">
+                                    <div className="mb-4 flex items-center justify-center">
+                                        <div
+                                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 shadow-sm ring-1 ${isOpenNow
+                                                ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                                : 'bg-slate-100 text-slate-600 ring-slate-200'
+                                                }`}
+                                        >
+                                            <span className="relative flex h-2.5 w-2.5">
+                                                {isOpenNow && (
+                                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                                                )}
+
+                                                <span
+                                                    className={`relative inline-flex h-2.5 w-2.5 rounded-full ${isOpenNow ? 'bg-emerald-500' : 'bg-slate-400'
+                                                        }`}
+                                                />
+                                            </span>
+
+                                            <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+                                                {isOpenNow ? 'Abierto ahora' : 'Cerrado ahora'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <p
+                                        className="text-[11px] font-black uppercase tracking-[0.34em]"
                                         style={{ color: PRIMARY }}
                                     >
-                                        ★
-                                    </span>
+                                        {businessCategory}
+                                    </p>
+
+                                    <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+                                        {businessName}
+                                    </h1>
+
+                                    <div className="mt-3 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
+                                        <span
+                                            className="h-1.5 w-1.5 rounded-full"
+                                            style={{ backgroundColor: PRIMARY }}
+                                        />
+                                        <span>{businessAddress}</span>
+                                    </div>
+
+                                    <div className="mx-auto mt-5 h-px max-w-3xl bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+
+                                    <div className="mt-5 grid grid-cols-3 gap-2 md:gap-4">
+                                        <div className="rounded-2xl bg-white/65 px-3 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90">
+                                            <div className="flex items-center justify-center gap-1">
+                                                <p className="text-3xl font-black leading-none text-slate-950">
+                                                    {averageRating}
+                                                </p>
+                                                <span
+                                                    className="text-base leading-none"
+                                                    style={{ color: PRIMARY }}
+                                                >
+                                                    ★
+                                                </span>
+                                            </div>
+                                            <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                Rating
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-2xl bg-white/65 px-3 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90">
+                                            <p className="text-3xl font-black leading-none text-slate-950">
+                                                {services.length}
+                                            </p>
+                                            <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                Servicios
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-2xl bg-white/65 px-3 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90">
+                                            <p className="text-3xl font-black leading-none text-slate-950">
+                                                {reviews.length}
+                                            </p>
+                                            <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                Reseñas
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6">
+                                        <Link
+                                            href={`/b/${businessSlug}/reservar`}
+                                            className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.30)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.99]"
+                                            style={{ backgroundColor: PRIMARY }}
+                                        >
+                                            Reservar ahora
+                                        </Link>
+                                    </div>
                                 </div>
-
-                                <p className="mt-1 text-xs uppercase tracking-wide text-slate-400 md:text-sm">
-                                    Rating
-                                </p>
-                            </div>
-
-                            <div className="border-x border-slate-100">
-                                <p className="text-2xl font-black md:text-3xl">{services.length}</p>
-                                <p className="text-xs uppercase tracking-wide text-slate-400 md:text-sm">
-                                    Servicios
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="text-2xl font-black md:text-3xl">{reviews.length}</p>
-                                <p className="text-xs uppercase tracking-wide text-slate-400 md:text-sm">
-                                    Reseñas
-                                </p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <section className="sticky top-0 z-20 mt-4 border-b border-slate-200 bg-[#f8f6f6]">
+                <section className="sticky top-0 z-20 mt-4 border-b border-slate-200 bg-[#f8f6f6]/95 backdrop-blur">
                     <div className="mx-auto flex max-w-6xl px-2 md:px-6">
                         {tabs.map((item) => {
                             const active = tab === item.key
@@ -281,14 +376,19 @@ export default async function BusinessPage({
                                     key={item.key}
                                     href={`/b/${businessSlug}?tab=${item.key}`}
                                     scroll
-                                    className={`flex-1 border-b-2 py-4 text-center text-sm font-bold transition md:text-base ${active ? 'text-slate-900' : 'border-transparent text-slate-500'
+                                    className={`relative flex-1 py-4 text-center text-sm font-bold transition md:text-base ${active ? 'text-slate-900' : 'text-slate-500'
                                         }`}
                                     style={{
-                                        borderBottomColor: active ? PRIMARY : 'transparent',
                                         color: active ? PRIMARY : undefined,
                                     }}
                                 >
                                     {item.label}
+
+                                    <span
+                                        className={`absolute bottom-0 left-1/2 h-0.5 -translate-x-1/2 rounded-full transition-all ${active ? 'w-20 opacity-100' : 'w-0 opacity-0'
+                                            }`}
+                                        style={{ backgroundColor: PRIMARY }}
+                                    />
                                 </Link>
                             )
                         })}
@@ -298,79 +398,17 @@ export default async function BusinessPage({
                 <section className="px-4 pt-5 md:px-6 lg:px-8">
                     <div className="mx-auto max-w-6xl">
                         {tab === 'services' && (
-                            <div className="space-y-5">
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        placeholder="Buscar un servicio..."
-                                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm outline-none md:text-base"
-                                    />
-                                </div>
-
-                                <div className="flex gap-2 overflow-x-auto pb-1">
-                                    <button
-                                        className="rounded-full px-5 py-2 text-sm font-semibold text-white"
-                                        style={{ backgroundColor: PRIMARY }}
-                                    >
-                                        Todos
-                                    </button>
-                                    <button className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-600">
-                                        Corte
-                                    </button>
-                                    <button className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-600">
-                                        Barba
-                                    </button>
-                                    <button className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-600">
-                                        Combos
-                                    </button>
-                                </div>
-
-                                {services.length === 0 ? (
-                                    <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500">
-                                        No hay servicios activos.
-                                    </div>
-                                ) : (
-                                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                                        {services.map((service) => (
-                                            <article
-                                                key={service.id}
-                                                className="flex h-full flex-col justify-between rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm"
-                                            >
-                                                <div>
-                                                    <h2 className="text-xl font-black leading-tight">{service.name}</h2>
-                                                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">
-                                                        {service.description || 'Servicio profesional de barbería.'}
-                                                    </p>
-
-                                                    <div className="mt-3 flex items-center gap-3">
-                                                        <span className="text-sm text-slate-400">
-                                                            {service.duration_minutes} min
-                                                        </span>
-                                                        <span className="text-xl font-black" style={{ color: PRIMARY }}>
-                                                            {formatPrice(service.price)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-5">
-                                                    <Link
-                                                        href={`/b/${businessSlug}/reservar?serviceId=${service.id}`}
-                                                        className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-3 text-sm font-bold text-white shadow-lg"
-                                                        style={{ backgroundColor: PRIMARY }}
-                                                    >
-                                                        Reservar
-                                                    </Link>
-                                                </div>
-                                            </article>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                            <PublicServicesExplorer
+                                services={services}
+                                businessSlug={businessSlug}
+                                primary={PRIMARY}
+                            />
                         )}
 
                         {tab === 'gallery' && (
                             <PublicGallerySection
                                 items={galleryItems}
+                                businessSlug={businessSlug}
                                 barbers={barbers.map((barber) => ({
                                     id: barber.id,
                                     name: barber.name,
@@ -389,138 +427,241 @@ export default async function BusinessPage({
                         )}
 
                         {tab === 'details' && (
-                            <div className="mx-auto max-w-5xl pb-8 md:pb-4 xl:max-w-[1100px]">
-                                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] xl:gap-9">
-                                    <div className="space-y-8">
-                                        <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="min-w-0">
-                                                    <span
-                                                        className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${isOpenNow
-                                                            ? 'bg-green-100 text-green-700'
-                                                            : 'bg-slate-100 text-slate-600'
-                                                            }`}
+                            <div className="mx-auto max-w-6xl pb-10">
+                                <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_410px] xl:gap-8">
+                                    <div className="space-y-7">
+                                        <section className="relative overflow-hidden rounded-[32px] border border-white bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.10)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_26px_75px_rgba(15,23,42,0.14)] md:p-7">
+                                            <div
+                                                className="pointer-events-none absolute inset-0"
+                                                style={{
+                                                    background:
+                                                        'radial-gradient(circle at top left, rgba(183,121,31,0.13), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.96), rgba(250,247,241,0.72))',
+                                                }}
+                                            />
+
+                                            <div className="relative">
+                                                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                                                    <div className="min-w-0">
+                                                        <div
+                                                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.16em] ring-1 ${isOpenNow
+                                                                ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                                                : 'bg-slate-100 text-slate-600 ring-slate-200'
+                                                                }`}
+                                                        >
+                                                            <span className="relative flex h-2.5 w-2.5">
+                                                                {isOpenNow && (
+                                                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                                                                )}
+
+                                                                <span
+                                                                    className={`relative inline-flex h-2.5 w-2.5 rounded-full ${isOpenNow ? 'bg-emerald-500' : 'bg-slate-400'
+                                                                        }`}
+                                                                />
+                                                            </span>
+
+                                                            {isOpenNow ? 'Abierto ahora' : 'Cerrado ahora'}
+                                                        </div>
+
+                                                        <p
+                                                            className="mt-5 text-xs font-black uppercase tracking-[0.28em]"
+                                                            style={{ color: PRIMARY }}
+                                                        >
+                                                            {businessCategory}
+                                                        </p>
+
+                                                        <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+                                                            {businessName}
+                                                        </h2>
+
+                                                        <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-slate-600 md:text-base">
+                                                            {hoursStatus}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="shrink-0 rounded-[24px] bg-white/75 px-5 py-4 text-center ring-1 ring-slate-100 shadow-sm">
+                                                        <p className="text-3xl font-black text-slate-950">
+                                                            {averageRating}
+                                                            <span style={{ color: PRIMARY }}> ★</span>
+                                                        </p>
+                                                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                                                            {reviews.length} reseña{reviews.length === 1 ? '' : 's'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                                                    <Link
+                                                        href={`/b/${businessSlug}/reservar`}
+                                                        className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.28)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.99]"
+                                                        style={{ backgroundColor: PRIMARY }}
                                                     >
-                                                        {isOpenNow ? 'Abierto ahora' : 'Cerrado ahora'}
-                                                    </span>
+                                                        Reservar ahora
+                                                    </Link>
 
-                                                    <h2 className="mt-4 text-2xl font-black md:text-3xl">
-                                                        {businessName}
-                                                    </h2>
-                                                    <p className="mt-1 text-sm text-slate-500">{businessCategory}</p>
-
-                                                    <p className="mt-3 text-sm font-medium text-slate-600">
-                                                        {hoursStatus}
-                                                    </p>
-                                                </div>
-
-                                                <div className="shrink-0 text-right">
-                                                    <p className="text-lg font-black text-slate-900 md:text-xl">
-                                                        {averageRating} ★
-                                                    </p>
-                                                    <p className="text-xs font-medium text-slate-500">
-                                                        {reviews.length} reseña{reviews.length === 1 ? '' : 's'}
-                                                    </p>
+                                                    <a
+                                                        href="#horarios"
+                                                        className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black uppercase tracking-wide text-slate-800 transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-sm active:translate-y-0 active:scale-[0.99]"
+                                                    >
+                                                        Ver horarios
+                                                    </a>
                                                 </div>
                                             </div>
-
-                                            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                                <Link
-                                                    href={`/b/${businessSlug}/reservar`}
-                                                    className="inline-flex w-full items-center justify-center rounded-2xl px-4 py-4 text-base font-bold text-white"
-                                                    style={{ backgroundColor: PRIMARY }}
-                                                >
-                                                    Reservar ahora
-                                                </Link>
-
-                                                <Link
-                                                    href={`/b/${businessSlug}?tab=details`}
-                                                    className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base font-bold text-slate-800"
-                                                >
-                                                    Ver horarios
-                                                </Link>
-                                            </div>
-                                        </div>
-
-                                        <section>
-                                            <h3 className="text-xl font-black">Sobre nosotros</h3>
-                                            <p className="mt-3 max-w-2xl leading-7 text-slate-600">{aboutText}</p>
                                         </section>
 
-                                        <section>
-                                            <div className="flex items-center justify-between gap-3">
-                                                <h3 className="text-xl font-black">Ubicación</h3>
+                                        <section
+                                            className="rounded-[30px] border border-white bg-white p-6 shadow-[0_18px_55px_rgba(15,23,42,0.08)] md:p-7"
+                                        >
+                                            <div className="mb-4 flex items-center gap-3">
+                                                <span
+                                                    className="h-px w-10"
+                                                    style={{ backgroundColor: PRIMARY }}
+                                                />
+
+                                                <p
+                                                    className="text-xs font-black uppercase tracking-[0.3em]"
+                                                    style={{ color: PRIMARY }}
+                                                >
+                                                    Experiencia
+                                                </p>
+                                            </div>
+
+                                            <h3 className="text-2xl font-black text-slate-950">
+                                                Sobre nosotros
+                                            </h3>
+
+                                            <p className="mt-4 max-w-3xl text-base font-medium leading-8 text-slate-600">
+                                                {aboutText}
+                                            </p>
+                                        </section>
+
+                                        <section className="rounded-[32px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.10)] md:p-6">
+                                            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                                                <div>
+                                                    <p
+                                                        className="text-xs font-black uppercase tracking-[0.32em]"
+                                                        style={{ color: PRIMARY }}
+                                                    >
+                                                        Ubicación
+                                                    </p>
+
+                                                    <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
+                                                        Cómo llegar
+                                                    </h3>
+
+                                                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500 md:text-base">
+                                                        Encuéntranos fácilmente y reserva tu próxima cita en pocos pasos.
+                                                    </p>
+                                                </div>
 
                                                 <a
                                                     href={mapsUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 md:inline-flex md:items-center md:justify-center"
+                                                    className="group inline-flex w-fit items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-[0_16px_40px_rgba(15,23,42,0.12)] active:scale-95"
                                                 >
-                                                    Cómo llegar
+                                                    Abrir mapa
+
+                                                    <span
+                                                        className="text-base leading-none transition duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                                                        style={{ color: PRIMARY }}
+                                                    >
+                                                        ↗
+                                                    </span>
                                                 </a>
                                             </div>
 
-                                            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                                                <div className="h-64 w-full bg-slate-100 md:h-72">
-                                                    <iframe
-                                                        title={`Mapa de ${businessName}`}
-                                                        src={`https://www.google.com/maps?q=${encodeURIComponent(
-                                                            businessAddress
-                                                        )}&z=15&output=embed`}
-                                                        className="h-full w-full border-0"
-                                                        loading="lazy"
-                                                        referrerPolicy="no-referrer-when-downgrade"
-                                                    />
+                                            <div className="relative overflow-hidden rounded-[28px] border border-slate-100 bg-slate-100 shadow-inner">
+                                                <div className="absolute left-4 top-4 z-10 rounded-full border border-white/70 bg-white/90 px-4 py-2 text-xs font-black text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur">
+                                                    📍 {businessAddress}
                                                 </div>
 
-                                                <div className="border-t border-slate-100 px-5 py-4">
-                                                    <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">
+                                                <div className="absolute inset-x-0 top-0 z-[1] h-24 bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
+
+                                                <iframe
+                                                    title={`Mapa de ${businessName}`}
+                                                    src={`https://www.google.com/maps?q=${encodeURIComponent(
+                                                        businessAddress
+                                                    )}&z=15&output=embed`}
+                                                    className="h-[310px] w-full border-0 md:h-[360px]"
+                                                    loading="lazy"
+                                                    referrerPolicy="no-referrer-when-downgrade"
+                                                />
+                                            </div>
+
+                                            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                                                <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 p-5">
+                                                    <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-400">
                                                         Dirección
                                                     </p>
-                                                    <p className="mt-2 text-lg font-bold text-slate-900">
+
+                                                    <h4 className="mt-2 text-xl font-black text-slate-950 md:text-2xl">
                                                         {businessAddress}
-                                                    </p>
-                                                    <p className="mt-1 text-sm text-slate-500">
-                                                        Atención presencial y reserva online
+                                                    </h4>
+
+                                                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                                                        Atención presencial, reserva online y confirmación rápida para tu cita.
                                                     </p>
 
-                                                    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                                                        <a
-                                                            href={mapsUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex flex-1 items-center justify-center rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm"
-                                                            style={{ backgroundColor: PRIMARY }}
-                                                        >
-                                                            Cómo llegar
-                                                        </a>
+                                                    <div className="mt-4 flex flex-wrap gap-2">
+                                                        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-100">
+                                                            Reserva online
+                                                        </span>
 
-                                                        <Link
-                                                            href={`/b/${businessSlug}/reservar`}
-                                                            className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800"
+                                                        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-100">
+                                                            Atención presencial
+                                                        </span>
+
+                                                        <span
+                                                            className="rounded-full px-3 py-1.5 text-xs font-bold"
+                                                            style={{
+                                                                backgroundColor: PRIMARY_SOFT,
+                                                                color: PRIMARY,
+                                                            }}
                                                         >
-                                                            Reservar cita
-                                                        </Link>
+                                                            Ubicación verificada
+                                                        </span>
                                                     </div>
+                                                </div>
+
+                                                <div className="grid gap-3 sm:grid-cols-2 lg:w-[320px] lg:grid-cols-1">
+                                                    <a
+                                                        href={mapsUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black text-white shadow-[0_14px_32px_rgba(183,121,31,0.26)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                                                        style={{ backgroundColor: PRIMARY }}
+                                                    >
+                                                        Cómo llegar
+                                                    </a>
+
+                                                    <Link
+                                                        href={`/b/${businessSlug}/reservar`}
+                                                        className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black text-slate-900 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md active:scale-[0.98]"
+                                                    >
+                                                        Reservar cita
+                                                    </Link>
                                                 </div>
                                             </div>
                                         </section>
                                     </div>
 
-                                    <div className="space-y-8">
-                                        <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm md:p-6">
-                                            <div className="mb-5 max-w-md">
+                                    <aside className="space-y-7">
+                                        <section
+                                            className="rounded-[32px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] md:p-6"
+                                        >
+                                            <div className="mb-5">
                                                 <p
-                                                    className="text-xs font-bold uppercase tracking-[0.18em]"
+                                                    className="text-xs font-black uppercase tracking-[0.3em]"
                                                     style={{ color: PRIMARY }}
                                                 >
                                                     Equipo
                                                 </p>
-                                                <h3 className="mt-2 text-xl font-black md:text-2xl">
+
+                                                <h3 className="mt-2 text-2xl font-black text-slate-950">
                                                     Elige tu barbero
                                                 </h3>
-                                                <p className="mt-2 text-sm text-slate-500 md:text-base">
+
+                                                <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
                                                     Reserva directamente con el profesional que prefieras.
                                                 </p>
                                             </div>
@@ -530,37 +671,42 @@ export default async function BusinessPage({
                                                     No hay barberos activos por ahora.
                                                 </div>
                                             ) : (
-                                                <div className="space-y-4 2xl:grid 2xl:grid-cols-2 2xl:gap-4 2xl:space-y-0">
-                                                    {barbers.slice(0, 4).map((barber) => (
+                                                <div className="space-y-4">
+                                                    {barbers.slice(0, 4).map((barber, index) => (
                                                         <article
                                                             key={barber.id}
-                                                            className="mx-auto w-full max-w-[360px] overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md xl:max-w-[380px]"
+                                                            className="group overflow-hidden rounded-[26px] border border-slate-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
                                                         >
-                                                            <div className="relative h-40 w-full overflow-hidden bg-slate-100 lg:h-[120px] xl:h-[130px] 2xl:h-[140px]">
+                                                            <div className="relative h-44 overflow-hidden bg-slate-100">
                                                                 {barber.photo_url ? (
                                                                     <img
                                                                         src={barber.photo_url}
                                                                         alt={barber.name}
-                                                                        className="h-full w-full object-cover object-center"
+                                                                        className="h-full w-full object-cover object-center transition duration-700 group-hover:scale-105"
                                                                     />
                                                                 ) : (
-                                                                    <div className="flex h-full w-full items-center justify-center text-2xl font-black text-slate-500">
+                                                                    <div className="flex h-full w-full items-center justify-center text-3xl font-black text-slate-500">
                                                                         {getInitials(barber.name)}
                                                                     </div>
                                                                 )}
+
+                                                                <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/55" />
+
+                                                                <div className="absolute bottom-4 left-4 right-4">
+                                                                    <p className="text-xl font-black text-white drop-shadow">
+                                                                        {barber.name}
+                                                                    </p>
+
+                                                                    <p className="mt-1 text-sm font-semibold text-white/85">
+                                                                        {barber.specialty || 'Barbero profesional'}
+                                                                    </p>
+                                                                </div>
                                                             </div>
 
-                                                            <div className="p-4 lg:p-3 xl:p-4">
-                                                                <p className="text-lg font-black text-slate-900 lg:text-base xl:text-lg">
-                                                                    {barber.name}
-                                                                </p>
-                                                                <p className="mt-1 text-sm text-slate-500">
-                                                                    {barber.specialty || 'Barbero profesional'}
-                                                                </p>
-
+                                                            <div className="p-4">
                                                                 <Link
                                                                     href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
-                                                                    className="mt-3 inline-flex w-full items-center justify-center rounded-2xl px-4 py-2 text-sm font-bold text-white"
+                                                                    className="inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.22)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.99]"
                                                                     style={{ backgroundColor: PRIMARY }}
                                                                 >
                                                                     Reservar con {barber.name.split(' ')[0]}
@@ -572,26 +718,41 @@ export default async function BusinessPage({
                                             )}
                                         </section>
 
-                                        <section>
-                                            <div className="flex items-start justify-between gap-3">
+                                        <section
+                                            id="horarios"
+                                            className="rounded-[32px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] md:p-6 lg:sticky lg:top-24"
+
+                                        >
+                                            <div className="mb-5 flex items-start justify-between gap-3">
                                                 <div>
-                                                    <h3 className="text-xl font-black">Horarios</h3>
-                                                    <p className="mt-1 text-sm text-slate-500">{hoursStatus}</p>
+                                                    <p
+                                                        className="text-xs font-black uppercase tracking-[0.3em]"
+                                                        style={{ color: PRIMARY }}
+                                                    >
+                                                        Atención
+                                                    </p>
+
+                                                    <h3 className="mt-2 text-2xl font-black text-slate-950">
+                                                        Horarios
+                                                    </h3>
+
+                                                    <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                                                        {hoursStatus}
+                                                    </p>
                                                 </div>
 
-                                                {isOpenNow ? (
-                                                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                                                        Abierto
-                                                    </span>
-                                                ) : (
-                                                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                                                        Cerrado
-                                                    </span>
-                                                )}
+                                                <span
+                                                    className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${isOpenNow
+                                                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                                                        : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+                                                        }`}
+                                                >
+                                                    {isOpenNow ? 'Abierto' : 'Cerrado'}
+                                                </span>
                                             </div>
 
-                                            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-                                                <div className="grid grid-cols-[1.3fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+                                            <div className="overflow-hidden rounded-[22px] border border-slate-100 bg-white">
+                                                <div className="grid grid-cols-[1.25fr_1fr_1fr] bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
                                                     <span>Día</span>
                                                     <span className="text-center">Apertura</span>
                                                     <span className="text-center">Cierre</span>
@@ -603,17 +764,22 @@ export default async function BusinessPage({
                                                     return (
                                                         <div
                                                             key={item.dayKey}
-                                                            className={`grid grid-cols-[1.3fr_1fr_1fr] items-center px-4 py-3 text-sm border-b border-slate-100 last:border-b-0 ${isToday ? 'bg-amber-50/50' : ''
+                                                            className={`grid grid-cols-[1.25fr_1fr_1fr] items-center border-t border-slate-100 px-4 py-4 text-sm ${isToday ? 'bg-amber-50/70' : 'bg-white'
                                                                 }`}
                                                         >
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                <span className={`truncate ${isToday ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
+                                                            <div className="flex min-w-0 items-center gap-2">
+                                                                <span
+                                                                    className={`truncate ${isToday
+                                                                        ? 'font-black text-slate-950'
+                                                                        : 'font-medium text-slate-600'
+                                                                        }`}
+                                                                >
                                                                     {item.label}
                                                                 </span>
 
                                                                 {isToday && (
                                                                     <span
-                                                                        className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                                                                        className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase"
                                                                         style={{
                                                                             backgroundColor: PRIMARY_SOFT,
                                                                             color: PRIMARY,
@@ -624,11 +790,14 @@ export default async function BusinessPage({
                                                                 )}
                                                             </div>
 
-                                                            <span className="text-center font-medium text-slate-700">
+                                                            <span className="text-center font-bold text-slate-700">
                                                                 {item.closed ? '—' : item.open}
                                                             </span>
 
-                                                            <span className={`text-center font-medium ${item.closed ? 'text-slate-400' : 'text-slate-900'}`}>
+                                                            <span
+                                                                className={`text-center font-bold ${item.closed ? 'text-slate-400' : 'text-slate-950'
+                                                                    }`}
+                                                            >
                                                                 {item.closed ? 'Cerrado' : item.close}
                                                             </span>
                                                         </div>
@@ -636,8 +805,9 @@ export default async function BusinessPage({
                                                 })}
                                             </div>
                                         </section>
-                                    </div>
+                                    </aside>
                                 </div>
+
                             </div>
                         )}
                     </div>
@@ -651,7 +821,9 @@ export default async function BusinessPage({
                             style={{ color: PRIMARY }}
                         >
                             <span className="text-lg">⌕</span>
-                            <span className="text-[10px] font-bold uppercase tracking-wider">Explorar</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider">
+                                Explorar
+                            </span>
                         </Link>
 
                         <Link
@@ -659,7 +831,9 @@ export default async function BusinessPage({
                             className="flex flex-col items-center gap-1 text-slate-400"
                         >
                             <span className="text-lg">◫</span>
-                            <span className="text-[10px] font-bold uppercase tracking-wider">Citas</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider">
+                                Citas
+                            </span>
                         </Link>
                     </div>
                 </nav>

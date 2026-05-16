@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { updateBusiness } from '@/src/features/business/api/update-business'
+import { createClient } from '@/src/lib/supabase/browser'
 
 type Props = {
     business: {
@@ -40,13 +41,35 @@ function slugify(value: string) {
         .replace(/-+/g, '-')
 }
 
+function getFileExtension(fileName: string) {
+    const parts = fileName.split('.')
+    return parts.length > 1 ? parts.pop()?.toLowerCase() ?? 'jpg' : 'jpg'
+}
+
+function getPublicAssetPath(slug: string, type: 'logo' | 'cover', fileName: string) {
+    const ext = getFileExtension(fileName)
+    const version = Date.now()
+    return `businesses/${slug}/${type}-${version}.${ext}`
+}
+
+const BUCKET_NAME = 'business-assests'
+
 export function AdminBusinessForm({ business }: Props) {
     const router = useRouter()
     const pathname = usePathname()
+    const supabase = createClient()
 
     const [loading, setLoading] = useState(false)
+    const [uploadingLogo, setUploadingLogo] = useState(false)
+    const [uploadingCover, setUploadingCover] = useState(false)
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
+
+    const [logoPreview, setLogoPreview] = useState<string | null>(business.logo_url ?? null)
+    const [coverPreview, setCoverPreview] = useState<string | null>(business.cover_url ?? null)
+
+    const [tempLogoPreview, setTempLogoPreview] = useState<string | null>(null)
+    const [tempCoverPreview, setTempCoverPreview] = useState<string | null>(null)
 
     const [form, setForm] = useState({
         name: business.name ?? '',
@@ -65,12 +88,17 @@ export function AdminBusinessForm({ business }: Props) {
         whatsapp_routing: business.whatsapp_routing ?? 'fallback',
         plan_slug: business.plan_slug ?? 'starter',
         subscription_status: business.subscription_status ?? 'trialing',
-        trial_ends_at: business.trial_ends_at
-            ? business.trial_ends_at.slice(0, 10)
-            : '',
+        trial_ends_at: business.trial_ends_at ? business.trial_ends_at.slice(0, 10) : '',
         max_barbers: String(business.max_barbers ?? 1),
         max_services: String(business.max_services ?? 3),
     })
+
+    useEffect(() => {
+        return () => {
+            if (tempLogoPreview) URL.revokeObjectURL(tempLogoPreview)
+            if (tempCoverPreview) URL.revokeObjectURL(tempCoverPreview)
+        }
+    }, [tempLogoPreview, tempCoverPreview])
 
     function handleChange(
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -89,6 +117,114 @@ export function AdminBusinessForm({ business }: Props) {
 
             return next
         })
+    }
+
+    async function uploadBusinessImage(file: File, type: 'logo' | 'cover') {
+        const normalizedSlug = slugify(form.slug || form.name || business.slug)
+        const filePath = getPublicAssetPath(normalizedSlug, type, file.name)
+
+        const { error: uploadError } = await supabase.storage
+            .from(BUCKET_NAME)
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false,
+                contentType: file.type,
+            })
+
+        if (uploadError) {
+            console.error('Storage upload error:', {
+                message: uploadError.message,
+                name: uploadError.name,
+                filePath,
+                fileType: file.type,
+                fileName: file.name,
+            })
+            throw new Error(uploadError.message)
+        }
+
+        const { data } = supabase.storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(filePath)
+
+        return data.publicUrl
+    }
+
+    async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (!file.type.startsWith('image/')) {
+            setErrorMessage('El logo debe ser una imagen válida.')
+            return
+        }
+
+        try {
+            setErrorMessage('')
+            setUploadingLogo(true)
+
+            if (tempLogoPreview) {
+                URL.revokeObjectURL(tempLogoPreview)
+            }
+
+            const localPreview = URL.createObjectURL(file)
+            setTempLogoPreview(localPreview)
+            setLogoPreview(localPreview)
+
+            const publicUrl = await uploadBusinessImage(file, 'logo')
+
+            setForm((prev) => ({ ...prev, logo_url: publicUrl }))
+            setLogoPreview(publicUrl)
+
+            URL.revokeObjectURL(localPreview)
+            setTempLogoPreview(null)
+        } catch (error) {
+            setErrorMessage(
+                error instanceof Error ? error.message : 'Error subiendo logo'
+            )
+            setLogoPreview(form.logo_url || business.logo_url || null)
+        } finally {
+            setUploadingLogo(false)
+            e.target.value = ''
+        }
+    }
+
+    async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (!file.type.startsWith('image/')) {
+            setErrorMessage('La portada debe ser una imagen válida.')
+            return
+        }
+
+        try {
+            setErrorMessage('')
+            setUploadingCover(true)
+
+            if (tempCoverPreview) {
+                URL.revokeObjectURL(tempCoverPreview)
+            }
+
+            const localPreview = URL.createObjectURL(file)
+            setTempCoverPreview(localPreview)
+            setCoverPreview(localPreview)
+
+            const publicUrl = await uploadBusinessImage(file, 'cover')
+
+            setForm((prev) => ({ ...prev, cover_url: publicUrl }))
+            setCoverPreview(publicUrl)
+
+            URL.revokeObjectURL(localPreview)
+            setTempCoverPreview(null)
+        } catch (error) {
+            setErrorMessage(
+                error instanceof Error ? error.message : 'Error subiendo portada'
+            )
+            setCoverPreview(form.cover_url || business.cover_url || null)
+        } finally {
+            setUploadingCover(false)
+            e.target.value = ''
+        }
     }
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -286,6 +422,9 @@ export function AdminBusinessForm({ business }: Props) {
                         className="w-full rounded-lg border p-3"
                         placeholder="https://instagram.com/tu_negocio"
                     />
+                    <p className="mt-1 text-xs text-slate-500">
+                        Este sí se mantiene como enlace manual.
+                    </p>
                 </div>
 
                 <div>
@@ -300,25 +439,57 @@ export function AdminBusinessForm({ business }: Props) {
                 </div>
 
                 <div className="md:col-span-2">
-                    <label className="mb-2 block font-medium">Logo URL</label>
+                    <label className="mb-2 block font-medium">Logo del negocio</label>
                     <input
-                        name="logo_url"
-                        value={form.logo_url}
-                        onChange={handleChange}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
                         className="w-full rounded-lg border p-3"
-                        placeholder="https://..."
                     />
+                    <p className="mt-1 text-xs text-slate-500">
+                        PNG o JPG recomendado. Idealmente cuadrado.
+                    </p>
+
+                    {uploadingLogo && (
+                        <p className="mt-2 text-sm text-slate-500">Subiendo logo...</p>
+                    )}
+
+                    {logoPreview && (
+                        <div className="mt-3 overflow-hidden rounded-lg border bg-slate-50 p-4">
+                            <img
+                                src={logoPreview}
+                                alt="Preview logo"
+                                className="h-24 w-24 rounded-lg object-cover"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="md:col-span-2">
-                    <label className="mb-2 block font-medium">Cover URL</label>
+                    <label className="mb-2 block font-medium">Portada del negocio</label>
                     <input
-                        name="cover_url"
-                        value={form.cover_url}
-                        onChange={handleChange}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverUpload}
                         className="w-full rounded-lg border p-3"
-                        placeholder="https://..."
                     />
+                    <p className="mt-1 text-xs text-slate-500">
+                        Usa una imagen horizontal. Ya no pegues URLs de Google aquí.
+                    </p>
+
+                    {uploadingCover && (
+                        <p className="mt-2 text-sm text-slate-500">Subiendo portada...</p>
+                    )}
+
+                    {coverPreview && (
+                        <div className="mt-3 overflow-hidden rounded-lg border bg-slate-50">
+                            <img
+                                src={coverPreview}
+                                alt="Preview portada"
+                                className="h-48 w-full object-cover"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="md:col-span-2">
@@ -404,7 +575,7 @@ export function AdminBusinessForm({ business }: Props) {
                 <div className="md:col-span-2">
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || uploadingLogo || uploadingCover}
                         className="rounded-lg bg-black px-4 py-3 text-white disabled:opacity-50"
                     >
                         {loading ? 'Guardando...' : 'Guardar cambios'}

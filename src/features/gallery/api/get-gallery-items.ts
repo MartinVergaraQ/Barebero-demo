@@ -9,11 +9,12 @@ export async function getActiveGalleryItems(businessId: string) {
             media_url,
             display_order,
             barber_id,
+            service_id,
             barbers:barber_id (
                 id,
                 name
             )
-        `)
+    `)
         .eq('business_id', businessId)
         .eq('is_active', true)
         .eq('type', 'image')

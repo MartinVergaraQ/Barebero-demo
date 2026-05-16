@@ -13,6 +13,7 @@ import {
     isFullAdminRole,
 } from '@/src/features/auth/utils/admin-scope'
 import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
+import { getActiveServices } from '@/src/features/services/api/get-services'
 
 type AdminGaleriaPageProps = {
     params: Promise<{
@@ -25,6 +26,7 @@ export default async function AdminGaleriaPage({
 }: AdminGaleriaPageProps) {
     const { slug } = await params
     const supabase = await createClient()
+
 
     const {
         data: { user },
@@ -66,6 +68,8 @@ export default async function AdminGaleriaPage({
     const barbers = isFullAdminRole(profile.role)
         ? await getBarbersAdmin(business.id)
         : []
+    const services = await getActiveServices(business.id)
+
     return (
         <main>
             <div className="mb-6">
@@ -79,6 +83,7 @@ export default async function AdminGaleriaPage({
                 businessId={business.id}
                 barberId={isBarberRole(profile.role) ? ownBarber!.id : undefined}
                 barbers={barbers}
+                services={services}
                 allowBarberAssignment={isFullAdminRole(profile.role)}
             />
 
@@ -104,7 +109,7 @@ export default async function AdminGaleriaPage({
                                 </p>
                                 {isFullAdminRole(profile.role) && (
                                     <p className="text-sm text-gray-600">
-                                        Barbero: {item.barber?.name ?? 'General del negocio'}
+                                        Servicio: {item.service?.name ?? 'Sin servicio asignado'}
                                     </p>
                                 )}
                                 <p className="text-sm text-gray-600">
@@ -118,8 +123,10 @@ export default async function AdminGaleriaPage({
                                         display_order: item.display_order,
                                         is_active: item.is_active,
                                         barber_id: item.barber_id,
+                                        service_id: item.service_id,
                                     }}
                                     barbers={barbers}
+                                    services={services}
                                     allowBarberAssignment={isFullAdminRole(profile.role)}
                                 />
 

@@ -4,17 +4,23 @@ import { useState } from 'react'
 import { uploadGalleryImage } from '@/src/features/gallery/api/upload-gallery-image'
 import { createGalleryItem } from '@/src/features/gallery/api/create-gallery-item'
 
+type ServiceOption = {
+    id: string
+    name: string
+}
+
 type Props = {
     businessId: string
     barberId?: string
     allowBarberAssignment?: boolean
+    services?: ServiceOption[]
     barbers?: Array<{
         id: string
         name: string
     }>
 }
 
-export function AdminGalleryForm({ businessId, barberId, allowBarberAssignment, barbers }: Props) {
+export function AdminGalleryForm({ businessId, barberId, allowBarberAssignment, barbers, services = [], }: Props) {
     const [title, setTitle] = useState('')
     const [displayOrder, setDisplayOrder] = useState('0')
     const [isActive, setIsActive] = useState(true)
@@ -27,6 +33,7 @@ export function AdminGalleryForm({ businessId, barberId, allowBarberAssignment, 
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
     const [selectedBarberId, setSelectedBarberId] = useState(barberId ?? '')
+    const [selectedServiceId, setSelectedServiceId] = useState('')
     async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
         if (!file) return
@@ -60,6 +67,7 @@ export function AdminGalleryForm({ businessId, barberId, allowBarberAssignment, 
             await createGalleryItem({
                 business_id: businessId,
                 barber_id: selectedBarberId || null,
+                service_id: selectedServiceId || null,
                 type: 'image',
                 title,
                 media_url: mediaUrl,
@@ -74,6 +82,8 @@ export function AdminGalleryForm({ businessId, barberId, allowBarberAssignment, 
             setIsActive(true)
             setMediaUrl('')
             setPublicId('')
+            setSelectedServiceId('')
+
         } catch (error) {
             setErrorMessage(
                 error instanceof Error ? error.message : 'Error creando item'
@@ -155,6 +165,26 @@ export function AdminGalleryForm({ businessId, barberId, allowBarberAssignment, 
                                 </option>
                             ))}
                         </select>
+                        <div className="md:col-span-2">
+                            <label className="mb-2 block font-medium">Servicio asociado</label>
+                            <select
+                                value={selectedServiceId}
+                                onChange={(e) => setSelectedServiceId(e.target.value)}
+                                className="w-full rounded-lg border p-3"
+                            >
+                                <option value="">Sin servicio específico</option>
+
+                                {services?.map((service) => (
+                                    <option key={service.id} value={service.id}>
+                                        {service.name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <p className="mt-2 text-sm text-slate-500">
+                                Si eliges un servicio, al reservar desde esta imagen quedará preseleccionado.
+                            </p>
+                        </div>
                     </div>
                 )}
 

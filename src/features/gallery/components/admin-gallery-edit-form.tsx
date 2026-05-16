@@ -11,9 +11,18 @@ type Props = {
         display_order: number
         is_active: boolean
         barber_id?: string | null
+        service_id?: string | null
+        services?: Array<{
+            id: string
+            name: string
+        }>
     }
     allowBarberAssignment?: boolean
     barbers?: Array<{
+        id: string
+        name: string
+    }>
+    services?: Array<{
         id: string
         name: string
     }>
@@ -23,6 +32,7 @@ export function AdminGalleryEditForm({
     item,
     allowBarberAssignment = false,
     barbers = [],
+    services = [],
 }: Props) {
     const router = useRouter()
 
@@ -35,6 +45,7 @@ export function AdminGalleryEditForm({
         display_order: String(item.display_order),
         is_active: item.is_active,
         barber_id: item.barber_id ?? '',
+        service_id: item.service_id ?? '',
     })
 
     function handleChange(
@@ -71,6 +82,7 @@ export function AdminGalleryEditForm({
                 ...(allowBarberAssignment
                     ? { barber_id: form.barber_id || null }
                     : {}),
+                service_id: form.service_id || null,
             })
 
             setEditing(false)
@@ -132,6 +144,30 @@ export function AdminGalleryEditForm({
                             </option>
                         ))}
                     </select>
+                    <div>
+                        <label className="mb-2 block font-medium">
+                            Servicio relacionado
+                        </label>
+
+                        <select
+                            name="service_id"
+                            value={form.service_id}
+                            onChange={handleChange}
+                            className="w-full rounded-lg border p-3"
+                        >
+                            <option value="">Sin servicio específico</option>
+
+                            {services.map((service) => (
+                                <option key={service.id} value={service.id}>
+                                    {service.name}
+                                </option>
+                            ))}
+                        </select>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                            Si asignas un servicio, el botón “Reservar estilo” llevará al cliente directo con este servicio seleccionado.
+                        </p>
+                    </div>
                 </div>
             )}
 
