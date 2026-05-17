@@ -1041,7 +1041,7 @@ export default function ReservarClient({
                                 ? 'Reservar cita'
                                 : step === 2
                                     ? 'Confirmar reserva'
-                                    : 'Reserva confirmada'}
+                                    : 'Cita confirmada'}
                         </h1>
 
                         <div className="w-10" />
@@ -1899,63 +1899,141 @@ export default function ReservarClient({
                     </form>
                 )}
                 {step === 3 && successfulReservation && (
-                    <section className="mx-auto max-w-3xl px-4 py-6 md:px-6 lg:px-8">
-                        <div className="rounded-[23px] border border-green-200 bg-white p-5 shadow-sm md:p-8">
+                    <section className="mx-auto max-w-[640px] px-4 pt-10 pb-12 md:px-6 lg:px-8">
+                        <div className="overflow-hidden rounded-[32px] border border-emerald-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
+                            <div
+                                className="relative px-6 pt-7 pb-5 text-center md:px-8"
+                                style={{
+                                    background:
+                                        'radial-gradient(circle at top left, rgba(16,185,129,0.12), transparent 34%), linear-gradient(135deg, rgba(236,253,245,0.95), rgba(255,255,255,0.95), rgba(250,247,241,0.80))',
+                                }}
+                            >
+                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 shadow-[0_0_0_12px_rgba(16,185,129,0.10)]">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-3xl font-black text-white shadow-[0_10px_28px_rgba(16,185,129,0.35)]">
+                                        ✓
+                                    </div>
+                                </div>
 
-                            <div className="mt-6">
-                                <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: PRIMARY }}>
+                                <p
+                                    className="mt-5 text-[11px] font-black uppercase tracking-[0.32em]"
+                                    style={{ color: PRIMARY }}
+                                >
                                     Reserva confirmada
                                 </p>
-                                <h2 className="mt-2 text-2xl font-black md:text-4xl">
+
+                                <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
                                     Todo listo
                                 </h2>
-                                <p className="mt-2 text-sm text-slate-500 md:text-base">
-                                    Ya registramos tu hora. Aquí tienes el resumen.
+
+                                <p className="mx-auto mt-2 max-w-md text-sm font-medium leading-6 text-slate-500 md:text-base">
+                                    Ya registramos tu cita. Puedes confirmarla por WhatsApp.
                                 </p>
                             </div>
 
-                            <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:p-5">
-                                <div className="space-y-2 text-sm text-slate-700 md:text-base">
-                                    <p><span className="font-bold text-slate-900">Servicio:</span> {successfulReservation.service_name}</p>
-                                    <p><span className="font-bold text-slate-900">Barbero:</span> {successfulReservation.barber_name}</p>
-                                    <p><span className="font-bold text-slate-900">Fecha:</span> {formatHumanDate(successfulReservation.appointment_date)}</p>
-                                    <p><span className="font-bold text-slate-900">Hora:</span> {successfulReservation.slot_label}</p>
-                                    <p><span className="font-bold text-slate-900">Total:</span> {formatPrice(successfulReservation.price)}</p>
+                            <div className="px-5 pb-6 md:px-8 md:pb-8">
+                                <div className="relative rounded-[26px] border border-slate-100 bg-slate-50/80 p-4 shadow-[0_12px_35px_rgba(15,23,42,0.08)] md:p-5">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-400">
+                                                Resumen
+                                            </p>
+
+                                            <h3 className="mt-2 text-xl font-black leading-tight text-slate-950 md:text-2xl">
+                                                {successfulReservation.service_name}
+                                            </h3>
+                                        </div>
+
+                                        <div
+                                            className="shrink-0 rounded-2xl px-4 py-3 text-right text-white shadow-[0_12px_28px_rgba(183,121,31,0.25)]"
+                                            style={{ backgroundColor: PRIMARY }}
+                                        >
+                                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/80">
+                                                Total
+                                            </p>
+                                            <p className="mt-1 text-xl font-black leading-none md:text-2xl">
+                                                {formatPrice(successfulReservation.price)}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                                Barbero
+                                            </p>
+                                            <p className="mt-1 text-sm font-black text-slate-950 md:text-base">
+                                                {successfulReservation.barber_name}
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                                Fecha
+                                            </p>
+                                            <p className="mt-1 text-sm font-black text-slate-950 md:text-base">
+                                                {formatHumanDate(successfulReservation.appointment_date)}
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                                Hora
+                                            </p>
+                                            <p className="mt-1 text-sm font-black text-slate-950 md:text-base">
+                                                {successfulReservation.slot_label}
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                                Cliente
+                                            </p>
+                                            <p className="mt-1 truncate text-sm font-black text-slate-950 md:text-base">
+                                                {successfulReservation.client_name}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                                <Link
-                                    href={`/b/${businessSlug}?tab=services`}
-                                    className="rounded-2xl border border-slate-300 px-4 py-4 text-center text-sm font-bold text-slate-800 md:text-base"
-                                >
-                                    Ir al inicio
-                                </Link>
-
-                                {hasWhatsApp ? (
-                                    <a
-                                        href={whatsappUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="rounded-2xl px-4 py-4 text-center text-sm font-bold text-white shadow-lg md:text-base"
-                                        style={{ backgroundColor: PRIMARY }}
+                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                    <Link
+                                        href={`/b/${businessSlug}?tab=services`}
+                                        className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black text-slate-800 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0 active:scale-[0.98] md:text-base"
                                     >
-                                        Confirmar por WhatsApp
-                                    </a>
-                                ) : (
-                                    <div className="rounded-2xl border border-slate-200 px-4 py-4 text-center text-sm font-bold text-slate-400 md:text-base">
-                                        WhatsApp no configurado
+                                        Ir al inicio
+                                    </Link>
+
+                                    {hasWhatsApp ? (
+                                        <a
+                                            href={whatsappUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center justify-center rounded-2xl px-4 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(183,121,31,0.28)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.98] md:text-base"
+                                            style={{ backgroundColor: PRIMARY }}
+                                        >
+                                            Confirmar por WhatsApp →
+                                        </a>
+                                    ) : (
+                                        <div className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-black text-slate-400 md:text-base">
+                                            WhatsApp no configurado
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={resetBooking}
+                                    className="mt-4 w-full text-sm font-bold text-slate-500 underline underline-offset-4 transition hover:text-slate-800"
+                                >
+                                    Hacer otra reserva
+                                </button>
+
+                                {hasWhatsApp && (
+                                    <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-700">
+                                        Te recomendamos confirmar por WhatsApp para que el negocio tenga tu reserva a mano.
                                     </div>
                                 )}
                             </div>
-
-                            <button
-                                type="button"
-                                onClick={resetBooking}
-                                className="mt-4 w-full text-sm font-medium text-slate-500 underline"
-                            >
-                                Hacer otra reserva
-                            </button>
                         </div>
                     </section>
                 )}
