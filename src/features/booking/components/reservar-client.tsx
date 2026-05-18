@@ -1314,7 +1314,7 @@ export default function ReservarClient({
                                                 </p>
                                             </div>
                                         ) : (
-                                            <div className="max-h-[430px] space-y-3 overflow-y-auto pr-1">
+                                            <div className="max-h-[520px] space-y-4 overflow-y-auto pr-1 md:max-h-[430px] md:space-y-3">
                                                 {filteredServices.map((service) => {
                                                     const isSelected = form.service_id === service.id
 
@@ -1334,7 +1334,7 @@ export default function ReservarClient({
                                                                 setAvailabilityMessage('')
                                                                 setServiceHint('')
                                                             }}
-                                                            className={`group w-full rounded-[22px] border p-4 text-left transition duration-300 ${isSelected
+                                                            className={`group w-full rounded-[22px] border p-4 text-left transition duration-300 md:rounded-[26px] md:p-6 ${isSelected
                                                                 ? 'bg-amber-50/60 shadow-[0_14px_35px_rgba(183,121,31,0.12)]'
                                                                 : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-sm'
                                                                 }`}
@@ -1346,8 +1346,8 @@ export default function ReservarClient({
                                                                     : undefined
                                                             }
                                                         >
-                                                            <div className="flex items-start justify-between gap-4">
-                                                                <div className="min-w-0">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="min-w-0 flex-1">
                                                                     <div className="mb-2 flex items-center gap-2">
                                                                         <span
                                                                             className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-black ${isSelected
@@ -1364,29 +1364,29 @@ export default function ReservarClient({
                                                                         </span>
 
                                                                         <span
-                                                                            className="text-[10px] font-black uppercase tracking-[0.22em]"
+                                                                            className="text-[10px] font-black uppercase tracking-[0.2em]"
                                                                             style={{ color: PRIMARY }}
                                                                         >
                                                                             Servicio
                                                                         </span>
                                                                     </div>
 
-                                                                    <h4 className="text-lg font-black leading-tight text-slate-950 md:text-xl">
+                                                                    <h4 className="text-xl font-black leading-tight text-slate-950 md:text-3xl">
                                                                         {service.name}
                                                                     </h4>
 
-                                                                    <p className="mt-2 line-clamp-2 text-sm leading-5 text-slate-500">
+                                                                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 md:text-lg md:leading-8">
                                                                         {service.description || 'Servicio profesional de barbería.'}
                                                                     </p>
                                                                 </div>
 
                                                                 <div className="shrink-0 text-right">
-                                                                    <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                                                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-xs">
                                                                         Precio
                                                                     </p>
 
                                                                     <p
-                                                                        className="mt-1 text-2xl font-black"
+                                                                        className="mt-1 text-2xl font-black leading-none md:text-4xl"
                                                                         style={{ color: PRIMARY }}
                                                                     >
                                                                         {formatPrice(service.price)}
@@ -1394,19 +1394,19 @@ export default function ReservarClient({
                                                                 </div>
                                                             </div>
 
-                                                            <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                                                            <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 md:mt-6 md:px-5 md:py-4">
                                                                 <div>
-                                                                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-xs">
                                                                         Duración
                                                                     </p>
 
-                                                                    <p className="mt-1 text-sm font-black text-slate-900">
+                                                                    <p className="mt-1 text-base font-black text-slate-900 md:text-xl">
                                                                         {service.duration_minutes} min
                                                                     </p>
                                                                 </div>
 
                                                                 <span
-                                                                    className={`rounded-full px-4 py-2 text-xs font-black transition ${isSelected
+                                                                    className={`rounded-full px-4 py-2 text-xs font-black transition md:px-5 md:py-2.5 md:text-sm ${isSelected
                                                                         ? 'bg-white text-amber-700 shadow-sm'
                                                                         : 'bg-white text-slate-600 group-hover:text-slate-950'
                                                                         }`}
@@ -1414,6 +1414,14 @@ export default function ReservarClient({
                                                                     {isSelected ? 'Seleccionado' : 'Elegir'}
                                                                 </span>
                                                             </div>
+
+                                                            <button
+                                                                type="button"
+                                                                className="mt-4 w-full rounded-2xl px-4 py-3 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.20)] transition active:scale-[0.98] md:mt-6 md:py-4 md:text-base"
+                                                                style={{ backgroundColor: PRIMARY }}
+                                                            >
+                                                                {isSelected ? 'Servicio seleccionado' : 'Reservar'}
+                                                            </button>
                                                         </button>
                                                     )
                                                 })}

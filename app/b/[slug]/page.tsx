@@ -216,7 +216,7 @@ export default async function BusinessPage({
 
         <main className="min-h-screen bg-[#f8f6f6] text-slate-900">
             <div className="mx-auto w-full max-w-7xl bg-[#f8f6f6] pb-28">
-                <section className="relative h-64 w-full overflow-hidden bg-slate-950 md:h-80 lg:h-[420px]">
+                <section className="relative h-[190px] w-full overflow-hidden bg-slate-950 md:h-80 lg:h-[420px]">
                     <img
                         src={heroImage}
                         alt={businessName}
@@ -254,9 +254,9 @@ export default async function BusinessPage({
                     </div>
                 </section>
 
-                <section className="relative z-10 -mt-12 px-4 md:px-6 lg:px-8">
+                <section className="relative z-10 -mt-8 px-4 md:-mt-12 md:px-6 lg:px-8">
                     <div className="mx-auto max-w-5xl">
-                        <div className="group overflow-hidden rounded-[34px] border border-white/70 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] transition duration-500 motion-safe:animate-[heroCardIn_700ms_ease-out] hover:shadow-[0_30px_90px_rgba(15,23,42,0.20)]">
+                        <div className="group overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_20px_55px_rgba(15,23,42,0.14)] transition duration-500 motion-safe:animate-[heroCardIn_700ms_ease-out] hover:shadow-[0_30px_90px_rgba(15,23,42,0.20)] md:rounded-[34px]">
                             <div className="relative">
                                 <div
                                     className="pointer-events-none absolute inset-0"
@@ -268,10 +268,10 @@ export default async function BusinessPage({
 
                                 <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
 
-                                <div className="relative px-6 py-7 text-center md:px-10 md:py-8">
-                                    <div className="mb-4 flex items-center justify-center">
+                                <div className="relative px-5 py-4 text-center md:px-10 md:py-8">
+                                    <div className="mb-3 flex items-center justify-center">
                                         <div
-                                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 shadow-sm ring-1 ${isOpenNow
+                                            className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 shadow-sm ring-1 ${isOpenNow
                                                 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
                                                 : 'bg-slate-100 text-slate-600 ring-slate-200'
                                                 }`}
@@ -300,11 +300,11 @@ export default async function BusinessPage({
                                         {businessCategory}
                                     </p>
 
-                                    <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+                                    <h1 className="mt-2 text-[24px] font-black leading-tight tracking-tight text-slate-950 md:mt-3 md:text-4xl">
                                         {businessName}
                                     </h1>
 
-                                    <div className="mt-3 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
+                                    <div className="mt-2 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
                                         <span
                                             className="h-1.5 w-1.5 rounded-full"
                                             style={{ backgroundColor: PRIMARY }}
@@ -314,10 +314,10 @@ export default async function BusinessPage({
 
                                     <div className="mx-auto mt-5 h-px max-w-3xl bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
 
-                                    <div className="mt-5 grid grid-cols-3 gap-2 md:gap-4">
-                                        <div className="rounded-2xl bg-white/65 px-3 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90">
+                                    <div className="mt-3 grid grid-cols-3 gap-2 md:mt-5 md:gap-4">
+                                        <div className="rounded-2xl bg-white/65 px-2.5 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90 md:px-3">
                                             <div className="flex items-center justify-center gap-1">
-                                                <p className="text-3xl font-black leading-none text-slate-950">
+                                                <p className="text-xl font-black leading-none text-slate-950 md:text-3xl">
                                                     {averageRating}
                                                 </p>
                                                 <span
@@ -332,8 +332,8 @@ export default async function BusinessPage({
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl bg-white/65 px-3 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90">
-                                            <p className="text-3xl font-black leading-none text-slate-950">
+                                        <div className="rounded-2xl bg-white/65 px-2.5 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90 md:px-3">
+                                            <p className="text-xl font-black leading-none text-slate-950 md:text-3xl">
                                                 {services.length}
                                             </p>
                                             <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -341,8 +341,8 @@ export default async function BusinessPage({
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl bg-white/65 px-3 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90">
-                                            <p className="text-3xl font-black leading-none text-slate-950">
+                                        <div className="rounded-2xl bg-white/65 px-2.5 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90 md:px-3">
+                                            <p className="text-xl font-black leading-none text-slate-950 md:text-3xl">
                                                 {reviews.length}
                                             </p>
                                             <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -351,10 +351,10 @@ export default async function BusinessPage({
                                         </div>
                                     </div>
 
-                                    <div className="mt-6">
+                                    <div className="mt-5 md:mt-6">
                                         <Link
                                             href={`/b/${businessSlug}/reservar`}
-                                            className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.30)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.99]"
+                                            className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.30)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.99] md:py-4"
                                             style={{ backgroundColor: PRIMARY }}
                                         >
                                             Reservar ahora
