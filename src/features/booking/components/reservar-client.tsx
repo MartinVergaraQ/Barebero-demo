@@ -1025,7 +1025,14 @@ export default function ReservarClient({
     }
 
     return (
-        <main className="min-h-screen overflow-x-hidden bg-[#f8f6f6] pb-28 text-slate-900">
+        <main
+            className={`min-h-screen overflow-x-hidden bg-[#f8f6f6] text-slate-900 ${step === 2
+                ? 'pb-44 md:pb-32'
+                : step === 3
+                    ? 'pb-8'
+                    : 'pb-24 md:pb-28'
+                }`}
+        >
             <div className="mx-auto w-full max-w-7xl overflow-x-hidden">
                 <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f8f6f6]/90 backdrop-blur">
                     <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
@@ -1174,7 +1181,7 @@ export default function ReservarClient({
                                                 </p>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                                                 {barbers.map((barber) => {
                                                     const isSelected = barber.id === form.barber_id
                                                     const servicesCount = getServicesCountByBarber(barber.id)
@@ -1195,9 +1202,9 @@ export default function ReservarClient({
                                                                 setAvailabilityMessage('')
                                                                 setServiceHint('')
                                                             }}
-                                                            className={`group relative min-w-[145px] shrink-0 overflow-hidden rounded-[24px] border bg-white p-4 text-left transition duration-300 active:scale-[0.98] xl:min-w-0 ${isSelected
-                                                                ? 'border-amber-400 bg-amber-50/45 shadow-[0_18px_45px_rgba(183,121,31,0.18)]'
-                                                                : 'border-slate-100 shadow-sm hover:-translate-y-1 hover:border-amber-200 hover:shadow-[0_16px_40px_rgba(15,23,42,0.10)]'
+                                                            className={`group relative min-w-0 overflow-hidden rounded-[20px] border bg-white p-3 text-center transition duration-300 active:scale-[0.98] md:rounded-[24px] md:p-4 ${isSelected
+                                                                ? 'border-amber-400 bg-amber-50/60 shadow-[0_12px_28px_rgba(183,121,31,0.16)]'
+                                                                : 'border-slate-100 shadow-sm hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]'
                                                                 }`}
                                                         >
                                                             <div
@@ -1205,14 +1212,14 @@ export default function ReservarClient({
                                                                     }`}
                                                                 style={{
                                                                     background:
-                                                                        'radial-gradient(circle at top right, rgba(183,121,31,0.14), transparent 38%)',
+                                                                        'radial-gradient(circle at top right, rgba(183,121,31,0.13), transparent 42%)',
                                                                 }}
                                                             />
 
                                                             <div className="relative">
-                                                                <div className="mb-3 flex items-start justify-between gap-3">
+                                                                <div className="mb-2 flex items-center justify-between gap-2">
                                                                     <span
-                                                                        className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${servicesCount > 0
+                                                                        className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] md:text-[10px] ${servicesCount > 0
                                                                             ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
                                                                             : 'bg-slate-100 text-slate-500 ring-1 ring-slate-100'
                                                                             }`}
@@ -1221,19 +1228,19 @@ export default function ReservarClient({
                                                                     </span>
 
                                                                     <span
-                                                                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-black transition ${isSelected
+                                                                        className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black transition ${isSelected
                                                                             ? 'text-white'
-                                                                            : 'border border-slate-200 bg-white text-slate-300'
+                                                                            : 'border border-slate-200 bg-white text-transparent'
                                                                             }`}
                                                                         style={isSelected ? { backgroundColor: PRIMARY } : undefined}
                                                                     >
-                                                                        {isSelected ? '✓' : ''}
+                                                                        ✓
                                                                     </span>
                                                                 </div>
 
-                                                                <div className="flex flex-col items-center text-center">
+                                                                <div className="flex flex-col items-center">
                                                                     <div
-                                                                        className={`relative h-20 w-20 overflow-hidden rounded-full bg-slate-100 p-1 transition duration-300 ${isSelected ? 'shadow-[0_0_0_3px_rgba(183,121,31,0.28)]' : ''
+                                                                        className={`relative h-14 w-14 overflow-hidden rounded-full bg-slate-100 p-0.5 transition duration-300 md:h-20 md:w-20 ${isSelected ? 'shadow-[0_0_0_3px_rgba(183,121,31,0.24)]' : ''
                                                                             }`}
                                                                     >
                                                                         <div className="h-full w-full overflow-hidden rounded-full">
@@ -1244,23 +1251,23 @@ export default function ReservarClient({
                                                                                     className="block h-full w-full object-cover transition duration-500 group-hover:scale-105"
                                                                                 />
                                                                             ) : (
-                                                                                <div className="flex h-full w-full items-center justify-center text-lg font-black text-slate-600">
+                                                                                <div className="flex h-full w-full items-center justify-center text-sm font-black text-slate-600 md:text-lg">
                                                                                     {getInitials(barber.name)}
                                                                                 </div>
                                                                             )}
                                                                         </div>
                                                                     </div>
 
-                                                                    <p className="mt-3 text-base font-black text-slate-950">
+                                                                    <p className="mt-2 text-sm font-black leading-tight text-slate-950 md:text-base">
                                                                         {barber.name.split(' ')[0]}
                                                                     </p>
 
-                                                                    <p className="mt-1 line-clamp-2 min-h-[36px] text-xs leading-5 text-slate-500">
+                                                                    <p className="mt-0.5 line-clamp-1 min-h-[16px] text-[11px] leading-4 text-slate-500 md:line-clamp-2 md:min-h-[36px] md:text-xs md:leading-5">
                                                                         {barber.specialty || 'Barbero profesional'}
                                                                     </p>
 
-                                                                    <div className="mt-3 rounded-full bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-500 ring-1 ring-slate-100">
-                                                                        {servicesCount} servicio{servicesCount === 1 ? '' : 's'}
+                                                                    <div className="mt-2 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-black text-slate-500 ring-1 ring-slate-100 md:px-3 md:text-[11px]">
+                                                                        {servicesCount} serv.
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1314,7 +1321,7 @@ export default function ReservarClient({
                                                 </p>
                                             </div>
                                         ) : (
-                                            <div className="max-h-[520px] space-y-4 overflow-y-auto pr-1 md:max-h-[430px] md:space-y-3">
+                                            <div className="max-h-[430px] space-y-3 overflow-y-auto pr-1 md:max-h-[430px]">
                                                 {filteredServices.map((service) => {
                                                     const isSelected = form.service_id === service.id
 
@@ -1334,7 +1341,7 @@ export default function ReservarClient({
                                                                 setAvailabilityMessage('')
                                                                 setServiceHint('')
                                                             }}
-                                                            className={`group w-full rounded-[22px] border p-4 text-left transition duration-300 md:rounded-[26px] md:p-6 ${isSelected
+                                                            className={`group w-full rounded-[20px] border p-3 text-left transition duration-300 md:rounded-[26px] md:p-6 ${isSelected
                                                                 ? 'bg-amber-50/60 shadow-[0_14px_35px_rgba(183,121,31,0.12)]'
                                                                 : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-sm'
                                                                 }`}
@@ -1371,11 +1378,11 @@ export default function ReservarClient({
                                                                         </span>
                                                                     </div>
 
-                                                                    <h4 className="text-xl font-black leading-tight text-slate-950 md:text-3xl">
+                                                                    <h4 className="text-base font-black leading-tight text-slate-950 md:text-3xl">
                                                                         {service.name}
                                                                     </h4>
 
-                                                                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 md:text-lg md:leading-8">
+                                                                    <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500 md:mt-2 md:text-lg md:leading-8">
                                                                         {service.description || 'Servicio profesional de barbería.'}
                                                                     </p>
                                                                 </div>
@@ -1386,7 +1393,7 @@ export default function ReservarClient({
                                                                     </p>
 
                                                                     <p
-                                                                        className="mt-1 text-2xl font-black leading-none md:text-4xl"
+                                                                        className="mt-1 text-xl font-black leading-none md:text-4xl"
                                                                         style={{ color: PRIMARY }}
                                                                     >
                                                                         {formatPrice(service.price)}
@@ -1394,13 +1401,13 @@ export default function ReservarClient({
                                                                 </div>
                                                             </div>
 
-                                                            <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 md:mt-6 md:px-5 md:py-4">
+                                                            <div className="mt-3 flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5 md:mt-6 md:px-5 md:py-4">
                                                                 <div>
                                                                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-xs">
                                                                         Duración
                                                                     </p>
 
-                                                                    <p className="mt-1 text-base font-black text-slate-900 md:text-xl">
+                                                                    <p className="mt-0.5 text-sm font-black text-slate-900 md:mt-1 md:text-xl">
                                                                         {service.duration_minutes} min
                                                                     </p>
                                                                 </div>
@@ -1414,14 +1421,6 @@ export default function ReservarClient({
                                                                     {isSelected ? 'Seleccionado' : 'Elegir'}
                                                                 </span>
                                                             </div>
-
-                                                            <button
-                                                                type="button"
-                                                                className="mt-4 w-full rounded-2xl px-4 py-3 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.20)] transition active:scale-[0.98] md:mt-6 md:py-4 md:text-base"
-                                                                style={{ backgroundColor: PRIMARY }}
-                                                            >
-                                                                {isSelected ? 'Servicio seleccionado' : 'Reservar'}
-                                                            </button>
                                                         </button>
                                                     )
                                                 })}
@@ -1511,7 +1510,7 @@ export default function ReservarClient({
                                     </div>
                                 </div>
 
-                                <div className="min-w-0 rounded-[28px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] xl:sticky xl:top-28 xl:h-fit">
+                                <div className="min-w-0 rounded-[24px] border border-white bg-white p-4 shadow-[0_14px_42px_rgba(15,23,42,0.07)] md:p-5 xl:sticky xl:top-28 xl:h-fit">
                                     <div className="mb-5 flex items-start justify-between gap-4">
                                         <div>
                                             <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-400">
@@ -1585,7 +1584,7 @@ export default function ReservarClient({
                                                             <div className="h-px flex-1 bg-slate-100" />
                                                         </div>
 
-                                                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 md:gap-3">
                                                             {group.range.map((slot) => {
                                                                 const isSelected = selectedSlot?.start_at === slot.start_at
 
@@ -1594,7 +1593,7 @@ export default function ReservarClient({
                                                                         key={slot.start_at}
                                                                         type="button"
                                                                         onClick={() => setSelectedSlot(slot)}
-                                                                        className={`group relative w-full rounded-2xl border px-4 py-4 text-center text-base font-black transition duration-300 active:scale-[0.98] ${isSelected
+                                                                        className={`group relative w-full rounded-xl border px-3 py-3 text-center text-sm font-black transition duration-300 active:scale-[0.98] md:rounded-2xl md:px-4 md:py-4 md:text-base ${isSelected
                                                                             ? 'shadow-[0_14px_30px_rgba(183,121,31,0.18)]'
                                                                             : 'border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-sm'
                                                                             }`}
@@ -1661,23 +1660,33 @@ export default function ReservarClient({
                             </div>
                         </section>
 
-                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur">
+                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-14px_35px_rgba(15,23,42,0.08)] backdrop-blur">
                             <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
-                                <div className="min-w-0 shrink-0">
-                                    <p className="text-xs font-medium text-slate-500 md:text-sm">
-                                        Total estimado
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-[11px] font-bold text-slate-500">
+                                        {selectedService
+                                            ? selectedService.name
+                                            : selectedBarber
+                                                ? `Con ${selectedBarber.name.split(' ')[0]}`
+                                                : 'Selecciona tu reserva'}
                                     </p>
 
-                                    <p className="text-2xl font-black md:text-3xl">
+                                    <p className="text-xl font-black leading-none text-slate-950 md:text-3xl">
                                         {selectedService ? formatPrice(selectedService.price) : '$0'}
                                     </p>
+
+                                    {selectedSlot && (
+                                        <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                                            {selectedDateLabel} · {selectedSlot.label}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <button
                                     type="button"
                                     onClick={handleContinueToStepTwo}
                                     disabled={!canContinueToStepTwo}
-                                    className="min-w-0 flex-1 rounded-2xl px-4 py-4 text-base font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 md:max-w-sm"
+                                    className="w-[145px] rounded-2xl px-4 py-3 text-sm font-black text-white shadow-lg transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:w-[260px] md:py-4 md:text-base"
                                     style={{ backgroundColor: PRIMARY }}
                                 >
                                     Siguiente
@@ -1708,10 +1717,10 @@ export default function ReservarClient({
                         </section>
 
                         <section className="mx-auto max-w-6xl px-4 pt-5 md:px-6 lg:px-8">
-                            <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-                                <div className="overflow-hidden rounded-[30px] border border-white bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)] xl:sticky xl:top-28 xl:h-fit">
+                            <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+                                <div className="overflow-hidden rounded-[24px] border border-white bg-white shadow-[0_14px_38px_rgba(15,23,42,0.08)] xl:sticky xl:top-28 xl:h-fit">
                                     <div
-                                        className="relative p-5 md:p-6"
+                                        className="relative p-4 md:p-6"
                                         style={{
                                             background:
                                                 'radial-gradient(circle at top right, rgba(183,121,31,0.14), transparent 36%), linear-gradient(135deg, rgba(255,255,255,1), rgba(250,247,241,0.82))',
@@ -1724,37 +1733,37 @@ export default function ReservarClient({
                                             Resumen de reserva
                                         </p>
 
-                                        <h3 className="mt-3 text-2xl font-black text-slate-950 md:text-3xl">
+                                        <h3 className="mt-2 text-xl font-black text-slate-950 md:text-3xl">
                                             {selectedService?.name || 'Servicio'}
                                         </h3>
 
-                                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                                        <p className="mt-1 text-xs leading-5 text-slate-500 md:text-sm md:leading-6">
                                             Revisa los datos antes de confirmar tu cita.
                                         </p>
 
-                                        <div className="mt-5 space-y-3">
-                                            <div className="flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 ring-1 ring-slate-100">
-                                                <span className="text-sm font-bold text-slate-500">Barbero</span>
-                                                <span className="text-sm font-black text-slate-950">
+                                        <div className="mt-4 grid grid-cols-2 gap-2 md:space-y-3 md:block">
+                                            <div className="rounded-2xl bg-white/75 px-3 py-2.5 ring-1 ring-slate-100 md:flex md:items-center md:justify-between md:px-4 md:py-3">
+                                                <span className="block text-[11px] font-bold text-slate-500 md:text-sm">Barbero</span>
+                                                <span className="mt-0.5 block truncate text-sm font-black text-slate-950 md:mt-0">
                                                     {selectedBarber?.name || '-'}
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 ring-1 ring-slate-100">
-                                                <span className="text-sm font-bold text-slate-500">Fecha</span>
-                                                <span className="text-right text-sm font-black text-slate-950">
+                                            <div className="rounded-2xl bg-white/75 px-3 py-2.5 ring-1 ring-slate-100 md:flex md:items-center md:justify-between md:px-4 md:py-3">
+                                                <span className="block text-[11px] font-bold text-slate-500 md:text-sm">Fecha</span>
+                                                <span className="mt-0.5 block truncate text-sm font-black text-slate-950 md:mt-0">
                                                     {formatHumanDate(form.appointment_date)}
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 ring-1 ring-slate-100">
-                                                <span className="text-sm font-bold text-slate-500">Hora</span>
-                                                <span className="text-sm font-black text-slate-950">
+                                            <div className="rounded-2xl bg-white/75 px-3 py-2.5 ring-1 ring-slate-100 md:flex md:items-center md:justify-between md:px-4 md:py-3">
+                                                <span className="block text-[11px] font-bold text-slate-500 md:text-sm">Hora</span>
+                                                <span className="mt-0.5 block truncate text-sm font-black text-slate-950 md:mt-0">
                                                     {selectedSlot?.label || '-'}
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 ring-1 ring-slate-100">
+                                            <div className="rounded-2xl bg-white/75 px-3 py-2.5 ring-1 ring-slate-100 md:flex md:items-center md:justify-between md:px-4 md:py-3">
                                                 <span className="text-sm font-bold text-slate-500">Duración</span>
                                                 <span className="text-sm font-black text-slate-950">
                                                     {selectedService?.duration_minutes ?? 0} min
@@ -1762,18 +1771,18 @@ export default function ReservarClient({
                                             </div>
                                         </div>
 
-                                        <div className="mt-5 rounded-3xl px-5 py-4 text-white shadow-[0_18px_40px_rgba(183,121,31,0.25)]" style={{ backgroundColor: PRIMARY }}>
+                                        <div className="mt-4 rounded-2xl px-4 py-3 text-white shadow-[0_14px_30px_rgba(183,121,31,0.20)] md:rounded-3xl md:px-5 md:py-4" style={{ backgroundColor: PRIMARY }}>
                                             <p className="text-xs font-black uppercase tracking-[0.2em] text-white/75">
                                                 Total
                                             </p>
-                                            <p className="mt-1 text-3xl font-black">
+                                            <p className="mt-1 text-2xl font-black md:text-3xl">
                                                 {selectedService ? formatPrice(selectedService.price) : '$0'}
                                             </p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     <div className="rounded-[28px] border border-white bg-white p-4 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition duration-300 focus-within:-translate-y-0.5 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.11)] md:p-5">
                                         <label htmlFor="client_name" className="mb-2 block text-sm font-bold text-slate-600">
                                             Nombre completo
@@ -1811,7 +1820,7 @@ export default function ReservarClient({
                                             placeholder="tu@correo.com"
                                             autoComplete="email"
                                             maxLength={120}
-                                            className={`w-full rounded-2xl border bg-white px-4 py-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_email')}`}
+                                            className={`w-full rounded-2xl border bg-white px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_email')}`}
                                         />
                                         {!fieldErrors.client_email && touchedFields.client_email && form.client_email.trim() && (
                                             <p className="mt-2 text-sm text-green-600">Correo válido</p>
@@ -1834,7 +1843,7 @@ export default function ReservarClient({
                                             autoComplete="tel"
                                             inputMode="numeric"
                                             maxLength={15}
-                                            className={`w-full rounded-2xl border bg-white px-4 py-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_phone')}`}
+                                            className={`w-full rounded-2xl border bg-white px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_phone')}`}
                                         />
                                         {!fieldErrors.client_phone && touchedFields.client_phone && form.client_phone.trim() && (
                                             <p className="mt-2 text-sm text-green-600">Teléfono válido</p>
@@ -1844,169 +1853,150 @@ export default function ReservarClient({
                             </div>
                         </section>
 
-                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/92 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-18px_45px_rgba(15,23,42,0.08)] backdrop-blur">
-                            <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 md:flex-row md:items-center">
-                                <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 md:grid-cols-4">
-                                    <div className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                                            Barbero
-                                        </p>
-                                        <p className="mt-1 truncate text-sm font-black text-slate-950">
-                                            {selectedBarber?.name || '-'}
-                                        </p>
-                                    </div>
+                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_32px_rgba(15,23,42,0.08)] backdrop-blur">
+                            <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setStep(1)}
+                                    className="h-14 w-[104px] shrink-0 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-800 shadow-sm transition active:scale-[0.98] md:w-32"
+                                >
+                                    Volver
+                                </button>
 
-                                    <div className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                                            Servicio
-                                        </p>
-                                        <p className="mt-1 truncate text-sm font-black text-slate-950">
-                                            {selectedService?.name || '-'}
-                                        </p>
-                                    </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                        Total
+                                    </p>
 
-                                    <div className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                                            Hora
-                                        </p>
-                                        <p className="mt-1 truncate text-sm font-black text-slate-950">
-                                            {selectedSlot?.label || '-'}
-                                        </p>
-                                    </div>
+                                    <p className="truncate text-xl font-black leading-none text-slate-950">
+                                        {selectedService ? formatPrice(selectedService.price) : '$0'}
+                                    </p>
 
-                                    <div className="rounded-2xl bg-amber-50 px-3 py-2 ring-1 ring-amber-100">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">
-                                            Total
-                                        </p>
-                                        <p className="mt-1 truncate text-xl font-black text-slate-950">
-                                            {selectedService ? formatPrice(selectedService.price) : '$0'}
-                                        </p>
-                                    </div>
+                                    <p className="mt-1 truncate text-[11px] font-semibold text-slate-500">
+                                        {selectedBarber?.name || '-'} · {selectedSlot?.label || '-'}
+                                    </p>
                                 </div>
 
-                                <div className="flex w-full gap-3 md:w-auto">
-                                    <button
-                                        type="button"
-                                        onClick={() => setStep(1)}
-                                        className="w-32 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black text-slate-800 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-slate-300 active:scale-[0.98]"
-                                    >
-                                        Volver
-                                    </button>
-
-                                    <button
-                                        type="submit"
-                                        disabled={submitting || !isStepTwoFormValid}
-                                        className="flex-1 rounded-2xl px-6 py-4 text-sm font-black text-white shadow-[0_16px_35px_rgba(183,121,31,0.26)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:w-[260px]"
-                                        style={{ backgroundColor: PRIMARY }}
-                                    >
-                                        {submitting ? 'Guardando...' : 'Confirmar reserva'}
-                                    </button>
-                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={submitting || !isStepTwoFormValid}
+                                    className="h-14 w-[150px] shrink-0 rounded-2xl px-4 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.22)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:w-[240px]"
+                                    style={{ backgroundColor: PRIMARY }}
+                                >
+                                    {submitting ? 'Guardando...' : 'Confirmar'}
+                                </button>
                             </div>
                         </footer>
                     </form>
                 )}
                 {step === 3 && successfulReservation && (
-                    <section className="mx-auto max-w-[640px] px-4 pt-10 pb-12 md:px-6 lg:px-8">
-                        <div className="overflow-hidden rounded-[32px] border border-emerald-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
+                    <section className="mx-auto max-w-[520px] px-4 pt-5 pb-8 md:px-6 md:pt-8">
+                        <div className="overflow-hidden rounded-[26px] border border-emerald-100 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
                             <div
-                                className="relative px-6 pt-7 pb-5 text-center md:px-8"
+                                className="relative px-5 pt-6 pb-4 text-center md:px-7 md:pt-7"
                                 style={{
                                     background:
-                                        'radial-gradient(circle at top left, rgba(16,185,129,0.12), transparent 34%), linear-gradient(135deg, rgba(236,253,245,0.95), rgba(255,255,255,0.95), rgba(250,247,241,0.80))',
+                                        'radial-gradient(circle at top left, rgba(16,185,129,0.13), transparent 34%), linear-gradient(135deg, rgba(236,253,245,0.95), rgba(255,255,255,0.96), rgba(250,247,241,0.72))',
                                 }}
                             >
-                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 shadow-[0_0_0_12px_rgba(16,185,129,0.10)]">
-                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-3xl font-black text-white shadow-[0_10px_28px_rgba(16,185,129,0.35)]">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 shadow-[0_0_0_9px_rgba(16,185,129,0.10)] md:h-14 md:w-14">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-xl font-black text-white shadow-[0_8px_22px_rgba(16,185,129,0.28)] md:h-10 md:w-10 md:text-2xl">
                                         ✓
                                     </div>
                                 </div>
 
                                 <p
-                                    className="mt-5 text-[11px] font-black uppercase tracking-[0.32em]"
+                                    className="mt-4 text-[9px] font-black uppercase tracking-[0.28em] md:text-[10px]"
                                     style={{ color: PRIMARY }}
                                 >
                                     Reserva confirmada
                                 </p>
 
-                                <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+                                <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
                                     Todo listo
                                 </h2>
 
-                                <p className="mx-auto mt-2 max-w-md text-sm font-medium leading-6 text-slate-500 md:text-base">
+                                <p className="mx-auto mt-1.5 max-w-sm text-xs font-medium leading-5 text-slate-500 md:text-sm md:leading-6">
                                     Ya registramos tu cita. Puedes confirmarla por WhatsApp.
                                 </p>
                             </div>
 
-                            <div className="px-5 pb-6 md:px-8 md:pb-8">
-                                <div className="relative rounded-[26px] border border-slate-100 bg-slate-50/80 p-4 shadow-[0_12px_35px_rgba(15,23,42,0.08)] md:p-5">
-                                    <div className="flex items-start justify-between gap-4">
+                            <div className="px-4 pb-5 md:px-6 md:pb-6">
+                                <div className="rounded-[22px] border border-slate-100 bg-slate-50/80 p-3.5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] md:p-4">
+                                    <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-400">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">
                                                 Resumen
                                             </p>
 
-                                            <h3 className="mt-2 text-xl font-black leading-tight text-slate-950 md:text-2xl">
+                                            <h3 className="mt-1.5 line-clamp-1 text-lg font-black leading-tight text-slate-950 md:text-xl">
                                                 {successfulReservation.service_name}
                                             </h3>
                                         </div>
 
                                         <div
-                                            className="shrink-0 rounded-2xl px-4 py-3 text-right text-white shadow-[0_12px_28px_rgba(183,121,31,0.25)]"
+                                            className="shrink-0 rounded-2xl px-3 py-2 text-right text-white shadow-[0_10px_22px_rgba(183,121,31,0.22)]"
                                             style={{ backgroundColor: PRIMARY }}
                                         >
-                                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/80">
+                                            <p className="text-[8px] font-black uppercase tracking-[0.18em] text-white/80">
                                                 Total
                                             </p>
-                                            <p className="mt-1 text-xl font-black leading-none md:text-2xl">
+
+                                            <p className="mt-0.5 text-base font-black leading-none md:text-lg">
                                                 {formatPrice(successfulReservation.price)}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                    <div className="mt-4 grid gap-2">
+                                        <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
                                                 Barbero
                                             </p>
-                                            <p className="mt-1 text-sm font-black text-slate-950 md:text-base">
+
+                                            <p className="mt-0.5 truncate text-sm font-black text-slate-950">
                                                 {successfulReservation.barber_name}
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                        <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
                                                 Fecha
                                             </p>
-                                            <p className="mt-1 text-sm font-black text-slate-950 md:text-base">
+
+                                            <p className="mt-0.5 truncate text-sm font-black text-slate-950">
                                                 {formatHumanDate(successfulReservation.appointment_date)}
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
-                                                Hora
-                                            </p>
-                                            <p className="mt-1 text-sm font-black text-slate-950 md:text-base">
-                                                {successfulReservation.slot_label}
-                                            </p>
-                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm">
+                                                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
+                                                    Hora
+                                                </p>
 
-                                        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
-                                                Cliente
-                                            </p>
-                                            <p className="mt-1 truncate text-sm font-black text-slate-950 md:text-base">
-                                                {successfulReservation.client_name}
-                                            </p>
+                                                <p className="mt-0.5 text-sm font-black text-slate-950">
+                                                    {successfulReservation.slot_label}
+                                                </p>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm">
+                                                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
+                                                    Cliente
+                                                </p>
+
+                                                <p className="mt-0.5 truncate text-sm font-black text-slate-950">
+                                                    {successfulReservation.client_name}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                <div className="mt-4 grid gap-2.5">
                                     <Link
                                         href={`/b/${businessSlug}?tab=services`}
-                                        className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black text-slate-800 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0 active:scale-[0.98] md:text-base"
+                                        className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-800 shadow-sm transition active:scale-[0.98] md:h-13"
                                     >
                                         Ir al inicio
                                     </Link>
@@ -2016,29 +2006,29 @@ export default function ReservarClient({
                                             href={whatsappUrl}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="inline-flex items-center justify-center rounded-2xl px-4 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(183,121,31,0.28)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.98] md:text-base"
+                                            className="inline-flex h-12 items-center justify-center rounded-2xl px-4 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.24)] transition active:scale-[0.98] md:h-13"
                                             style={{ backgroundColor: PRIMARY }}
                                         >
                                             Confirmar por WhatsApp →
                                         </a>
                                     ) : (
-                                        <div className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-black text-slate-400 md:text-base">
+                                        <div className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-black text-slate-400">
                                             WhatsApp no configurado
                                         </div>
                                     )}
+
+                                    <button
+                                        type="button"
+                                        onClick={resetBooking}
+                                        className="text-xs font-bold text-slate-500 underline underline-offset-4 transition hover:text-slate-800"
+                                    >
+                                        Hacer otra reserva
+                                    </button>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={resetBooking}
-                                    className="mt-4 w-full text-sm font-bold text-slate-500 underline underline-offset-4 transition hover:text-slate-800"
-                                >
-                                    Hacer otra reserva
-                                </button>
-
                                 {hasWhatsApp && (
-                                    <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-700">
-                                        Te recomendamos confirmar por WhatsApp para que el negocio tenga tu reserva a mano.
+                                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-xs font-bold leading-5 text-emerald-700">
+                                        Recomendamos confirmar por WhatsApp para que el negocio tenga tu reserva a mano.
                                     </div>
                                 )}
                             </div>
