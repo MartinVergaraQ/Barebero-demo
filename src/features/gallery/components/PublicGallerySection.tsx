@@ -8,7 +8,6 @@ type GalleryBarber = {
     name: string
 }
 
-
 type GalleryItem = {
     id: string
     title: string | null
@@ -47,7 +46,7 @@ function getInitials(name: string) {
 export function PublicGallerySection({
     items,
     barbers,
-    businessSlug
+    businessSlug,
 }: PublicGallerySectionProps) {
     const [activeBarberId, setActiveBarberId] = useState('all')
 
@@ -62,7 +61,7 @@ export function PublicGallerySection({
 
                 return {
                     id: barber.id,
-                    label: `${barber.name} (${count})`,
+                    label: `${barber.name.split(' ')[0]} (${count})`,
                 }
             }),
         ]
@@ -78,7 +77,10 @@ export function PublicGallerySection({
         const directBarber = item.barbers?.[0]?.name
         if (directBarber) return directBarber
 
-        return barbers.find((barber) => barber.id === item.barber_id)?.name ?? 'Trabajo del equipo'
+        return (
+            barbers.find((barber) => barber.id === item.barber_id)?.name ??
+            'Trabajo del equipo'
+        )
     }
 
     function getImageUrl(item: GalleryItem) {
@@ -101,42 +103,43 @@ export function PublicGallerySection({
         return `/b/${businessSlug}/reservar${query ? `?${query}` : ''}`
     }
 
-
     return (
-        <section className="pb-12">
-            <header className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-                <div>
-                    <div className="mb-4 flex items-center gap-3">
-                        <span
-                            className="h-px w-10"
-                            style={{ backgroundColor: PRIMARY }}
-                        />
+        <section className="pb-10 md:pb-12">
+            <header className="mb-5 md:mb-8">
+                <div className="mb-3 flex items-center gap-3 md:mb-4">
+                    <span
+                        className="h-px w-8 md:w-10"
+                        style={{ backgroundColor: PRIMARY }}
+                    />
 
-                        <p
-                            className="text-xs font-black uppercase tracking-[0.32em]"
-                            style={{ color: PRIMARY }}
-                        >
-                            Portafolio
-                        </p>
-                    </div>
-
-                    <h2 className="max-w-3xl text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                        Trabajos recientes
-                    </h2>
-
-                    <p className="mt-4 max-w-2xl text-base font-medium leading-8 text-slate-600 md:text-lg">
-                        Inspírate con resultados reales de nuestro equipo. Elige un estilo,
-                        revisa quién lo realizó y reserva directamente con ese barbero.
+                    <p
+                        className="text-[11px] font-black uppercase tracking-[0.28em] md:text-xs md:tracking-[0.32em]"
+                        style={{ color: PRIMARY }}
+                    >
+                        Portafolio
                     </p>
                 </div>
 
-                <div className="w-fit rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-                    {items.length} trabajo{items.length === 1 ? '' : 's'}
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <h2 className="max-w-3xl text-3xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl">
+                            Trabajos recientes
+                        </h2>
+
+                        <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 md:mt-4 md:text-lg md:leading-8">
+                            Inspírate con resultados reales, revisa quién lo realizó y
+                            reserva directamente con ese barbero.
+                        </p>
+                    </div>
+
+                    <div className="w-fit rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-[0_10px_30px_rgba(15,23,42,0.08)] md:px-5 md:py-3 md:text-sm">
+                        {items.length} trabajo{items.length === 1 ? '' : 's'}
+                    </div>
                 </div>
             </header>
 
-            <div className="mb-7 rounded-[28px] border border-white bg-white/90 p-3 shadow-[0_18px_55px_rgba(15,23,42,0.08)] backdrop-blur">
-                <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="mb-5 rounded-[22px] border border-white bg-white/90 p-2 shadow-[0_14px_38px_rgba(15,23,42,0.07)] backdrop-blur md:mb-7 md:rounded-[28px] md:p-3">
+                <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
                     {filters.map((filter) => {
                         const active = activeBarberId === filter.id
 
@@ -145,9 +148,9 @@ export function PublicGallerySection({
                                 key={filter.id}
                                 type="button"
                                 onClick={() => setActiveBarberId(filter.id)}
-                                className={`shrink-0 rounded-full px-5 py-3 text-sm font-black transition duration-300 active:scale-95 ${active
-                                    ? 'text-white shadow-[0_14px_30px_rgba(183,121,31,0.26)]'
-                                    : 'border border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-amber-200 hover:text-slate-950 hover:shadow-sm'
+                                className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-black transition duration-300 active:scale-95 md:px-5 md:py-3 ${active
+                                        ? 'text-white shadow-[0_12px_26px_rgba(183,121,31,0.24)]'
+                                        : 'border border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-amber-200 hover:text-slate-950 hover:shadow-sm'
                                     }`}
                                 style={active ? { backgroundColor: PRIMARY } : undefined}
                             >
@@ -159,8 +162,8 @@ export function PublicGallerySection({
             </div>
 
             {filteredItems.length === 0 ? (
-                <div className="rounded-[30px] border border-dashed border-slate-200 bg-white p-10 text-center shadow-sm">
-                    <p className="text-xl font-black text-slate-950">
+                <div className="rounded-[26px] border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm md:rounded-[30px] md:p-10">
+                    <p className="text-lg font-black text-slate-950 md:text-xl">
                         Aún no hay trabajos para este barbero
                     </p>
 
@@ -169,21 +172,18 @@ export function PublicGallerySection({
                     </p>
                 </div>
             ) : (
-                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                    {filteredItems.map((item, index) => {
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {filteredItems.map((item) => {
                         const imageUrl = getImageUrl(item)
                         const barberName = getBarberName(item)
                         const itemTitle = item.title?.trim() || 'Trabajo de barbería'
+
                         return (
                             <article
                                 key={item.id}
-                                className="group relative overflow-hidden rounded-[32px] bg-slate-950 shadow-[0_20px_60px_rgba(15,23,42,0.16)] ring-1 ring-white/70 transition duration-500 hover:-translate-y-1.5 hover:shadow-[0_30px_90px_rgba(15,23,42,0.24)]"
-                                style={{
-                                    animation: 'galleryFadeUp 520ms ease-out both',
-                                    animationDelay: `${index * 70}ms`,
-                                }}
+                                className="group relative overflow-hidden rounded-[26px] bg-slate-950 shadow-[0_16px_42px_rgba(15,23,42,0.14)] ring-1 ring-white/70 transition duration-500 hover:-translate-y-1 hover:shadow-[0_26px_70px_rgba(15,23,42,0.22)] md:rounded-[32px]"
                             >
-                                <div className="relative h-[390px] overflow-hidden sm:h-[430px] md:h-[460px] xl:h-[430px]">
+                                <div className="relative h-[310px] overflow-hidden sm:h-[360px] md:h-[420px] xl:h-[410px]">
                                     {imageUrl ? (
                                         <img
                                             src={imageUrl}
@@ -196,38 +196,38 @@ export function PublicGallerySection({
                                         </div>
                                     )}
 
-                                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/78" />
+                                    <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/5 to-black/78" />
 
                                     <div className="absolute left-4 top-4 flex items-center gap-2">
-                                        <span className="rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-amber-700 shadow-sm backdrop-blur">
+                                        <span className="rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-amber-700 shadow-sm backdrop-blur">
                                             Trabajo real
                                         </span>
                                     </div>
 
-                                    <div className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/60 bg-white/95 text-sm font-black text-slate-950 shadow-sm backdrop-blur">
+                                    <div className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/95 text-sm font-black text-slate-950 shadow-sm backdrop-blur md:h-11 md:w-11">
                                         {getInitials(barberName)}
                                     </div>
 
-                                    <div className="absolute inset-x-0 bottom-0 p-5">
-                                        <div className="translate-y-2 transition duration-500 group-hover:translate-y-0">
-                                            <h3 className="text-2xl font-black leading-tight text-white drop-shadow-sm">
-                                                {item.title}
+                                    <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
+                                        <div className="transition duration-500 group-hover:-translate-y-1">
+                                            <h3 className="line-clamp-2 text-2xl font-black leading-tight text-white drop-shadow-sm md:text-3xl">
+                                                {itemTitle}
                                             </h3>
 
-                                            <p className="mt-2 text-sm font-semibold text-white/80">
+                                            <p className="mt-1.5 text-sm font-semibold text-white/85 md:mt-2 md:text-base">
                                                 {barberName}
                                             </p>
 
                                             <div className="mt-4 flex items-center justify-between gap-3">
                                                 <Link
                                                     href={getBookingHref(item)}
-                                                    className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/15 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm backdrop-blur-md transition duration-300 hover:bg-white hover:text-slate-950 active:scale-95"
+                                                    className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/15 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm backdrop-blur-md transition duration-300 hover:bg-white hover:text-slate-950 active:scale-95 md:px-5"
                                                 >
                                                     Reservar estilo
                                                 </Link>
 
                                                 <span
-                                                    className="h-10 w-10 rounded-full opacity-90 shadow-[0_10px_25px_rgba(0,0,0,0.20)]"
+                                                    className="h-10 w-10 rounded-full opacity-90 shadow-[0_10px_25px_rgba(0,0,0,0.20)] md:h-11 md:w-11"
                                                     style={{ backgroundColor: PRIMARY }}
                                                 />
                                             </div>
@@ -239,20 +239,6 @@ export function PublicGallerySection({
                     })}
                 </div>
             )}
-
-            <style jsx>{`
-                @keyframes galleryFadeUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(18px);
-                    }
-
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-            `}</style>
         </section>
     )
 }

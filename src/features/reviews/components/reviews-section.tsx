@@ -1,13 +1,15 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { PublicReviewForm } from '@/src/features/reviews/components/public-review-form'
+import { useEffect, useState } from 'react'
+import { ReviewForm } from '@/src/features/reviews/components/public-review-form'
 
 type Review = {
     id: string
-    client_name: string
-    comment: string | null
     rating: number
+    comment: string | null
+    customer_name?: string | null
+    client_name?: string | null
+    created_at: string
 }
 
 type ReviewsSectionProps = {
@@ -27,30 +29,15 @@ function getInitials(name: string) {
         .join('')
 }
 
-function getStars(rating: number) {
-    return Array.from({ length: 5 }, (_, index) => index < rating)
-}
+function formatReviewDate(dateString: string) {
+    if (!dateString) return ''
 
-const mockReviews: Review[] = [
-    {
-        id: 'mock-1',
-        client_name: 'Matías Rojas',
-        rating: 5,
-        comment: 'Excelente atención, muy puntuales y el corte quedó impecable.',
-    },
-    {
-        id: 'mock-2',
-        client_name: 'Felipe Soto',
-        rating: 5,
-        comment: 'Muy buen ambiente y resultado profesional. Volvería sin duda.',
-    },
-    {
-        id: 'mock-3',
-        client_name: 'Ignacio Pérez',
-        rating: 5,
-        comment: 'La reserva fue rápida y el servicio superó mis expectativas.',
-    },
-]
+    return new Intl.DateTimeFormat('es-CL', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }).format(new Date(dateString))
+}
 
 export function ReviewsSection({
     reviews,
@@ -59,286 +46,224 @@ export function ReviewsSection({
     primary,
     primarySoft,
 }: ReviewsSectionProps) {
-    const [open, setOpen] = useState(false)
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
 
-    const visibleReviews = reviews.length > 0 ? reviews.slice(0, 6) : mockReviews
-    const sourceReviews = reviews.length > 0 ? reviews : mockReviews
-    const visibleAverage = reviews.length > 0 ? averageRating : '5.0'
-    const visibleCount = sourceReviews.length
+    useEffect(() => {
+        if (!isReviewModalOpen) return
 
-    const ratingBreakdown = useMemo(() => {
-        return [5, 4, 3, 2, 1].map((stars) => {
-            const count = sourceReviews.filter(
-                (review) => Number(review.rating) === stars
-            ).length
+        const originalOverflow = document.body.style.overflow
+        const originalPaddingRight = document.body.style.paddingRight
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
 
-            const percentage = visibleCount > 0 ? (count / visibleCount) * 100 : 0
+        document.body.style.overflow = 'hidden'
 
-            return {
-                stars,
-                count,
-                percentage,
-            }
-        })
-    }, [sourceReviews, visibleCount])
+        if (scrollbarWidth > 0) {
+            document.body.style.paddingRight = `${scrollbarWidth}px`
+        }
+
+        return () => {
+            document.body.style.overflow = originalOverflow
+            document.body.style.paddingRight = originalPaddingRight
+        }
+    }, [isReviewModalOpen])
 
     return (
-        <>
-            <div className="space-y-6 pb-12">
-                <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-                    <div>
-                        <div className="mb-4 flex items-center gap-3">
-                            <span
-                                className="h-px w-10"
-                                style={{ backgroundColor: primary }}
-                            />
+        <section className="pb-12">
+            <div className="mb-7 overflow-hidden rounded-[30px] border border-white bg-white shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+                <div
+                    className="relative p-5 md:p-7"
+                    style={{
+                        background:
+                            'radial-gradient(circle at top left, rgba(183,121,31,0.13), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.98), rgba(250,247,241,0.78))',
+                    }}
+                >
+                    <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+                        <div>
+                            <div className="mb-4 flex items-center gap-3">
+                                <span
+                                    className="h-px w-10"
+                                    style={{ backgroundColor: primary }}
+                                />
 
-                            <p
-                                className="text-xs font-black uppercase tracking-[0.32em]"
-                                style={{ color: primary }}
-                            >
-                                Opiniones reales
+                                <p
+                                    className="text-xs font-black uppercase tracking-[0.32em]"
+                                    style={{ color: primary }}
+                                >
+                                    Opiniones
+                                </p>
+                            </div>
+
+                            <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-5xl">
+                                Reseñas de clientes
+                            </h2>
+
+                            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 md:text-base md:leading-7">
+                                Mira lo que opinan otros clientes y comparte tu experiencia
+                                después de visitar la barbería.
                             </p>
                         </div>
 
-                        <h2 className="text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                            Reseñas
-                        </h2>
+                        <div className="flex flex-col gap-3 sm:flex-row md:items-center">
+                            <div className="rounded-[24px] bg-white/80 px-5 py-4 text-center shadow-sm ring-1 ring-slate-100">
+                                <p className="text-4xl font-black leading-none text-slate-950">
+                                    {averageRating}
+                                    <span style={{ color: primary }}> ★</span>
+                                </p>
 
-                        <p className="mt-3 max-w-2xl text-base font-medium leading-8 text-slate-600 md:text-lg">
-                            Mira lo que opinan clientes que ya reservaron y vivieron la experiencia.
-                        </p>
+                                <p className="mt-1 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+                                    {reviews.length} reseña{reviews.length === 1 ? '' : 's'}
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setIsReviewModalOpen(true)}
+                                className="inline-flex items-center justify-center rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.28)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.98]"
+                                style={{ backgroundColor: primary }}
+                            >
+                                Escribir reseña
+                            </button>
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            {reviews.length === 0 ? (
+                <div className="rounded-[30px] border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm">
+                    <div
+                        className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl text-xl"
+                        style={{ backgroundColor: `${primary}18`, color: primary }}
+                    >
+                        ★
+                    </div>
+
+                    <p className="text-xl font-black text-slate-950">
+                        Aún no hay reseñas
+                    </p>
+
+                    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+                        Sé el primero en compartir tu experiencia con esta barbería.
+                    </p>
 
                     <button
                         type="button"
-                        onClick={() => setOpen(true)}
-                        className="group inline-flex w-fit items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-black text-white shadow-[0_14px_32px_rgba(183,121,31,0.26)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-95"
+                        onClick={() => setIsReviewModalOpen(true)}
+                        className="mt-5 inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
                         style={{ backgroundColor: primary }}
                     >
                         Escribir reseña
-                        <span className="transition duration-300 group-hover:translate-x-0.5">
-                            →
-                        </span>
                     </button>
-                </header>
+                </div>
+            ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {reviews.map((review) => {
+                        const customerName =
+                            review.customer_name || review.client_name || 'Cliente'
 
-                <section className="relative overflow-hidden rounded-[34px] border border-white bg-white p-6 shadow-[0_22px_70px_rgba(15,23,42,0.10)] md:p-8">
-                    <div
-                        className="pointer-events-none absolute inset-0"
-                        style={{
-                            background:
-                                'radial-gradient(circle at top left, rgba(183,121,31,0.14), transparent 34%), radial-gradient(circle at bottom right, rgba(15,23,42,0.05), transparent 32%)',
-                        }}
-                    />
+                        const initials = getInitials(customerName)
 
-                    <div className="relative grid gap-8 md:grid-cols-[260px_minmax(0,1fr)] md:items-center">
-                        <div className="rounded-[28px] bg-white/75 p-5 text-center ring-1 ring-slate-100 md:text-left">
-                            <div
-                                className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-4xl shadow-sm md:mx-0"
-                                style={{
-                                    backgroundColor: primarySoft,
-                                    color: primary,
-                                }}
+                        return (
+                            <article
+                                key={review.id}
+                                className="group relative overflow-hidden rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
                             >
-                                ★
-                            </div>
-
-                            <p className="mt-5 text-6xl font-black leading-none text-slate-950 md:text-7xl">
-                                {visibleAverage}
-                            </p>
-
-                            <div className="mt-3 flex justify-center gap-1 md:justify-start">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                    <span
-                                        key={star}
-                                        className="text-lg"
-                                        style={{ color: primary }}
-                                    >
-                                        ★
-                                    </span>
-                                ))}
-                            </div>
-
-                            <p className="mt-3 text-sm font-semibold text-slate-500">
-                                Basado en {visibleCount} reseña{visibleCount === 1 ? '' : 's'}
-                            </p>
-                        </div>
-
-                        <div className="space-y-3">
-                            {ratingBreakdown.map((item) => (
                                 <div
-                                    key={item.stars}
-                                    className="grid grid-cols-[34px_18px_minmax(0,1fr)_36px] items-center gap-3"
-                                >
-                                    <span className="text-sm font-black text-slate-700">
-                                        {item.stars}
-                                    </span>
+                                    className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100"
+                                    style={{
+                                        background:
+                                            'radial-gradient(circle at top right, rgba(183,121,31,0.12), transparent 36%)',
+                                    }}
+                                />
 
-                                    <span className="text-sm" style={{ color: primary }}>
-                                        ★
-                                    </span>
+                                <div className="relative">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <div
+                                                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-black"
+                                                style={{
+                                                    backgroundColor: primarySoft,
+                                                    color: primary,
+                                                }}
+                                            >
+                                                {initials || 'C'}
+                                            </div>
 
-                                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-base font-black text-slate-950">
+                                                    {customerName}
+                                                </p>
+
+                                                <p className="mt-0.5 text-xs font-medium text-slate-400">
+                                                    {formatReviewDate(review.created_at)}
+                                                </p>
+                                            </div>
+                                        </div>
+
                                         <div
-                                            className="h-full rounded-full transition-all duration-700"
-                                            style={{
-                                                width: `${item.percentage}%`,
-                                                backgroundColor: primary,
-                                            }}
-                                        />
-                                    </div>
-
-                                    <span className="text-right text-sm font-bold text-slate-500">
-                                        {item.count}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                    {visibleReviews.map((review, index) => (
-                        <article
-                            key={review.id}
-                            className="group relative overflow-hidden rounded-[30px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
-                            style={{
-                                animation: 'reviewFadeUp 420ms ease-out both',
-                                animationDelay: `${index * 70}ms`,
-                            }}
-                        >
-                            <div
-                                className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100"
-                                style={{
-                                    background:
-                                        'radial-gradient(circle at top right, rgba(183,121,31,0.12), transparent 34%)',
-                                }}
-                            />
-
-                            <div className="relative">
-                                <div className="mb-5 flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-black shadow-sm"
+                                            className="shrink-0 rounded-full px-3 py-1 text-sm font-black"
                                             style={{
                                                 backgroundColor: primarySoft,
                                                 color: primary,
                                             }}
                                         >
-                                            {getInitials(review.client_name)}
-                                        </div>
-
-                                        <div>
-                                            <p className="font-black text-slate-950">
-                                                {review.client_name}
-                                            </p>
-                                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
-                                                Cliente
-                                            </p>
+                                            {review.rating} ★
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-0.5 text-sm" style={{ color: primary }}>
-                                        {getStars(review.rating).map((filled, index) => (
-                                            <span key={index}>{filled ? '★' : '☆'}</span>
-                                        ))}
-                                    </div>
+                                    <p className="mt-5 line-clamp-5 text-sm font-medium leading-7 text-slate-600">
+                                        {review.comment || 'Excelente atención y servicio profesional.'}
+                                    </p>
                                 </div>
+                            </article>
+                        )
+                    })}
+                </div>
+            )}
 
-                                <div
-                                    className="mb-3 text-4xl font-black leading-none opacity-25"
+            {isReviewModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/55 px-3 py-4 backdrop-blur-sm sm:items-center sm:px-4">
+                    <div
+                        className="absolute inset-0"
+                        onClick={() => setIsReviewModalOpen(false)}
+                    />
+
+                    <div className="relative w-full max-w-lg overflow-hidden rounded-t-[28px] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)] sm:rounded-[30px]">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                            <div>
+                                <p
+                                    className="text-[10px] font-black uppercase tracking-[0.24em]"
                                     style={{ color: primary }}
                                 >
-                                    “
-                                </div>
-
-                                <p className="text-sm leading-7 text-slate-600">
-                                    {review.comment || 'Sin comentario.'}
+                                    Nueva reseña
                                 </p>
-                            </div>
-                        </article>
-                    ))}
-                </div>
-            </div>
 
-            {open && (
-                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 backdrop-blur-sm md:items-center">
-                    <div
-                        className="w-full max-w-lg overflow-hidden rounded-[32px] bg-white shadow-[0_30px_100px_rgba(0,0,0,0.35)] motion-safe:animate-[modalIn_260ms_ease-out]"
-                    >
-                        <div className="relative p-6">
-                            <div
-                                className="pointer-events-none absolute inset-0"
-                                style={{
-                                    background:
-                                        'radial-gradient(circle at top left, rgba(183,121,31,0.12), transparent 32%)',
+                                <h3 className="mt-1 text-xl font-black text-slate-950">
+                                    Cuéntanos tu experiencia
+                                </h3>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setIsReviewModalOpen(false)}
+                                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xl font-black text-slate-500 transition hover:bg-slate-200 hover:text-slate-900 active:scale-95"
+                                aria-label="Cerrar modal"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="max-h-[82vh] overflow-y-auto px-5 py-5 sm:max-h-[78vh]">
+                            <ReviewForm
+                                businessId={businessId}
+                                primary={primary}
+                                onSuccess={() => {
+                                    setIsReviewModalOpen(false)
                                 }}
                             />
-
-                            <div className="relative mb-5 flex items-start justify-between gap-3">
-                                <div>
-                                    <p
-                                        className="text-[11px] font-black uppercase tracking-[0.28em]"
-                                        style={{ color: primary }}
-                                    >
-                                        Tu experiencia
-                                    </p>
-
-                                    <h3 className="mt-2 text-2xl font-black text-slate-950">
-                                        Escribir reseña
-                                    </h3>
-
-                                    <p className="mt-1 text-sm leading-6 text-slate-500">
-                                        Tu reseña quedará pendiente de revisión antes de publicarse.
-                                    </p>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setOpen(false)}
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div className="relative">
-                                <PublicReviewForm
-                                    businessId={businessId}
-                                    onSuccess={() => setOpen(false)}
-                                />
-                            </div>
                         </div>
                     </div>
                 </div>
             )}
-
-            <style jsx>{`
-                @keyframes reviewFadeUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(16px);
-                    }
-
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-
-                @keyframes modalIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(18px) scale(0.98);
-                    }
-
-                    to {
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                    }
-                }
-            `}</style>
-        </>
+        </section>
     )
 }

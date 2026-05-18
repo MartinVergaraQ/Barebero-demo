@@ -3,181 +3,174 @@
 import { useState } from 'react'
 import { createPublicReview } from '@/src/features/reviews/api/create-public-reviews'
 
-type Props = {
+type ReviewFormProps = {
     businessId: string
+    primary: string
     onSuccess?: () => void
 }
 
-const PRIMARY = '#B7791F'
-const PRIMARY_SOFT = '#F4E7D3'
-
-export function PublicReviewForm({ businessId, onSuccess }: Props) {
-    const [form, setForm] = useState({
-        client_name: '',
-        rating: 5,
-        comment: '',
-    })
-
-    const [loading, setLoading] = useState(false)
-    const [message, setMessage] = useState('')
+export function ReviewForm({
+    businessId,
+    primary,
+    onSuccess,
+}: ReviewFormProps) {
+    const [rating, setRating] = useState(5)
+    const [clientName, setClientName] = useState('')
+    const [comment, setComment] = useState('')
+    const [submitting, setSubmitting] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
+    const [successMessage, setSuccessMessage] = useState('')
 
-    function handleChange(
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-    ) {
-        const { name, value } = e.target
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault()
 
-        setForm((prev) => ({
-            ...prev,
-            [name]: value,
-        }))
-
+        setSubmitting(true)
         setErrorMessage('')
-        setMessage('')
-    }
-
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault()
-        setLoading(true)
-        setMessage('')
-        setErrorMessage('')
+        setSuccessMessage('')
 
         try {
-            if (!form.client_name.trim()) {
+            const cleanName = clientName.trim()
+            const cleanComment = comment.trim()
+
+            if (!cleanName) {
                 throw new Error('Ingresa tu nombre')
             }
 
-            if (form.rating < 1 || form.rating > 5) {
-                throw new Error('La calificación debe ser entre 1 y 5')
+            if (cleanName.length < 2) {
+                throw new Error('El nombre debe tener al menos 2 caracteres')
+            }
+
+            if (!cleanComment) {
+                throw new Error('Escribe una reseña')
+            }
+
+            if (cleanComment.length < 10) {
+                throw new Error('La reseña debe tener al menos 10 caracteres')
             }
 
             await createPublicReview({
                 business_id: businessId,
-                client_name: form.client_name.trim(),
-                rating: form.rating,
-                comment: form.comment.trim(),
+                client_name: cleanName,
+                rating,
+                comment: cleanComment,
+                is_published: false,
             })
 
-            setMessage('Gracias. Tu opinión fue enviada y quedará pendiente de revisión.')
-
-            setForm({
-                client_name: '',
-                rating: 5,
-                comment: '',
-            })
+            setSuccessMessage('Reseña enviada correctamente. Será revisada antes de publicarse.')
+            setClientName('')
+            setComment('')
+            setRating(5)
 
             setTimeout(() => {
                 onSuccess?.()
-            }, 1200)
+            }, 900)
         } catch (error) {
             setErrorMessage(
-                error instanceof Error ? error.message : 'Error enviando opinión'
+                error instanceof Error
+                    ? error.message
+                    : 'No se pudo enviar la reseña'
             )
         } finally {
-            setLoading(false)
+            setSubmitting(false)
         }
     }
 
     return (
-        <section className="rounded-[26px] border border-slate-100 bg-white">
+        <form onSubmit={handleSubmit} className="space-y-5">
             {errorMessage && (
-                <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
                     {errorMessage}
                 </div>
             )}
 
-            {message && (
-                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
-                    {message}
+            {successMessage && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+                    {successMessage}
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                    <label className="mb-2 block text-sm font-black text-slate-600">
-                        Nombre
-                    </label>
+            <div>
+                <label
+                    htmlFor="client_name"
+                    className="mb-2 block text-sm font-black text-slate-700"
+                >
+                    Nombre
+                </label>
 
-                    <input
-                        name="client_name"
-                        value={form.client_name}
-                        onChange={handleChange}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)]"
-                        placeholder="Tu nombre"
-                        maxLength={80}
-                    />
-                </div>
+                <input
+                    id="client_name"
+                    type="text"
+                    value={clientName}
+                    onChange={(event) => setClientName(event.target.value)}
+                    placeholder="Ej. Juan Pérez"
+                    maxLength={80}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)]"
+                />
+            </div>
 
-                <div>
-                    <label className="mb-2 block text-sm font-black text-slate-600">
-                        Calificación
-                    </label>
+            <div>
+                <label className="mb-2 block text-sm font-black text-slate-700">
+                    Tu calificación
+                </label>
 
-                    <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        {[1, 2, 3, 4, 5].map((star) => {
-                            const active = star <= form.rating
+                <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => {
+                        const active = rating >= star
 
-                            return (
-                                <button
-                                    key={star}
-                                    type="button"
-                                    onClick={() =>
-                                        setForm((prev) => ({
-                                            ...prev,
-                                            rating: star,
-                                        }))
-                                    }
-                                    className="text-3xl leading-none transition duration-200 hover:-translate-y-0.5 active:scale-95"
-                                    style={{ color: active ? '#EAB308' : '#CBD5E1' }}
-                                    aria-label={`${star} estrella${star === 1 ? '' : 's'}`}
-                                >
+                        return (
+                            <button
+                                key={star}
+                                type="button"
+                                onClick={() => setRating(star)}
+                                className="text-3xl leading-none transition duration-200 hover:-translate-y-0.5 active:scale-90"
+                                aria-label={`${star} estrella${star === 1 ? '' : 's'}`}
+                            >
+                                <span className={active ? 'text-yellow-400' : 'text-slate-300'}>
                                     ★
-                                </button>
-                            )
-                        })}
-
-                        <span className="ml-auto text-sm font-black text-slate-500">
-                            {form.rating}/5
-                        </span>
-                    </div>
+                                </span>
+                            </button>
+                        )
+                    })}
                 </div>
 
-                <div>
-                    <label className="mb-2 block text-sm font-black text-slate-600">
-                        Comentario
+                <p className="mt-2 text-xs font-medium text-slate-500">
+                    Selecciona de 1 a 5 estrellas.
+                </p>
+            </div>
+
+            <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                    <label
+                        htmlFor="comment"
+                        className="block text-sm font-black text-slate-700"
+                    >
+                        Reseña
                     </label>
 
-                    <textarea
-                        name="comment"
-                        value={form.comment}
-                        onChange={handleChange}
-                        className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)]"
-                        rows={4}
-                        placeholder="Cuéntanos tu experiencia"
-                        maxLength={280}
-                    />
-
-                    <p className="mt-2 text-right text-xs font-semibold text-slate-400">
-                        {form.comment.length}/280
-                    </p>
+                    <span className="text-xs font-bold text-slate-400">
+                        {comment.length}/500
+                    </span>
                 </div>
 
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full rounded-2xl px-4 py-4 text-sm font-black text-white shadow-[0_14px_32px_rgba(183,121,31,0.26)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{ backgroundColor: PRIMARY }}
-                >
-                    {loading ? 'Enviando...' : 'Enviar opinión'}
-                </button>
+                <textarea
+                    id="comment"
+                    value={comment}
+                    onChange={(event) => setComment(event.target.value)}
+                    placeholder="Cuéntanos cómo fue tu experiencia..."
+                    rows={4}
+                    maxLength={500}
+                    className="min-h-[96px] w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)]"
+                />
+            </div>
 
-                <p
-                    className="rounded-2xl px-4 py-3 text-xs font-semibold leading-5"
-                    style={{ backgroundColor: PRIMARY_SOFT, color: PRIMARY }}
-                >
-                    Las reseñas enviadas quedan pendientes de revisión antes de publicarse.
-                </p>
-            </form>
-        </section>
+            <button
+                type="submit"
+                disabled={submitting}
+                className="mt-4 inline-flex w-full items-center justify-center rounded-2xl px-5 py-3 text-sm font-black text-white shadow-[0_14px_30px_rgba(183,121,31,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ backgroundColor: primary }}
+            >
+                {submitting ? 'Enviando...' : 'Enviar reseña'}
+            </button>
+        </form>
     )
 }
