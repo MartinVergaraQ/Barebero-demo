@@ -428,386 +428,371 @@ export default async function BusinessPage({
 
                         {tab === 'details' && (
                             <div className="mx-auto max-w-6xl pb-10">
-                                <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_410px] xl:gap-8">
-                                    <div className="space-y-7">
-                                        <section className="relative overflow-hidden rounded-[32px] border border-white bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.10)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_26px_75px_rgba(15,23,42,0.14)] md:p-7">
+                                <div className="space-y-5 md:space-y-7">
+                                    <section className="relative overflow-hidden rounded-[28px] border border-white bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.09)] md:rounded-[32px] md:p-7">
+                                        <div
+                                            className="pointer-events-none absolute inset-0"
+                                            style={{
+                                                background:
+                                                    'radial-gradient(circle at top left, rgba(183,121,31,0.12), transparent 32%), linear-gradient(135deg, rgba(255,255,255,0.96), rgba(250,247,241,0.72))',
+                                            }}
+                                        />
+
+                                        <div className="relative">
                                             <div
-                                                className="pointer-events-none absolute inset-0"
-                                                style={{
-                                                    background:
-                                                        'radial-gradient(circle at top left, rgba(183,121,31,0.13), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.96), rgba(250,247,241,0.72))',
-                                                }}
-                                            />
+                                                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.18em] ring-1 md:text-xs ${isOpenNow
+                                                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                                        : 'bg-slate-100 text-slate-600 ring-slate-200'
+                                                    }`}
+                                            >
+                                                <span className="relative flex h-2.5 w-2.5">
+                                                    {isOpenNow && (
+                                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                                                    )}
 
-                                            <div className="relative">
-                                                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                                                    <div className="min-w-0">
-                                                        <div
-                                                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.16em] ring-1 ${isOpenNow
-                                                                ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                                                                : 'bg-slate-100 text-slate-600 ring-slate-200'
-                                                                }`}
-                                                        >
-                                                            <span className="relative flex h-2.5 w-2.5">
-                                                                {isOpenNow && (
-                                                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                                                                )}
+                                                    <span
+                                                        className={`relative inline-flex h-2.5 w-2.5 rounded-full ${isOpenNow ? 'bg-emerald-500' : 'bg-slate-400'
+                                                            }`}
+                                                    />
+                                                </span>
 
-                                                                <span
-                                                                    className={`relative inline-flex h-2.5 w-2.5 rounded-full ${isOpenNow ? 'bg-emerald-500' : 'bg-slate-400'
-                                                                        }`}
-                                                                />
-                                                            </span>
-
-                                                            {isOpenNow ? 'Abierto ahora' : 'Cerrado ahora'}
-                                                        </div>
-
-                                                        <p
-                                                            className="mt-5 text-xs font-black uppercase tracking-[0.28em]"
-                                                            style={{ color: PRIMARY }}
-                                                        >
-                                                            {businessCategory}
-                                                        </p>
-
-                                                        <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
-                                                            {businessName}
-                                                        </h2>
-
-                                                        <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-slate-600 md:text-base">
-                                                            {hoursStatus}
-                                                        </p>
-                                                    </div>
-
-                                                    <div className="shrink-0 rounded-[24px] bg-white/75 px-5 py-4 text-center ring-1 ring-slate-100 shadow-sm">
-                                                        <p className="text-3xl font-black text-slate-950">
-                                                            {averageRating}
-                                                            <span style={{ color: PRIMARY }}> ★</span>
-                                                        </p>
-                                                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                                                            {reviews.length} reseña{reviews.length === 1 ? '' : 's'}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                                                    <Link
-                                                        href={`/b/${businessSlug}/reservar`}
-                                                        className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.28)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.99]"
-                                                        style={{ backgroundColor: PRIMARY }}
-                                                    >
-                                                        Reservar ahora
-                                                    </Link>
-
-                                                    <a
-                                                        href="#horarios"
-                                                        className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black uppercase tracking-wide text-slate-800 transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-sm active:translate-y-0 active:scale-[0.99]"
-                                                    >
-                                                        Ver horarios
-                                                    </a>
-                                                </div>
+                                                {isOpenNow ? 'Abierto ahora' : 'Cerrado ahora'}
                                             </div>
-                                        </section>
 
-                                        <section
-                                            className="rounded-[30px] border border-white bg-white p-6 shadow-[0_18px_55px_rgba(15,23,42,0.08)] md:p-7"
-                                        >
-                                            <div className="mb-4 flex items-center gap-3">
-                                                <span
-                                                    className="h-px w-10"
-                                                    style={{ backgroundColor: PRIMARY }}
-                                                />
+                                            <p
+                                                className="mt-5 text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
+                                                style={{ color: PRIMARY }}
+                                            >
+                                                {businessCategory}
+                                            </p>
 
-                                                <p
-                                                    className="text-xs font-black uppercase tracking-[0.3em]"
-                                                    style={{ color: PRIMARY }}
-                                                >
-                                                    Experiencia
+                                            <h2 className="mt-2 text-[30px] font-black leading-tight tracking-tight text-slate-950 md:text-4xl">
+                                                {businessName}
+                                            </h2>
+
+                                            <p className="mt-3 text-base font-semibold leading-6 text-slate-600 md:text-lg">
+                                                {hoursStatus}
+                                            </p>
+
+                                            <div className="mt-5 rounded-[24px] border border-slate-100 bg-white/75 px-5 py-4 text-center shadow-sm">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <p className="text-4xl font-black leading-none text-slate-950 md:text-5xl">
+                                                        {averageRating}
+                                                    </p>
+
+                                                    <span
+                                                        className="text-4xl leading-none md:text-5xl"
+                                                        style={{ color: PRIMARY }}
+                                                    >
+                                                        ★
+                                                    </span>
+                                                </div>
+
+                                                <p className="mt-2 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
+                                                    {reviews.length} reseña{reviews.length === 1 ? '' : 's'}
                                                 </p>
                                             </div>
 
-                                            <h3 className="text-2xl font-black text-slate-950">
-                                                Sobre nosotros
-                                            </h3>
-
-                                            <p className="mt-4 max-w-3xl text-base font-medium leading-8 text-slate-600">
-                                                {aboutText}
-                                            </p>
-                                        </section>
-
-                                        <section className="rounded-[32px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.10)] md:p-6">
-                                            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                                                <div>
-                                                    <p
-                                                        className="text-xs font-black uppercase tracking-[0.32em]"
-                                                        style={{ color: PRIMARY }}
-                                                    >
-                                                        Ubicación
-                                                    </p>
-
-                                                    <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
-                                                        Cómo llegar
-                                                    </h3>
-
-                                                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500 md:text-base">
-                                                        Encuéntranos fácilmente y reserva tu próxima cita en pocos pasos.
-                                                    </p>
-                                                </div>
+                                            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                                <Link
+                                                    href={`/b/${businessSlug}/reservar`}
+                                                    className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.26)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                                                    style={{ backgroundColor: PRIMARY }}
+                                                >
+                                                    Reservar ahora
+                                                </Link>
 
                                                 <a
-                                                    href={mapsUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="group inline-flex w-fit items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-[0_16px_40px_rgba(15,23,42,0.12)] active:scale-95"
+                                                    href="#horarios"
+                                                    className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black uppercase tracking-wide text-slate-800 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 active:scale-[0.98]"
                                                 >
-                                                    Abrir mapa
-
-                                                    <span
-                                                        className="text-base leading-none transition duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                                                        style={{ color: PRIMARY }}
-                                                    >
-                                                        ↗
-                                                    </span>
+                                                    Ver horarios
                                                 </a>
                                             </div>
+                                        </div>
+                                    </section>
 
-                                            <div className="relative overflow-hidden rounded-[28px] border border-slate-100 bg-slate-100 shadow-inner">
-                                                <div className="absolute left-4 top-4 z-10 rounded-full border border-white/70 bg-white/90 px-4 py-2 text-xs font-black text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur">
-                                                    📍 {businessAddress}
-                                                </div>
+                                    <section className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
+                                        <div className="mb-3 flex items-center gap-3">
+                                            <span
+                                                className="h-px w-10"
+                                                style={{ backgroundColor: PRIMARY }}
+                                            />
 
-                                                <div className="absolute inset-x-0 top-0 z-[1] h-24 bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
+                                            <p
+                                                className="text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
+                                                style={{ color: PRIMARY }}
+                                            >
+                                                Experiencia
+                                            </p>
+                                        </div>
 
-                                                <iframe
-                                                    title={`Mapa de ${businessName}`}
-                                                    src={`https://www.google.com/maps?q=${encodeURIComponent(
-                                                        businessAddress
-                                                    )}&z=15&output=embed`}
-                                                    className="h-[310px] w-full border-0 md:h-[360px]"
-                                                    loading="lazy"
-                                                    referrerPolicy="no-referrer-when-downgrade"
-                                                />
+                                        <h3 className="text-[28px] font-black leading-tight text-slate-950 md:text-4xl">
+                                            Sobre nosotros
+                                        </h3>
+
+                                        <p className="mt-4 text-base font-medium leading-7 text-slate-600 md:max-w-3xl md:text-lg md:leading-8">
+                                            {aboutText}
+                                        </p>
+                                    </section>
+
+                                    <section
+                                        id="horarios"
+                                        className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7"
+                                    >
+                                        <div className="mb-5 flex items-start justify-between gap-3">
+                                            <div>
+                                                <p
+                                                    className="text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
+                                                    style={{ color: PRIMARY }}
+                                                >
+                                                    Atención
+                                                </p>
+
+                                                <h3 className="mt-2 text-[28px] font-black leading-tight text-slate-950 md:text-4xl">
+                                                    Horarios
+                                                </h3>
+
+                                                <p className="mt-2 text-sm font-medium leading-6 text-slate-500 md:text-base">
+                                                    {hoursStatus}
+                                                </p>
                                             </div>
 
-                                            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-                                                <div className="rounded-[24px] border border-slate-100 bg-slate-50/80 p-5">
-                                                    <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-400">
-                                                        Dirección
-                                                    </p>
+                                            <span
+                                                className={`shrink-0 rounded-full px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] ${isOpenNow
+                                                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                                                        : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+                                                    }`}
+                                            >
+                                                {isOpenNow ? 'Abierto' : 'Cerrado'}
+                                            </span>
+                                        </div>
 
-                                                    <h4 className="mt-2 text-xl font-black text-slate-950 md:text-2xl">
-                                                        {businessAddress}
-                                                    </h4>
+                                        <div className="overflow-hidden rounded-[22px] border border-slate-100 bg-white">
+                                            <div className="grid grid-cols-[1.25fr_1fr_1fr] bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 md:text-xs">
+                                                <span>Día</span>
+                                                <span className="text-center">Abre</span>
+                                                <span className="text-center">Cierra</span>
+                                            </div>
 
-                                                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                                                        Atención presencial, reserva online y confirmación rápida para tu cita.
-                                                    </p>
+                                            {schedule.map((item) => {
+                                                const isToday = item.dayKey === currentWeekday
 
-                                                    <div className="mt-4 flex flex-wrap gap-2">
-                                                        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-100">
-                                                            Reserva online
-                                                        </span>
+                                                return (
+                                                    <div
+                                                        key={item.dayKey}
+                                                        className={`grid grid-cols-[1.25fr_1fr_1fr] items-center border-t border-slate-100 px-4 py-3 text-sm md:py-4 ${isToday ? 'bg-amber-50/70' : 'bg-white'
+                                                            }`}
+                                                    >
+                                                        <div className="flex min-w-0 items-center gap-2">
+                                                            <span
+                                                                className={`truncate ${isToday
+                                                                        ? 'font-black text-slate-950'
+                                                                        : 'font-medium text-slate-600'
+                                                                    }`}
+                                                            >
+                                                                {item.label}
+                                                            </span>
 
-                                                        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-100">
-                                                            Atención presencial
+                                                            {isToday && (
+                                                                <span
+                                                                    className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase"
+                                                                    style={{
+                                                                        backgroundColor: PRIMARY_SOFT,
+                                                                        color: PRIMARY,
+                                                                    }}
+                                                                >
+                                                                    Hoy
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <span className="text-center font-bold text-slate-700">
+                                                            {item.closed ? '—' : item.open}
                                                         </span>
 
                                                         <span
-                                                            className="rounded-full px-3 py-1.5 text-xs font-bold"
-                                                            style={{
-                                                                backgroundColor: PRIMARY_SOFT,
-                                                                color: PRIMARY,
-                                                            }}
-                                                        >
-                                                            Ubicación verificada
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid gap-3 sm:grid-cols-2 lg:w-[320px] lg:grid-cols-1">
-                                                    <a
-                                                        href={mapsUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black text-white shadow-[0_14px_32px_rgba(183,121,31,0.26)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
-                                                        style={{ backgroundColor: PRIMARY }}
-                                                    >
-                                                        Cómo llegar
-                                                    </a>
-
-                                                    <Link
-                                                        href={`/b/${businessSlug}/reservar`}
-                                                        className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black text-slate-900 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md active:scale-[0.98]"
-                                                    >
-                                                        Reservar cita
-                                                    </Link>
-                                                </div>
-                                            </div>
-                                        </section>
-                                    </div>
-
-                                    <aside className="space-y-7">
-                                        <section
-                                            className="rounded-[32px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] md:p-6"
-                                        >
-                                            <div className="mb-5">
-                                                <p
-                                                    className="text-xs font-black uppercase tracking-[0.3em]"
-                                                    style={{ color: PRIMARY }}
-                                                >
-                                                    Equipo
-                                                </p>
-
-                                                <h3 className="mt-2 text-2xl font-black text-slate-950">
-                                                    Elige tu barbero
-                                                </h3>
-
-                                                <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
-                                                    Reserva directamente con el profesional que prefieras.
-                                                </p>
-                                            </div>
-
-                                            {barbers.length === 0 ? (
-                                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                                                    No hay barberos activos por ahora.
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-4">
-                                                    {barbers.slice(0, 4).map((barber, index) => (
-                                                        <article
-                                                            key={barber.id}
-                                                            className="group overflow-hidden rounded-[26px] border border-slate-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
-                                                        >
-                                                            <div className="relative h-44 overflow-hidden bg-slate-100">
-                                                                {barber.photo_url ? (
-                                                                    <img
-                                                                        src={barber.photo_url}
-                                                                        alt={barber.name}
-                                                                        className="h-full w-full object-cover object-center transition duration-700 group-hover:scale-105"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="flex h-full w-full items-center justify-center text-3xl font-black text-slate-500">
-                                                                        {getInitials(barber.name)}
-                                                                    </div>
-                                                                )}
-
-                                                                <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/55" />
-
-                                                                <div className="absolute bottom-4 left-4 right-4">
-                                                                    <p className="text-xl font-black text-white drop-shadow">
-                                                                        {barber.name}
-                                                                    </p>
-
-                                                                    <p className="mt-1 text-sm font-semibold text-white/85">
-                                                                        {barber.specialty || 'Barbero profesional'}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="p-4">
-                                                                <Link
-                                                                    href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
-                                                                    className="inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.22)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.99]"
-                                                                    style={{ backgroundColor: PRIMARY }}
-                                                                >
-                                                                    Reservar con {barber.name.split(' ')[0]}
-                                                                </Link>
-                                                            </div>
-                                                        </article>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </section>
-
-                                        <section
-                                            id="horarios"
-                                            className="rounded-[32px] border border-white bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] md:p-6 lg:sticky lg:top-24"
-
-                                        >
-                                            <div className="mb-5 flex items-start justify-between gap-3">
-                                                <div>
-                                                    <p
-                                                        className="text-xs font-black uppercase tracking-[0.3em]"
-                                                        style={{ color: PRIMARY }}
-                                                    >
-                                                        Atención
-                                                    </p>
-
-                                                    <h3 className="mt-2 text-2xl font-black text-slate-950">
-                                                        Horarios
-                                                    </h3>
-
-                                                    <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
-                                                        {hoursStatus}
-                                                    </p>
-                                                </div>
-
-                                                <span
-                                                    className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${isOpenNow
-                                                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                                        : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
-                                                        }`}
-                                                >
-                                                    {isOpenNow ? 'Abierto' : 'Cerrado'}
-                                                </span>
-                                            </div>
-
-                                            <div className="overflow-hidden rounded-[22px] border border-slate-100 bg-white">
-                                                <div className="grid grid-cols-[1.25fr_1fr_1fr] bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
-                                                    <span>Día</span>
-                                                    <span className="text-center">Apertura</span>
-                                                    <span className="text-center">Cierre</span>
-                                                </div>
-
-                                                {schedule.map((item) => {
-                                                    const isToday = item.dayKey === currentWeekday
-
-                                                    return (
-                                                        <div
-                                                            key={item.dayKey}
-                                                            className={`grid grid-cols-[1.25fr_1fr_1fr] items-center border-t border-slate-100 px-4 py-4 text-sm ${isToday ? 'bg-amber-50/70' : 'bg-white'
+                                                            className={`text-center font-bold ${item.closed ? 'text-slate-400' : 'text-slate-950'
                                                                 }`}
                                                         >
-                                                            <div className="flex min-w-0 items-center gap-2">
-                                                                <span
-                                                                    className={`truncate ${isToday
-                                                                        ? 'font-black text-slate-950'
-                                                                        : 'font-medium text-slate-600'
-                                                                        }`}
-                                                                >
-                                                                    {item.label}
-                                                                </span>
+                                                            {item.closed ? 'Cerrado' : item.close}
+                                                        </span>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </section>
 
-                                                                {isToday && (
-                                                                    <span
-                                                                        className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase"
-                                                                        style={{
-                                                                            backgroundColor: PRIMARY_SOFT,
-                                                                            color: PRIMARY,
-                                                                        }}
-                                                                    >
-                                                                        Hoy
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                    <section className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
+                                        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                                            <div>
+                                                <p
+                                                    className="text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
+                                                    style={{ color: PRIMARY }}
+                                                >
+                                                    Ubicación
+                                                </p>
 
-                                                            <span className="text-center font-bold text-slate-700">
-                                                                {item.closed ? '—' : item.open}
-                                                            </span>
+                                                <h3 className="mt-2 text-[28px] font-black leading-tight text-slate-950 md:text-4xl">
+                                                    Cómo llegar
+                                                </h3>
 
-                                                            <span
-                                                                className={`text-center font-bold ${item.closed ? 'text-slate-400' : 'text-slate-950'
-                                                                    }`}
-                                                            >
-                                                                {item.closed ? 'Cerrado' : item.close}
-                                                            </span>
-                                                        </div>
-                                                    )
-                                                })}
+                                                <p className="mt-2 text-sm leading-6 text-slate-500 md:text-base">
+                                                    Encuéntranos fácilmente y reserva tu próxima cita en pocos pasos.
+                                                </p>
                                             </div>
-                                        </section>
-                                    </aside>
-                                </div>
 
+                                            <a
+                                                href={mapsUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex w-fit items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 active:scale-95"
+                                            >
+                                                Abrir mapa
+                                                <span style={{ color: PRIMARY }}>↗</span>
+                                            </a>
+                                        </div>
+
+                                        <div className="relative overflow-hidden rounded-[24px] border border-slate-100 bg-slate-100 shadow-inner">
+                                            <div className="absolute left-3 top-3 z-10 rounded-full border border-white/70 bg-white/90 px-3 py-2 text-xs font-black text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur md:left-4 md:top-4 md:px-4">
+                                                📍 {businessAddress}
+                                            </div>
+
+                                            <iframe
+                                                title={`Mapa de ${businessName}`}
+                                                src={`https://www.google.com/maps?q=${encodeURIComponent(
+                                                    businessAddress
+                                                )}&z=15&output=embed`}
+                                                className="h-[230px] w-full border-0 md:h-[340px]"
+                                                loading="lazy"
+                                                referrerPolicy="no-referrer-when-downgrade"
+                                            />
+                                        </div>
+
+                                        <div className="mt-4 rounded-[22px] border border-slate-100 bg-slate-50/80 p-4 md:p-5">
+                                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400 md:text-xs">
+                                                Dirección
+                                            </p>
+
+                                            <h4 className="mt-2 text-xl font-black text-slate-950 md:text-2xl">
+                                                {businessAddress}
+                                            </h4>
+
+                                            <p className="mt-2 text-sm leading-6 text-slate-500 md:text-base">
+                                                Atención presencial, reserva online y confirmación rápida para tu cita.
+                                            </p>
+
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-100">
+                                                    Reserva online
+                                                </span>
+
+                                                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-100">
+                                                    Atención presencial
+                                                </span>
+
+                                                <span
+                                                    className="rounded-full px-3 py-1.5 text-xs font-bold"
+                                                    style={{
+                                                        backgroundColor: PRIMARY_SOFT,
+                                                        color: PRIMARY,
+                                                    }}
+                                                >
+                                                    Ubicación verificada
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                            <a
+                                                href={mapsUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black text-white shadow-[0_14px_32px_rgba(183,121,31,0.24)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                                                style={{ backgroundColor: PRIMARY }}
+                                            >
+                                                Cómo llegar
+                                            </a>
+
+                                            <Link
+                                                href={`/b/${businessSlug}/reservar`}
+                                                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black text-slate-900 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 active:scale-[0.98]"
+                                            >
+                                                Reservar cita
+                                            </Link>
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
+                                        <div className="mb-5">
+                                            <p
+                                                className="text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
+                                                style={{ color: PRIMARY }}
+                                            >
+                                                Equipo
+                                            </p>
+
+                                            <h3 className="mt-2 text-[28px] font-black leading-tight text-slate-950 md:text-4xl">
+                                                Elige tu barbero
+                                            </h3>
+
+                                            <p className="mt-2 text-sm font-medium leading-6 text-slate-500 md:text-base">
+                                                Reserva directamente con el profesional que prefieras.
+                                            </p>
+                                        </div>
+
+                                        {barbers.length === 0 ? (
+                                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                                                No hay barberos activos por ahora.
+                                            </div>
+                                        ) : (
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                                {barbers.slice(0, 4).map((barber) => (
+                                                    <article
+                                                        key={barber.id}
+                                                        className="group overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
+                                                    >
+                                                        <div className="relative h-52 overflow-hidden bg-slate-100 md:h-56">
+                                                            {barber.photo_url ? (
+                                                                <img
+                                                                    src={barber.photo_url}
+                                                                    alt={barber.name}
+                                                                    className="h-full w-full object-cover object-center transition duration-700 group-hover:scale-105"
+                                                                />
+                                                            ) : (
+                                                                <div className="flex h-full w-full items-center justify-center text-3xl font-black text-slate-500">
+                                                                    {getInitials(barber.name)}
+                                                                </div>
+                                                            )}
+
+                                                            <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/65" />
+
+                                                            <div className="absolute bottom-4 left-4 right-4">
+                                                                <p className="text-2xl font-black leading-tight text-white drop-shadow">
+                                                                    {barber.name}
+                                                                </p>
+
+                                                                <p className="mt-1 text-sm font-semibold text-white/85">
+                                                                    {barber.specialty || 'Barbero profesional'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="p-4">
+                                                            <Link
+                                                                href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
+                                                                className="inline-flex w-full items-center justify-center rounded-2xl px-4 py-3.5 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.22)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                                                                style={{ backgroundColor: PRIMARY }}
+                                                            >
+                                                                Reservar con {barber.name.split(' ')[0]}
+                                                            </Link>
+                                                        </div>
+                                                    </article>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </section>
+                                </div>
                             </div>
                         )}
                     </div>
