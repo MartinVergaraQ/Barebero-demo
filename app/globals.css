@@ -20,20 +20,18 @@ html,
 body {
   min-height: 100%;
   overflow-x: hidden;
-  background: #f8f6f6;
+}
+
+html {
+  background: #0b0907;
 }
 
 body {
   margin: 0;
+  background: #f8f6f6;
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-}
-
-@supports (padding-top: env(safe-area-inset-top)) {
-  body {
-    padding-top: env(safe-area-inset-top);
-    background: #0b0907;
-  }
+  overscroll-behavior-y: none;
 }
 
 @keyframes heroCardIn {
