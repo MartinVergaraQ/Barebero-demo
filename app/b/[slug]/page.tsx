@@ -225,31 +225,32 @@ export default async function BusinessPage({
 
                     <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/15 to-black/55" />
 
-                    <div className="absolute left-4 right-4 top-[calc(0.85rem+env(safe-area-inset-top))] z-10 flex items-center justify-between md:left-6 md:right-6 md:top-6 lg:left-8 lg:right-8">
-                        <Link
-                            href={`/b/${businessSlug}?tab=services`}
-                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/25 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 active:translate-y-0 active:scale-95"
-                            aria-label="Volver"
-                        >
-                            <span className="text-2xl leading-none transition duration-300 group-hover:-translate-x-0.5">
-                                ←
-                            </span>
-                        </Link>
-
+                    <div className="absolute left-4 right-4 top-[calc(0.85rem+env(safe-area-inset-top))] z-10 flex items-center justify-end md:left-6 md:right-6 md:top-6 lg:left-8 lg:right-8">
                         <a
                             href={mapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/25 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 active:translate-y-0 active:scale-95 md:w-auto md:px-4"
-                            aria-label="Abrir ubicación"
+                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/25 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white active:translate-y-0 active:scale-95 md:w-auto md:px-4"
+                            aria-label="Abrir ubicación en Google Maps"
                         >
-                            <span className="hidden text-sm font-black uppercase tracking-[0.16em] md:inline">
+                            <span className="hidden text-sm font-black uppercase tracking-[0.16em] text-white transition group-hover:text-slate-950 md:inline">
                                 Mapa
                             </span>
 
-                            <span className="text-lg leading-none transition duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 md:ml-2">
-                                ↗
-                            </span>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                className="md:ml-2"
+                            >
+                                <path
+                                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                                    fill="#EA4335"
+                                />
+                                <circle cx="12" cy="9" r="2.5" fill="white" />
+                            </svg>
                         </a>
                     </div>
                 </section>

@@ -31,7 +31,8 @@ body {
   background: #f8f6f6;
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  overscroll-behavior-y: none;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes heroCardIn {
