@@ -216,19 +216,19 @@ export default async function BusinessPage({
 
         <main className="min-h-screen bg-[#f8f6f6] text-slate-900">
             <div className="mx-auto w-full max-w-7xl bg-[#f8f6f6] pb-28">
-                <section className="relative h-[190px] w-full overflow-hidden bg-slate-950 md:h-80 lg:h-[420px]">
+                <section className="relative -mt-[env(safe-area-inset-top)] h-[calc(210px+env(safe-area-inset-top))] w-full overflow-hidden bg-slate-950 pt-[env(safe-area-inset-top)] md:h-80 md:pt-0 lg:h-[420px]">
                     <img
                         src={heroImage}
                         alt={businessName}
                         className="absolute inset-0 h-full w-full object-cover object-center"
                     />
 
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/15 to-black/45" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/15 to-black/50" />
 
-                    <div className="absolute left-4 right-4 top-4 z-10 flex items-center justify-between md:left-6 md:right-6 lg:left-8 lg:right-8">
+                    <div className="absolute left-4 right-4 top-[calc(0.9rem+env(safe-area-inset-top))] z-10 flex items-center justify-between md:left-6 md:right-6 md:top-6 lg:left-8 lg:right-8">
                         <Link
                             href={`/b/${businessSlug}?tab=services`}
-                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/25 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 active:translate-y-0 active:scale-95"
+                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/30 text-white shadow-[0_14px_34px_rgba(0,0,0,0.32)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 active:translate-y-0 active:scale-95"
                             aria-label="Volver"
                         >
                             <span className="text-2xl leading-none transition duration-300 group-hover:-translate-x-0.5">
@@ -240,7 +240,7 @@ export default async function BusinessPage({
                             href={mapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/25 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 active:translate-y-0 active:scale-95 md:w-auto md:px-4"
+                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/30 text-white shadow-[0_14px_34px_rgba(0,0,0,0.32)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-slate-950 active:translate-y-0 active:scale-95 md:w-auto md:px-4"
                             aria-label="Abrir ubicación"
                         >
                             <span className="hidden text-sm font-black uppercase tracking-[0.16em] md:inline">
@@ -441,8 +441,8 @@ export default async function BusinessPage({
                                         <div className="relative">
                                             <div
                                                 className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.18em] ring-1 md:text-xs ${isOpenNow
-                                                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                                                        : 'bg-slate-100 text-slate-600 ring-slate-200'
+                                                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                                    : 'bg-slate-100 text-slate-600 ring-slate-200'
                                                     }`}
                                             >
                                                 <span className="relative flex h-2.5 w-2.5">
@@ -560,8 +560,8 @@ export default async function BusinessPage({
 
                                             <span
                                                 className={`shrink-0 rounded-full px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] ${isOpenNow
-                                                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                                        : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+                                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                                                    : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
                                                     }`}
                                             >
                                                 {isOpenNow ? 'Abierto' : 'Cerrado'}
@@ -587,8 +587,8 @@ export default async function BusinessPage({
                                                         <div className="flex min-w-0 items-center gap-2">
                                                             <span
                                                                 className={`truncate ${isToday
-                                                                        ? 'font-black text-slate-950'
-                                                                        : 'font-medium text-slate-600'
+                                                                    ? 'font-black text-slate-950'
+                                                                    : 'font-medium text-slate-600'
                                                                     }`}
                                                             >
                                                                 {item.label}

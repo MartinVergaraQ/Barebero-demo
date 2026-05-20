@@ -239,11 +239,12 @@ export function PublicServicesExplorer({
                                         </div>
 
                                         <div className="text-right">
-                                            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 md:text-[11px]">
                                                 Precio
                                             </p>
+
                                             <p
-                                                className="mt-1 text-[26px] font-black leading-none md:text-2xl"
+                                                className="mt-1 text-[22px] font-black leading-none md:text-2xl"
                                                 style={{ color: primary }}
                                             >
                                                 {formatPrice(service.price)}
