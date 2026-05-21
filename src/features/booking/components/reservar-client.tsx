@@ -1036,12 +1036,30 @@ export default function ReservarClient({
             <div className="mx-auto w-full max-w-7xl overflow-x-hidden">
                 <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f8f6f6]/90 backdrop-blur">
                     <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
-                        <Link
-                            href={`/b/${businessSlug}?tab=services`}
-                            className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-200/60"
-                        >
-                            ←
-                        </Link>
+                        {step === 1 ? (
+                            <Link
+                                href={`/b/${businessSlug}?tab=services`}
+                                className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-200/60"
+                                aria-label="Volver al inicio"
+                            >
+                                ←
+                            </Link>
+                        ) : step === 2 ? (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setErrorMessage('')
+                                    setMessage('')
+                                    setStep(1)
+                                }}
+                                className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-200/60"
+                                aria-label="Volver al paso anterior"
+                            >
+                                ←
+                            </button>
+                        ) : (
+                            <div className="w-10" />
+                        )}
 
                         <h1 className="text-lg font-black md:text-2xl">
                             {step === 1
