@@ -234,7 +234,7 @@ export default async function BusinessPage({
                             href={mapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/25 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white active:translate-y-0 active:scale-95 md:w-auto md:px-4"
+                            className="group inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-[0_14px_34px_rgba(0,0,0,0.35)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-white/35 hover:bg-white active:translate-y-0 active:scale-95 md:h-12 md:w-auto md:px-4"
                             aria-label="Abrir ubicación en Google Maps"
                         >
                             <span className="hidden text-sm font-black uppercase tracking-[0.16em] text-white transition group-hover:text-slate-950 md:inline">
@@ -259,107 +259,103 @@ export default async function BusinessPage({
                     </div>
                 </section>
 
-                <section className="relative z-10 -mt-8 px-4 md:-mt-12 md:px-6 lg:px-8">
+                <section className="relative z-10 -mt-7 px-4 md:-mt-12 md:px-6 lg:px-8">
                     <div className="mx-auto max-w-5xl">
-                        <div className="group overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-[0_20px_55px_rgba(15,23,42,0.14)] transition duration-500 motion-safe:animate-[heroCardIn_700ms_ease-out] hover:shadow-[0_30px_90px_rgba(15,23,42,0.20)] md:rounded-[34px]">
+                        <div className="group overflow-hidden rounded-[26px] border border-white/70 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.13)] transition duration-500 motion-safe:animate-[heroCardIn_700ms_ease-out] md:rounded-[34px]">
                             <div className="relative">
                                 <div
                                     className="pointer-events-none absolute inset-0"
                                     style={{
                                         background:
-                                            'radial-gradient(circle at top left, rgba(183,121,31,0.16), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.95), rgba(250,247,241,0.78))',
+                                            'radial-gradient(circle at top left, rgba(183,121,31,0.14), transparent 32%), linear-gradient(135deg, rgba(255,255,255,0.96), rgba(250,247,241,0.78))',
                                     }}
                                 />
 
-                                <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
-
-                                <div className="relative px-5 py-4 text-center md:px-10 md:py-8">
-                                    <div className="mb-3 flex items-center justify-center">
+                                <div className="relative px-4 py-4 text-center md:px-10 md:py-8">
+                                    <div className="flex justify-center">
                                         <div
-                                            className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 shadow-sm ring-1 ${isOpenNow
+                                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 shadow-sm ring-1 ${isOpenNow
                                                 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
                                                 : 'bg-slate-100 text-slate-600 ring-slate-200'
                                                 }`}
                                         >
-                                            <span className="relative flex h-2.5 w-2.5">
+                                            <span className="relative flex h-2 w-2">
                                                 {isOpenNow && (
                                                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                                                 )}
 
                                                 <span
-                                                    className={`relative inline-flex h-2.5 w-2.5 rounded-full ${isOpenNow ? 'bg-emerald-500' : 'bg-slate-400'
+                                                    className={`relative inline-flex h-2 w-2 rounded-full ${isOpenNow ? 'bg-emerald-500' : 'bg-slate-400'
                                                         }`}
                                                 />
                                             </span>
 
-                                            <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+                                            <span className="text-[9px] font-black uppercase tracking-[0.22em]">
                                                 {isOpenNow ? 'Abierto ahora' : 'Cerrado ahora'}
                                             </span>
                                         </div>
                                     </div>
 
                                     <p
-                                        className="text-[11px] font-black uppercase tracking-[0.34em]"
+                                        className="mt-3 text-[10px] font-black uppercase tracking-[0.32em]"
                                         style={{ color: PRIMARY }}
                                     >
                                         {businessCategory}
                                     </p>
 
-                                    <h1 className="mt-2 text-[24px] font-black leading-tight tracking-tight text-slate-950 md:mt-3 md:text-4xl">
+                                    <h1 className="mt-1.5 text-[22px] font-black leading-tight tracking-tight text-slate-950 md:mt-3 md:text-4xl">
                                         {businessName}
                                     </h1>
 
-                                    <div className="mt-2 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
+                                    <div className="mt-1.5 flex items-center justify-center gap-2 text-xs font-bold text-slate-500 md:text-sm">
                                         <span
                                             className="h-1.5 w-1.5 rounded-full"
                                             style={{ backgroundColor: PRIMARY }}
                                         />
-                                        <span>{businessAddress}</span>
+                                        <span className="line-clamp-1">{businessAddress}</span>
                                     </div>
 
-                                    <div className="mx-auto mt-5 h-px max-w-3xl bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-
-                                    <div className="mt-3 grid grid-cols-3 gap-2 md:mt-5 md:gap-4">
-                                        <div className="rounded-2xl bg-white/65 px-2.5 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90 md:px-3">
+                                    <div className="mt-4 grid grid-cols-3 gap-1.5 md:mt-5 md:gap-4">
+                                        <div className="rounded-2xl bg-white/70 px-2 py-2.5 ring-1 ring-slate-100/80 md:px-3 md:py-3">
                                             <div className="flex items-center justify-center gap-1">
-                                                <p className="text-xl font-black leading-none text-slate-950 md:text-3xl">
+                                                <p className="text-lg font-black leading-none text-slate-950 md:text-3xl">
                                                     {averageRating}
                                                 </p>
                                                 <span
-                                                    className="text-base leading-none"
+                                                    className="text-sm leading-none md:text-base"
                                                     style={{ color: PRIMARY }}
                                                 >
                                                     ★
                                                 </span>
                                             </div>
-                                            <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
                                                 Rating
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl bg-white/65 px-2.5 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90 md:px-3">
-                                            <p className="text-xl font-black leading-none text-slate-950 md:text-3xl">
+                                        <div className="rounded-2xl bg-white/70 px-2 py-2.5 ring-1 ring-slate-100/80 md:px-3 md:py-3">
+                                            <p className="text-lg font-black leading-none text-slate-950 md:text-3xl">
                                                 {services.length}
                                             </p>
-                                            <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
                                                 Servicios
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl bg-white/65 px-2.5 py-3 ring-1 ring-slate-100/80 transition duration-300 group-hover:bg-white/90 md:px-3">
-                                            <p className="text-xl font-black leading-none text-slate-950 md:text-3xl">
+                                        <div className="rounded-2xl bg-white/70 px-2 py-2.5 ring-1 ring-slate-100/80 md:px-3 md:py-3">
+                                            <p className="text-lg font-black leading-none text-slate-950 md:text-3xl">
                                                 {reviews.length}
                                             </p>
-                                            <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
                                                 Reseñas
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="mt-5 md:mt-6">
+                                    <div className="mt-4 md:mt-6">
                                         <Link
                                             href={`/b/${businessSlug}/reservar`}
-                                            className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.30)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.99] md:py-4"
+                                            className="inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.28)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.99] md:h-14"
                                             style={{ backgroundColor: PRIMARY }}
                                         >
                                             Reservar ahora
