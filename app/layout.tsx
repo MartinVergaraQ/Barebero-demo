@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Bebas_Neue, Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
 })
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const bebasNeue = Bebas_Neue({
+  variable: '--font-bebas',
   subsets: ['latin'],
+  weight: '400',
 })
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0b0907',
+  themeColor: '#0f1115',
 }
 
 export default function RootLayout({
@@ -31,8 +32,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>
+    <html lang="es" className={`${inter.variable} ${bebasNeue.variable}`}>
+      <body className="font-sans">
         {children}
 
         <Toaster
@@ -42,9 +43,9 @@ export default function RootLayout({
           expand
           toastOptions={{
             style: {
-              background: '#f8f5ee',
-              color: '#1f1f1f',
-              border: '1px solid #e7dfcf',
+              background: '#171a21',
+              color: '#f8fafc',
+              border: '1px solid rgba(255,255,255,0.10)',
               borderRadius: '16px',
             },
           }}

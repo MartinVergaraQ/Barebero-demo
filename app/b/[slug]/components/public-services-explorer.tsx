@@ -131,9 +131,9 @@ export function PublicServicesExplorer({
 
     return (
         <div className="space-y-4 md:space-y-6">
-            <div className="rounded-[22px] border border-white bg-white/85 p-3 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur md:rounded-[28px] md:p-4">
+            <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.035] p-3 shadow-[0_14px_34px_rgba(0,0,0,0.22)] backdrop-blur md:rounded-[28px] md:p-4">
                 <div className="relative">
-                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
                         ⌕
                     </span>
 
@@ -142,14 +142,14 @@ export function PublicServicesExplorer({
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                         placeholder="Busca corte, barba, fade..."
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-10 py-3 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:px-11 md:py-4 md:text-base"
+                        className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.035] px-10 py-3 text-sm font-semibold text-foreground outline-none transition placeholder:text-slate-500 focus:border-primary/70 focus:bg-white/[0.05] focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] md:px-11 md:py-4 md:text-base"
                     />
 
                     {search && (
                         <button
                             type="button"
                             onClick={() => setSearch('')}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-sm font-bold text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
                             aria-label="Limpiar búsqueda"
                         >
                             ×
@@ -168,7 +168,7 @@ export function PublicServicesExplorer({
                                 onClick={() => setActiveFilter(filter.key)}
                                 className={`shrink-0 rounded-full px-4 py-2 text-xs font-black transition duration-300 active:scale-95 md:px-5 md:py-2.5 md:text-sm ${active
                                     ? 'text-white shadow-[0_10px_24px_rgba(183,121,31,0.22)]'
-                                    : 'border border-slate-200 bg-white text-slate-600 hover:border-amber-200 hover:text-slate-950'
+                                    : 'border border-border-soft bg-surface/5 text-slate-300 hover:border-primary/40 hover:text-white'
                                     }`}
                                 style={active ? { backgroundColor: primary } : undefined}
                             >
@@ -180,7 +180,7 @@ export function PublicServicesExplorer({
             </div>
 
             {filteredServices.length === 0 ? (
-                <div className="rounded-[24px] border border-dashed border-slate-200 bg-white p-8 text-center shadow-[0_14px_40px_rgba(15,23,42,0.06)]">
+                <div className="rounded-[24px] border border-dashed border-border-soft bg-surface p-8 text-center shadow-[0_14px_40px_rgba(15,23,42,0.06)]">
                     <div
                         className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl text-xl"
                         style={{ backgroundColor: `${primary}18`, color: primary }}
@@ -188,7 +188,7 @@ export function PublicServicesExplorer({
                         ✂
                     </div>
 
-                    <p className="text-base font-black text-slate-950 md:text-lg">
+                    <p className="text-base font-black text-foreground md:text-lg">
                         No hay servicios disponibles en esta categoría
                     </p>
 
@@ -210,7 +210,7 @@ export function PublicServicesExplorer({
                         {visibleServices.map((service, index) => (
                             <article
                                 key={service.id}
-                                className="group relative overflow-hidden rounded-[18px] border border-slate-100 bg-white p-3 shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.10)] md:rounded-[24px] md:p-5"
+                                className="group relative overflow-hidden rounded-[20px] border border-border-soft bg-surface p-3 shadow-[0_12px_34px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_55px_rgba(0,0,0,0.32)] md:rounded-[26px] md:p-5"
                                 style={{
                                     animation: `serviceFadeUp 360ms ease-out both`,
                                     animationDelay: `${index * 45}ms`,
@@ -227,13 +227,20 @@ export function PublicServicesExplorer({
                                             </p>
 
                                             {service.is_popular && (
-                                                <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-amber-700 ring-1 ring-amber-100">
+                                                <span
+                                                    className="rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.12em]"
+                                                    style={{
+                                                        borderColor: `${primary}55`,
+                                                        backgroundColor: `${primary}18`,
+                                                        color: primary,
+                                                    }}
+                                                >
                                                     Popular
                                                 </span>
                                             )}
                                         </div>
 
-                                        <h2 className="line-clamp-1 text-sm font-black leading-tight text-slate-950 md:text-lg">
+                                        <h2 className="line-clamp-1 text-base font-black leading-tight text-foreground md:text-xl">
                                             {service.name}
                                         </h2>
 
@@ -250,21 +257,21 @@ export function PublicServicesExplorer({
                                             {formatPrice(service.price)}
                                         </p>
 
-                                        <p className="mt-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+                                        <p className="mt-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
                                             CLP
                                         </p>
                                     </div>
                                 </div>
 
                                 <div className="mt-3 flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
+                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
                                         <span>⏱</span>
                                         <span>{service.duration_minutes} min</span>
                                     </div>
 
                                     <Link
                                         href={`/b/${businessSlug}/reservar?serviceId=${service.id}`}
-                                        className="inline-flex h-10 min-w-[118px] items-center justify-center rounded-xl px-4 text-xs font-black text-white shadow-[0_10px_22px_rgba(183,121,31,0.18)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] md:h-10 md:min-w-[120px] md:text-sm"
+                                        className="inline-flex h-9 items-center justify-center rounded-xl px-4 text-xs font-black text-white shadow-[0_10px_22px_rgba(200,148,46,0.20)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] md:h-11 md:text-sm"
                                         style={{ backgroundColor: primary }}
                                     >
                                         Reservar
@@ -279,7 +286,7 @@ export function PublicServicesExplorer({
                             <button
                                 type="button"
                                 onClick={() => setShowAll((current) => !current)}
-                                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 hover:text-slate-950 active:scale-[0.98]"
+                                className="inline-flex items-center justify-center rounded-full border border-border-soft bg-surface px-5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 hover:text-foreground active:scale-[0.98]"
                             >
                                 {showAll
                                     ? 'Ver menos servicios'

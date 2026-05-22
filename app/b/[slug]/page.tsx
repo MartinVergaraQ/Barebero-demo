@@ -39,19 +39,8 @@ type BusinessPageProps = {
     }>
 }
 
-const PRIMARY = '#B7791F'
-const PRIMARY_SOFT = '#F4E7D3'
-
-function formatPrice(price: number | string) {
-    const numericPrice = typeof price === 'string' ? Number(price) : price
-    if (Number.isNaN(numericPrice)) return '$0'
-
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        maximumFractionDigits: 0,
-    }).format(numericPrice)
-}
+const PRIMARY = '#C8942E'
+const PRIMARY_SOFT = 'rgba(200,148,46,0.14)'
 
 function getAverageRating(reviews: Array<{ rating: number }>) {
     if (!reviews.length) return '0.0'
@@ -74,7 +63,13 @@ export default async function BusinessPage({
 }: BusinessPageProps) {
     const { slug } = await params
     const query = await searchParams
-    const tab = query?.tab ?? 'services'
+    const allowedTabs = ['services', 'gallery', 'reviews', 'details'] as const
+    type TabKey = (typeof allowedTabs)[number]
+
+    const requestedTab = query?.tab
+    const tab: TabKey = allowedTabs.includes(requestedTab as TabKey)
+        ? (requestedTab as TabKey)
+        : 'services'
 
     const supabase = await createClient()
 
@@ -172,11 +167,15 @@ export default async function BusinessPage({
         return hours * 60 + minutes
     }
 
+    const businessTimezone = typedBusiness.timezone || BUSINESS_TIME_ZONE
+
     const now = new Date()
+
     const currentWeekday = weekdayMap[
-        formatInTimeZone(now, BUSINESS_TIME_ZONE, 'EEEE')
+        formatInTimeZone(now, businessTimezone, 'EEEE')
     ]
-    const currentTime = formatInTimeZone(now, BUSINESS_TIME_ZONE, 'HH:mm')
+
+    const currentTime = formatInTimeZone(now, businessTimezone, 'HH:mm')
     const currentMinutes = toMinutes(currentTime)
 
     const todaySchedule = schedule.find((item) => item.dayKey === currentWeekday)
@@ -218,8 +217,8 @@ export default async function BusinessPage({
 
     return (
 
-        <main className="min-h-screen bg-[#f8f6f6] text-slate-900">
-            <div className="mx-auto w-full max-w-7xl bg-[#f8f6f6] pb-28">
+        <main className="min-h-screen bg-background text-foreground">
+            <div className="mx-auto w-full max-w-7xl bg-background pb-28">
                 <section className="relative -mt-[env(safe-area-inset-top)] h-[calc(235px+env(safe-area-inset-top))] w-full overflow-hidden bg-[#0b0907] pt-[env(safe-area-inset-top)] md:mt-0 md:h-80 md:pt-0 lg:h-[420px]">
                     <img
                         src={heroImage}
@@ -234,26 +233,34 @@ export default async function BusinessPage({
                             href={mapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-[0_14px_34px_rgba(0,0,0,0.35)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-white/35 hover:bg-white active:translate-y-0 active:scale-95 md:h-12 md:w-auto md:px-4"
+                            className="group inline-flex h-11 w-11 items-center justify-center rounded-full border border-border-soft/20 bg-black/35 text-white shadow-[0_14px_34px_rgba(0,0,0,0.35)] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-border-soft/35 hover:bg-surface active:translate-y-0 active:scale-95 md:h-12 md:w-auto md:px-4"
                             aria-label="Abrir ubicación en Google Maps"
                         >
-                            <span className="hidden text-sm font-black uppercase tracking-[0.16em] text-white transition group-hover:text-slate-950 md:inline">
+                            <span className="hidden text-sm font-black uppercase tracking-[0.16em] text-white transition group-hover:text-foreground md:inline">
                                 Mapa
                             </span>
 
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
                                 viewBox="0 0 24 24"
                                 fill="none"
-                                className="md:ml-2"
+                                className="h-5 w-5 transition duration-300 md:ml-2"
+                                aria-hidden="true"
                             >
                                 <path
-                                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-                                    fill="#EA4335"
+                                    d="M12 21s6-5.4 6-11a6 6 0 1 0-12 0c0 5.6 6 11 6 11Z"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                 />
-                                <circle cx="12" cy="9" r="2.5" fill="white" />
+                                <path
+                                    d="M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
                             </svg>
                         </a>
                     </div>
@@ -261,13 +268,13 @@ export default async function BusinessPage({
 
                 <section className="relative z-10 -mt-7 px-4 md:-mt-12 md:px-6 lg:px-8">
                     <div className="mx-auto max-w-5xl">
-                        <div className="group overflow-hidden rounded-[26px] border border-white/70 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.13)] transition duration-500 motion-safe:animate-[heroCardIn_700ms_ease-out] md:rounded-[34px]">
+                        <div className="group overflow-hidden rounded-[26px] border border-border-soft bg-surface shadow-[0_24px_70px_rgba(0,0,0,0.35)] transition duration-500 motion-safe:animate-[heroCardIn_700ms_ease-out] md:rounded-[34px]">
                             <div className="relative">
                                 <div
                                     className="pointer-events-none absolute inset-0"
                                     style={{
                                         background:
-                                            'radial-gradient(circle at top left, rgba(183,121,31,0.14), transparent 32%), linear-gradient(135deg, rgba(255,255,255,0.96), rgba(250,247,241,0.78))',
+                                            'radial-gradient(circle at top left, rgba(200,148,46,0.18), transparent 32%), linear-gradient(135deg, rgba(23,26,33,0.98), rgba(15,17,21,0.96))',
                                     }}
                                 />
 
@@ -276,7 +283,7 @@ export default async function BusinessPage({
                                         <div
                                             className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 shadow-sm ring-1 ${isOpenNow
                                                 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                                                : 'bg-slate-100 text-slate-600 ring-slate-200'
+                                                : 'bg-white/[0.06] text-slate-400 ring-slate-200'
                                                 }`}
                                         >
                                             <span className="relative flex h-2 w-2">
@@ -303,11 +310,11 @@ export default async function BusinessPage({
                                         {businessCategory}
                                     </p>
 
-                                    <h1 className="mt-1.5 text-[22px] font-black leading-tight tracking-tight text-slate-950 md:mt-3 md:text-4xl">
+                                    <h1 className="mt-1.5 font-display text-[30px] leading-none tracking-wide text-foreground md:mt-3 md:text-5xl">
                                         {businessName}
                                     </h1>
 
-                                    <div className="mt-1.5 flex items-center justify-center gap-2 text-xs font-bold text-slate-500 md:text-sm">
+                                    <div className="mt-1.5 flex items-center justify-center gap-2 text-xs font-bold text-slate-400 md:text-sm">
                                         <span
                                             className="h-1.5 w-1.5 rounded-full"
                                             style={{ backgroundColor: PRIMARY }}
@@ -316,9 +323,9 @@ export default async function BusinessPage({
                                     </div>
 
                                     <div className="mt-4 grid grid-cols-3 gap-1.5 md:mt-5 md:gap-4">
-                                        <div className="rounded-2xl bg-white/70 px-2 py-2.5 ring-1 ring-slate-100/80 md:px-3 md:py-3">
+                                        <div className="rounded-2xl bg-surface/5 px-2 py-2.5 ring-1 ring-white/10 md:px-3 md:py-3">
                                             <div className="flex items-center justify-center gap-1">
-                                                <p className="text-lg font-black leading-none text-slate-950 md:text-3xl">
+                                                <p className="text-lg font-black leading-none text-foreground md:text-3xl">
                                                     {averageRating}
                                                 </p>
                                                 <span
@@ -333,8 +340,8 @@ export default async function BusinessPage({
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl bg-white/70 px-2 py-2.5 ring-1 ring-slate-100/80 md:px-3 md:py-3">
-                                            <p className="text-lg font-black leading-none text-slate-950 md:text-3xl">
+                                        <div className="rounded-2xl bg-surface/5 px-2 py-2.5 ring-1 ring-white/10 md:px-3 md:py-3">
+                                            <p className="text-lg font-black leading-none text-foreground md:text-3xl">
                                                 {services.length}
                                             </p>
                                             <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
@@ -342,8 +349,8 @@ export default async function BusinessPage({
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl bg-white/70 px-2 py-2.5 ring-1 ring-slate-100/80 md:px-3 md:py-3">
-                                            <p className="text-lg font-black leading-none text-slate-950 md:text-3xl">
+                                        <div className="rounded-2xl bg-surface/5 px-2 py-2.5 ring-1 ring-white/10 md:px-3 md:py-3">
+                                            <p className="text-lg font-black leading-none text-foreground md:text-3xl">
                                                 {reviews.length}
                                             </p>
                                             <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
@@ -367,7 +374,7 @@ export default async function BusinessPage({
                     </div>
                 </section>
 
-                <section className="sticky top-0 z-20 mt-3 border-b border-slate-200 bg-[#f8f6f6]/95 backdrop-blur">
+                <section className="sticky top-0 z-20 mt-4 border-b border-border-soft bg-background/95 backdrop-blur">
                     <div className="mx-auto flex max-w-6xl px-2 md:px-6">
                         {tabs.map((item) => {
                             const active = tab === item.key
@@ -377,7 +384,7 @@ export default async function BusinessPage({
                                     key={item.key}
                                     href={`/b/${businessSlug}?tab=${item.key}`}
                                     scroll
-                                    className={`relative flex-1 py-4 text-center text-sm font-bold transition md:text-base ${active ? 'text-slate-900' : 'text-slate-500'
+                                    className={`relative flex-1 py-3 text-center text-xs font-black transition md:py-4 md:text-base ${active ? 'text-foreground' : 'text-slate-400'
                                         }`}
                                     style={{
                                         color: active ? PRIMARY : undefined,
@@ -430,7 +437,7 @@ export default async function BusinessPage({
                         {tab === 'details' && (
                             <div className="mx-auto max-w-6xl pb-24">
                                 <div className="space-y-5 md:space-y-7">
-                                    <section className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
+                                    <section className="rounded-[28px] border border-border-soft bg-surface p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
                                         <div className="mb-3 flex items-center gap-3">
                                             <span
                                                 className="h-px w-10"
@@ -445,18 +452,18 @@ export default async function BusinessPage({
                                             </p>
                                         </div>
 
-                                        <h3 className="text-[28px] font-black leading-tight text-slate-950 md:text-4xl">
+                                        <h3 className="text-[28px] font-black leading-tight text-foreground md:text-4xl">
                                             Sobre nosotros
                                         </h3>
 
-                                        <p className="mt-3 text-sm font-medium leading-6 text-slate-600 md:max-w-3xl md:text-lg md:leading-8">
+                                        <p className="mt-3 text-sm font-medium leading-6 text-slate-400 md:max-w-3xl md:text-lg md:leading-8">
                                             {aboutText}
                                         </p>
                                     </section>
 
                                     <section
                                         id="horarios"
-                                        className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7"
+                                        className="rounded-[28px] border border-border-soft bg-surface p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7"
                                     >
                                         <div className="mb-4 flex items-start justify-between gap-3">
                                             <div>
@@ -467,11 +474,11 @@ export default async function BusinessPage({
                                                     Atención
                                                 </p>
 
-                                                <h3 className="mt-2 text-[28px] font-black leading-tight text-slate-950 md:text-4xl">
+                                                <h3 className="mt-2 text-[28px] font-black leading-tight text-foreground md:text-4xl">
                                                     Horarios
                                                 </h3>
 
-                                                <p className="mt-2 text-sm font-medium leading-6 text-slate-500 md:text-base">
+                                                <p className="mt-2 text-sm font-medium leading-6 text-slate-400 md:text-base">
                                                     {hoursStatus}
                                                 </p>
                                             </div>
@@ -479,15 +486,15 @@ export default async function BusinessPage({
                                             <span
                                                 className={`shrink-0 rounded-full px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] ${isOpenNow
                                                     ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                                    : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+                                                    : 'bg-white/[0.06] text-slate-400 ring-1 ring-slate-200'
                                                     }`}
                                             >
                                                 {isOpenNow ? 'Abierto' : 'Cerrado'}
                                             </span>
                                         </div>
 
-                                        <div className="overflow-hidden rounded-[22px] border border-slate-100 bg-white">
-                                            <div className="grid grid-cols-[1.25fr_1fr_1fr] bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 md:text-xs">
+                                        <div className="overflow-hidden rounded-[22px] border border-border-soft bg-white/[0.03]">
+                                            <div className="grid grid-cols-[1.25fr_1fr_1fr] bg-white/[0.06] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 md:text-xs">
                                                 <span>Día</span>
                                                 <span className="text-center">Abre</span>
                                                 <span className="text-center">Cierra</span>
@@ -499,14 +506,14 @@ export default async function BusinessPage({
                                                 return (
                                                     <div
                                                         key={item.dayKey}
-                                                        className={`grid grid-cols-[1.25fr_1fr_1fr] items-center border-t border-slate-100 px-4 py-3 text-sm md:py-4 ${isToday ? 'bg-amber-50/70' : 'bg-white'
-                                                            }`}
+                                                        className="grid grid-cols-[1.25fr_1fr_1fr] items-center border-t border-white/10 px-4 py-3 text-sm md:py-4"
+                                                        style={isToday ? { backgroundColor: PRIMARY_SOFT } : undefined}
                                                     >
                                                         <div className="flex min-w-0 items-center gap-2">
                                                             <span
                                                                 className={`truncate ${isToday
-                                                                    ? 'font-black text-slate-950'
-                                                                    : 'font-medium text-slate-600'
+                                                                    ? 'font-black text-foreground'
+                                                                    : 'font-medium text-slate-500'
                                                                     }`}
                                                             >
                                                                 {item.label}
@@ -514,9 +521,9 @@ export default async function BusinessPage({
 
                                                             {isToday && (
                                                                 <span
-                                                                    className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase"
+                                                                    className="rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.08em]"
                                                                     style={{
-                                                                        backgroundColor: PRIMARY_SOFT,
+                                                                        backgroundColor: `${PRIMARY}22`,
                                                                         color: PRIMARY,
                                                                     }}
                                                                 >
@@ -525,12 +532,12 @@ export default async function BusinessPage({
                                                             )}
                                                         </div>
 
-                                                        <span className="text-center font-bold text-slate-700">
+                                                        <span className="text-center font-bold text-slate-300">
                                                             {item.closed ? '—' : item.open}
                                                         </span>
 
                                                         <span
-                                                            className={`text-center font-bold ${item.closed ? 'text-slate-400' : 'text-slate-950'
+                                                            className={`text-center font-bold ${item.closed ? 'text-slate-400' : 'text-foreground'
                                                                 }`}
                                                         >
                                                             {item.closed ? 'Cerrado' : item.close}
@@ -541,7 +548,7 @@ export default async function BusinessPage({
                                         </div>
                                     </section>
 
-                                    <section className="rounded-[26px] border border-white bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.07)] md:rounded-[32px] md:p-7">
+                                    <section className="rounded-[26px] border border-border-soft bg-surface p-4 shadow-[0_14px_38px_rgba(15,23,42,0.07)] md:rounded-[32px] md:p-7">
                                         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                                             <div>
                                                 <p
@@ -551,19 +558,19 @@ export default async function BusinessPage({
                                                     Ubicación
                                                 </p>
 
-                                                <h3 className="mt-2 text-[28px] font-black leading-tight text-slate-950 md:text-4xl">
+                                                <h3 className="mt-2 text-[28px] font-black leading-tight text-foreground md:text-4xl">
                                                     Cómo llegar
                                                 </h3>
 
-                                                <p className="mt-2 text-sm leading-6 text-slate-500 md:text-base">
+                                                <p className="mt-2 text-sm leading-6 text-slate-400 md:text-base">
                                                     Encuéntranos fácilmente y reserva tu próxima cita en pocos pasos.
                                                 </p>
                                             </div>
 
                                         </div>
 
-                                        <div className="relative overflow-hidden rounded-[24px] border border-slate-100 bg-slate-100 shadow-inner">
-                                            <div className="absolute left-3 top-3 z-10 rounded-full border border-white/70 bg-white/90 px-3 py-2 text-xs font-black text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur md:left-4 md:top-4 md:px-4">
+                                        <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.06] shadow-inner">
+                                            <div className="absolute left-3 top-3 z-10 rounded-full border border-border-soft/70 bg-surface/90 px-3 py-2 text-xs font-black text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur md:left-4 md:top-4 md:px-4">
                                                 📍 {businessAddress}
                                             </div>
 
@@ -578,16 +585,16 @@ export default async function BusinessPage({
                                             />
                                         </div>
 
-                                        <div className="mt-3 rounded-[20px] border border-slate-100 bg-slate-50/80 p-3.5 md:p-5">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 md:text-xs">
+                                        <div className="mt-3 rounded-[20px] border border-border-soft bg-white/[0.04] p-3.5 md:p-5">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 md:text-xs">
                                                 Dirección
                                             </p>
 
-                                            <h4 className="mt-1.5 line-clamp-2 text-lg font-black leading-tight text-slate-950 md:text-2xl">
+                                            <h4 className="mt-1.5 line-clamp-2 text-lg font-black leading-tight text-foreground md:text-2xl">
                                                 {businessAddress}
                                             </h4>
 
-                                            <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-5 text-slate-500 md:text-base">
+                                            <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-5 text-slate-400 md:text-base">
                                                 Atención presencial, reserva online y confirmación rápida para tu cita.
                                             </p>
                                         </div>
@@ -605,41 +612,41 @@ export default async function BusinessPage({
 
                                             <Link
                                                 href={`/b/${businessSlug}/reservar`}
-                                                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white h-11 px-4 text-sm font-black text-slate-900 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 active:scale-[0.98]"
+                                                className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-border-soft bg-white/[0.04] px-4 text-sm font-black text-foreground shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-white/[0.07] active:scale-[0.98]"
                                             >
                                                 Reservar cita
                                             </Link>
                                         </div>
                                     </section>
 
-                                    <section className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
+                                    <section className="rounded-[28px] border border-border-soft bg-surface p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
                                         <div className="mb-5 flex items-end justify-between gap-4">
                                             <div className="mb-4">
                                                 <p
                                                     className="text-[10px] font-black uppercase tracking-[0.28em] md:text-xs"
                                                     style={{ color: PRIMARY }}
                                                 >
-                                                    Ubicación
+                                                    Equipo
                                                 </p>
 
-                                                <h3 className="mt-1.5 text-2xl font-black leading-tight text-slate-950 md:text-4xl">
-                                                    Cómo llegar
+                                                <h3 className="mt-1.5 text-2xl font-black leading-tight text-foreground md:text-4xl">
+                                                    Elige tu barbero
                                                 </h3>
 
-                                                <p className="mt-2 line-clamp-2 text-xs font-medium leading-5 text-slate-500 md:text-base">
-                                                    Encuéntranos fácilmente y reserva tu próxima cita en pocos pasos.
+                                                <p className="mt-2 line-clamp-2 text-xs font-medium leading-5 text-slate-400 md:text-base">
+                                                    Reserva con el profesional que prefieras y revisa sus trabajos recientes.
                                                 </p>
                                             </div>
 
                                             {barbers.length > 0 && (
-                                                <span className="hidden rounded-full bg-slate-50 px-4 py-2 text-xs font-black text-slate-600 ring-1 ring-slate-100 md:inline-flex">
+                                                <span className="hidden rounded-full bg-white/[0.04]px-4 py-2 text-xs font-black text-slate-400 ring-1 ring-slate-100 md:inline-flex">
                                                     {barbers.length} barbero{barbers.length === 1 ? '' : 's'}
                                                 </span>
                                             )}
                                         </div>
 
                                         {barbers.length === 0 ? (
-                                            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-500">
+                                            <div className="rounded-2xl border border-dashed border-slate-200 bg-white/[0.04]p-5 text-sm font-medium text-slate-400">
                                                 No hay barberos activos por ahora.
                                             </div>
                                         ) : (
@@ -650,9 +657,9 @@ export default async function BusinessPage({
                                                     return (
                                                         <article
                                                             key={barber.id}
-                                                            className="group w-[calc(100vw-88px)] max-w-[310px] snap-start shrink-0 overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.14)] md:w-auto md:max-w-none"
+                                                            className="group w-[calc(100vw-88px)] max-w-[310px] snap-start shrink-0 overflow-hidden rounded-[24px] border border-white/10 bg-surface shadow-[0_12px_32px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.14)] md:w-auto md:max-w-none"
                                                         >
-                                                            <div className="relative h-[230px] overflow-hidden bg-slate-100 md:h-[270px]">
+                                                            <div className="relative h-[230px] overflow-hidden bg-white/[0.06] md:h-[270px]">
                                                                 {barber.photo_url ? (
                                                                     <img
                                                                         src={barber.photo_url}
@@ -669,7 +676,7 @@ export default async function BusinessPage({
 
                                                                 <div className="absolute left-3 top-3">
                                                                     <span
-                                                                        className="rounded-full bg-white/95 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] shadow-sm backdrop-blur"
+                                                                        className="rounded-full bg-surface/95 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] shadow-sm backdrop-blur"
                                                                         style={{ color: PRIMARY }}
                                                                     >
                                                                         Profesional
@@ -689,12 +696,12 @@ export default async function BusinessPage({
 
                                                             <div className="p-3.5">
                                                                 <div className="mb-3 flex items-center justify-between gap-2">
-                                                                    <div className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
+                                                                    <div className="rounded-2xl bg-white/[0.04]px-3 py-2 ring-1 ring-slate-100">
                                                                         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
                                                                             Trabajos
                                                                         </p>
 
-                                                                        <p className="mt-0.5 text-sm font-black text-slate-950">
+                                                                        <p className="mt-0.5 text-sm font-black text-foreground">
                                                                             {workCount}
                                                                         </p>
                                                                     </div>
@@ -727,11 +734,11 @@ export default async function BusinessPage({
                     </div>
                 </section>
 
-                <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/90 backdrop-blur md:hidden">
+                <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border-soft bg-[#0f1115]/92 backdrop-blur md:hidden">
                     <div className="mx-auto flex max-w-md items-center justify-around px-4 py-3">
                         <Link
                             href={`/b/${businessSlug}?tab=services`}
-                            className="flex flex-col items-center gap-1"
+                            className="flex flex-col items-center gap-1 text-slate-500"
                             style={{ color: PRIMARY }}
                         >
                             <span className="text-lg">⌕</span>
