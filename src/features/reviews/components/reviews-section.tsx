@@ -47,6 +47,15 @@ export function ReviewsSection({
     primarySoft,
 }: ReviewsSectionProps) {
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+    const INITIAL_REVIEWS_LIMIT = 3
+
+    const [showAll, setShowAll] = useState(false)
+
+    const visibleReviews = showAll
+        ? reviews
+        : reviews.slice(0, INITIAL_REVIEWS_LIMIT)
+
+    const hiddenReviewsCount = Math.max(reviews.length - INITIAL_REVIEWS_LIMIT, 0)
 
     useEffect(() => {
         if (!isReviewModalOpen) return
@@ -121,7 +130,7 @@ export function ReviewsSection({
                                 className="inline-flex items-center justify-center rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.28)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:scale-[0.98]"
                                 style={{ backgroundColor: primary }}
                             >
-                                Escribir reseña
+                                Dejar mi reseña
                             </button>
                         </div>
                     </div>
@@ -156,7 +165,7 @@ export function ReviewsSection({
                 </div>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {reviews.map((review) => {
+                    {visibleReviews.map((review) => {
                         const customerName =
                             review.customer_name || review.client_name || 'Cliente'
 
@@ -199,24 +208,33 @@ export function ReviewsSection({
                                             </div>
                                         </div>
 
-                                        <div
-                                            className="shrink-0 rounded-full px-3 py-1 text-sm font-black"
-                                            style={{
-                                                backgroundColor: primarySoft,
-                                                color: primary,
-                                            }}
-                                        >
-                                            {review.rating} ★
+                                        <div className="shrink-0 inline-flex items-center gap-1 text-sm font-black">
+                                            <span className="text-slate-950">{review.rating}</span>
+                                            <span style={{ color: primary }}>★</span>
                                         </div>
                                     </div>
 
-                                    <p className="mt-5 line-clamp-5 text-sm font-medium leading-7 text-slate-600">
+                                    <p className="mt-2 line-clamp-2 text-sm font-medium leading-5 text-slate-600">
                                         {review.comment || 'Excelente atención y servicio profesional.'}
                                     </p>
                                 </div>
                             </article>
+
                         )
                     })}
+                </div>
+            )}
+            {reviews.length > INITIAL_REVIEWS_LIMIT && (
+                <div className="pt-1 text-center">
+                    <button
+                        type="button"
+                        onClick={() => setShowAll((current) => !current)}
+                        className="inline-flex min-w-[170px] items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 hover:text-slate-950 active:scale-[0.98]"
+                    >
+                        {showAll
+                            ? 'Ver menos reseñas'
+                            : `Ver todas las reseñas (+${hiddenReviewsCount})`}
+                    </button>
                 </div>
             )}
 

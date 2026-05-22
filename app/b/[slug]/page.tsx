@@ -212,6 +212,10 @@ export default async function BusinessPage({
     const rawHeroImage = typedBusiness.cover_url || FALLBACK_HERO_IMAGE
     const heroImage = withCacheBuster(rawHeroImage, typedBusiness.updated_at)
 
+    function getBarberWorkCount(barberId: string) {
+        return galleryItems.filter((item) => item.barber_id === barberId).length
+    }
+
     return (
 
         <main className="min-h-screen bg-[#f8f6f6] text-slate-900">
@@ -428,7 +432,7 @@ export default async function BusinessPage({
                         )}
 
                         {tab === 'details' && (
-                            <div className="mx-auto max-w-6xl pb-10">
+                            <div className="mx-auto max-w-6xl pb-24">
                                 <div className="space-y-5 md:space-y-7">
                                     <section className="relative overflow-hidden rounded-[28px] border border-white bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.09)] md:rounded-[32px] md:p-7">
                                         <div
@@ -475,7 +479,7 @@ export default async function BusinessPage({
                                                 {hoursStatus}
                                             </p>
 
-                                            <div className="mt-5 rounded-[24px] border border-slate-100 bg-white/75 px-5 py-4 text-center shadow-sm">
+                                            <div className="mt-4 rounded-[20px] border border-slate-100 bg-white/75 px-4 py-3 text-center shadow-sm">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <p className="text-4xl font-black leading-none text-slate-950 md:text-5xl">
                                                         {averageRating}
@@ -532,7 +536,7 @@ export default async function BusinessPage({
                                             Sobre nosotros
                                         </h3>
 
-                                        <p className="mt-4 text-base font-medium leading-7 text-slate-600 md:max-w-3xl md:text-lg md:leading-8">
+                                        <p className="mt-3 text-sm font-medium leading-6 text-slate-600 md:max-w-3xl md:text-lg md:leading-8">
                                             {aboutText}
                                         </p>
                                     </section>
@@ -541,7 +545,7 @@ export default async function BusinessPage({
                                         id="horarios"
                                         className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7"
                                     >
-                                        <div className="mb-5 flex items-start justify-between gap-3">
+                                        <div className="mb-4 flex items-start justify-between gap-3">
                                             <div>
                                                 <p
                                                     className="text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
@@ -570,7 +574,7 @@ export default async function BusinessPage({
                                         </div>
 
                                         <div className="overflow-hidden rounded-[22px] border border-slate-100 bg-white">
-                                            <div className="grid grid-cols-[1.25fr_1fr_1fr] bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 md:text-xs">
+                                            <div className="grid grid-cols-[1.25fr_1fr_1fr] bg-slate-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 md:text-xs">
                                                 <span>Día</span>
                                                 <span className="text-center">Abre</span>
                                                 <span className="text-center">Cierra</span>
@@ -643,15 +647,6 @@ export default async function BusinessPage({
                                                 </p>
                                             </div>
 
-                                            <a
-                                                href={mapsUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex w-fit items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 active:scale-95"
-                                            >
-                                                Abrir mapa
-                                                <span style={{ color: PRIMARY }}>↗</span>
-                                            </a>
                                         </div>
 
                                         <div className="relative overflow-hidden rounded-[24px] border border-slate-100 bg-slate-100 shadow-inner">
@@ -725,71 +720,111 @@ export default async function BusinessPage({
                                     </section>
 
                                     <section className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
-                                        <div className="mb-5">
-                                            <p
-                                                className="text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
-                                                style={{ color: PRIMARY }}
-                                            >
-                                                Equipo
-                                            </p>
+                                        <div className="mb-5 flex items-end justify-between gap-4">
+                                            <div>
+                                                <p
+                                                    className="text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
+                                                    style={{ color: PRIMARY }}
+                                                >
+                                                    Equipo
+                                                </p>
 
-                                            <h3 className="mt-2 text-[28px] font-black leading-tight text-slate-950 md:text-4xl">
-                                                Elige tu barbero
-                                            </h3>
+                                                <h3 className="mt-2 text-2xl font-black leading-tight text-slate-950 md:text-4xl">
+                                                    Elige tu barbero
+                                                </h3>
 
-                                            <p className="mt-2 text-sm font-medium leading-6 text-slate-500 md:text-base">
-                                                Reserva directamente con el profesional que prefieras.
-                                            </p>
+                                                <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 md:text-base">
+                                                    Reserva con el profesional que prefieras y revisa sus trabajos recientes.
+                                                </p>
+                                            </div>
+
+                                            {barbers.length > 0 && (
+                                                <span className="hidden rounded-full bg-slate-50 px-4 py-2 text-xs font-black text-slate-600 ring-1 ring-slate-100 md:inline-flex">
+                                                    {barbers.length} barbero{barbers.length === 1 ? '' : 's'}
+                                                </span>
+                                            )}
                                         </div>
 
                                         {barbers.length === 0 ? (
-                                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                                            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-500">
                                                 No hay barberos activos por ahora.
                                             </div>
                                         ) : (
-                                            <div className="grid gap-4 md:grid-cols-2">
-                                                {barbers.slice(0, 4).map((barber) => (
-                                                    <article
-                                                        key={barber.id}
-                                                        className="group overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
-                                                    >
-                                                        <div className="relative h-52 overflow-hidden bg-slate-100 md:h-56">
-                                                            {barber.photo_url ? (
-                                                                <img
-                                                                    src={barber.photo_url}
-                                                                    alt={barber.name}
-                                                                    className="h-full w-full object-cover object-center transition duration-700 group-hover:scale-105"
-                                                                />
-                                                            ) : (
-                                                                <div className="flex h-full w-full items-center justify-center text-3xl font-black text-slate-500">
-                                                                    {getInitials(barber.name)}
+                                            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pl-3 pr-5 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-3">
+                                                {barbers.slice(0, 6).map((barber) => {
+                                                    const workCount = getBarberWorkCount(barber.id)
+
+                                                    return (
+                                                        <article
+                                                            key={barber.id}
+                                                            className="group w-[calc(100vw-88px)] max-w-[310px] snap-start shrink-0 overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.14)] md:w-auto md:max-w-none"
+                                                        >
+                                                            <div className="relative h-[230px] overflow-hidden bg-slate-100 md:h-[270px]">
+                                                                {barber.photo_url ? (
+                                                                    <img
+                                                                        src={barber.photo_url}
+                                                                        alt={barber.name}
+                                                                        className="h-full w-full object-cover object-center transition duration-700 group-hover:scale-105"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="flex h-full w-full items-center justify-center bg-slate-900 text-4xl font-black text-white">
+                                                                        {getInitials(barber.name)}
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/75" />
+
+                                                                <div className="absolute left-3 top-3">
+                                                                    <span
+                                                                        className="rounded-full bg-white/95 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] shadow-sm backdrop-blur"
+                                                                        style={{ color: PRIMARY }}
+                                                                    >
+                                                                        Profesional
+                                                                    </span>
                                                                 </div>
-                                                            )}
 
-                                                            <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/65" />
+                                                                <div className="absolute bottom-3 left-3 right-3">
+                                                                    <h4 className="line-clamp-1 text-2xl font-black leading-tight text-white drop-shadow">
+                                                                        {barber.name}
+                                                                    </h4>
 
-                                                            <div className="absolute bottom-4 left-4 right-4">
-                                                                <p className="text-2xl font-black leading-tight text-white drop-shadow">
-                                                                    {barber.name}
-                                                                </p>
-
-                                                                <p className="mt-1 text-sm font-semibold text-white/85">
-                                                                    {barber.specialty || 'Barbero profesional'}
-                                                                </p>
+                                                                    <p className="mt-1 line-clamp-1 text-sm font-semibold text-white/85">
+                                                                        {barber.specialty || 'Barbero profesional'}
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                        </div>
 
-                                                        <div className="p-4">
-                                                            <Link
-                                                                href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
-                                                                className="inline-flex w-full items-center justify-center rounded-2xl px-4 py-3.5 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.22)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
-                                                                style={{ backgroundColor: PRIMARY }}
-                                                            >
-                                                                Reservar con {barber.name.split(' ')[0]}
-                                                            </Link>
-                                                        </div>
-                                                    </article>
-                                                ))}
+                                                            <div className="p-3.5">
+                                                                <div className="mb-3 flex items-center justify-between gap-2">
+                                                                    <div className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
+                                                                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                                                                            Trabajos
+                                                                        </p>
+
+                                                                        <p className="mt-0.5 text-sm font-black text-slate-950">
+                                                                            {workCount}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    <div
+                                                                        className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-black text-white shadow-[0_10px_22px_rgba(183,121,31,0.22)]"
+                                                                        style={{ backgroundColor: PRIMARY }}
+                                                                    >
+                                                                        {getInitials(barber.name)}
+                                                                    </div>
+                                                                </div>
+
+                                                                <Link
+                                                                    href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
+                                                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.22)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                                                                    style={{ backgroundColor: PRIMARY }}
+                                                                >
+                                                                    Reservar con {barber.name.split(' ')[0]}
+                                                                </Link>
+                                                            </div>
+                                                        </article>
+                                                    )
+                                                })}
                                             </div>
                                         )}
                                     </section>
