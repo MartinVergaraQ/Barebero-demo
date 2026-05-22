@@ -367,7 +367,7 @@ export default async function BusinessPage({
                     </div>
                 </section>
 
-                <section className="sticky top-0 z-20 mt-4 border-b border-slate-200 bg-[#f8f6f6]/95 backdrop-blur">
+                <section className="sticky top-0 z-20 mt-3 border-b border-slate-200 bg-[#f8f6f6]/95 backdrop-blur">
                     <div className="mx-auto flex max-w-6xl px-2 md:px-6">
                         {tabs.map((item) => {
                             const active = tab === item.key
@@ -430,89 +430,6 @@ export default async function BusinessPage({
                         {tab === 'details' && (
                             <div className="mx-auto max-w-6xl pb-24">
                                 <div className="space-y-5 md:space-y-7">
-                                    <section className="relative overflow-hidden rounded-[28px] border border-white bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.09)] md:rounded-[32px] md:p-7">
-                                        <div
-                                            className="pointer-events-none absolute inset-0"
-                                            style={{
-                                                background:
-                                                    'radial-gradient(circle at top left, rgba(183,121,31,0.12), transparent 32%), linear-gradient(135deg, rgba(255,255,255,0.96), rgba(250,247,241,0.72))',
-                                            }}
-                                        />
-
-                                        <div className="relative">
-                                            <div
-                                                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.18em] ring-1 md:text-xs ${isOpenNow
-                                                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                                                    : 'bg-slate-100 text-slate-600 ring-slate-200'
-                                                    }`}
-                                            >
-                                                <span className="relative flex h-2.5 w-2.5">
-                                                    {isOpenNow && (
-                                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                                                    )}
-
-                                                    <span
-                                                        className={`relative inline-flex h-2.5 w-2.5 rounded-full ${isOpenNow ? 'bg-emerald-500' : 'bg-slate-400'
-                                                            }`}
-                                                    />
-                                                </span>
-
-                                                {isOpenNow ? 'Abierto ahora' : 'Cerrado ahora'}
-                                            </div>
-
-                                            <p
-                                                className="mt-5 text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
-                                                style={{ color: PRIMARY }}
-                                            >
-                                                {businessCategory}
-                                            </p>
-
-                                            <h2 className="mt-2 text-[30px] font-black leading-tight tracking-tight text-slate-950 md:text-4xl">
-                                                {businessName}
-                                            </h2>
-
-                                            <p className="mt-3 text-base font-semibold leading-6 text-slate-600 md:text-lg">
-                                                {hoursStatus}
-                                            </p>
-
-                                            <div className="mt-4 rounded-[20px] border border-slate-100 bg-white/75 px-4 py-3 text-center shadow-sm">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <p className="text-4xl font-black leading-none text-slate-950 md:text-5xl">
-                                                        {averageRating}
-                                                    </p>
-
-                                                    <span
-                                                        className="text-4xl leading-none md:text-5xl"
-                                                        style={{ color: PRIMARY }}
-                                                    >
-                                                        ★
-                                                    </span>
-                                                </div>
-
-                                                <p className="mt-2 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
-                                                    {reviews.length} reseña{reviews.length === 1 ? '' : 's'}
-                                                </p>
-                                            </div>
-
-                                            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                                <Link
-                                                    href={`/b/${businessSlug}/reservar`}
-                                                    className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(183,121,31,0.26)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
-                                                    style={{ backgroundColor: PRIMARY }}
-                                                >
-                                                    Reservar ahora
-                                                </Link>
-
-                                                <a
-                                                    href="#horarios"
-                                                    className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black uppercase tracking-wide text-slate-800 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 active:scale-[0.98]"
-                                                >
-                                                    Ver horarios
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </section>
-
                                     <section className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
                                         <div className="mb-3 flex items-center gap-3">
                                             <span
@@ -624,7 +541,7 @@ export default async function BusinessPage({
                                         </div>
                                     </section>
 
-                                    <section className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
+                                    <section className="rounded-[26px] border border-white bg-white p-4 shadow-[0_14px_38px_rgba(15,23,42,0.07)] md:rounded-[32px] md:p-7">
                                         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                                             <div>
                                                 <p
@@ -655,52 +572,32 @@ export default async function BusinessPage({
                                                 src={`https://www.google.com/maps?q=${encodeURIComponent(
                                                     businessAddress
                                                 )}&z=15&output=embed`}
-                                                className="h-[230px] w-full border-0 md:h-[340px]"
+                                                className="h-[170px] w-full border-0 md:h-[340px]"
                                                 loading="lazy"
                                                 referrerPolicy="no-referrer-when-downgrade"
                                             />
                                         </div>
 
-                                        <div className="mt-4 rounded-[22px] border border-slate-100 bg-slate-50/80 p-4 md:p-5">
-                                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400 md:text-xs">
+                                        <div className="mt-3 rounded-[20px] border border-slate-100 bg-slate-50/80 p-3.5 md:p-5">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 md:text-xs">
                                                 Dirección
                                             </p>
 
-                                            <h4 className="mt-2 text-xl font-black text-slate-950 md:text-2xl">
+                                            <h4 className="mt-1.5 line-clamp-2 text-lg font-black leading-tight text-slate-950 md:text-2xl">
                                                 {businessAddress}
                                             </h4>
 
-                                            <p className="mt-2 text-sm leading-6 text-slate-500 md:text-base">
+                                            <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-5 text-slate-500 md:text-base">
                                                 Atención presencial, reserva online y confirmación rápida para tu cita.
                                             </p>
-
-                                            <div className="mt-4 flex flex-wrap gap-2">
-                                                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-100">
-                                                    Reserva online
-                                                </span>
-
-                                                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-100">
-                                                    Atención presencial
-                                                </span>
-
-                                                <span
-                                                    className="rounded-full px-3 py-1.5 text-xs font-bold"
-                                                    style={{
-                                                        backgroundColor: PRIMARY_SOFT,
-                                                        color: PRIMARY,
-                                                    }}
-                                                >
-                                                    Ubicación verificada
-                                                </span>
-                                            </div>
                                         </div>
 
-                                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                        <div className="mt-3 grid grid-cols-2 gap-2">
                                             <a
                                                 href={mapsUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-black text-white shadow-[0_14px_32px_rgba(183,121,31,0.24)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                                                className="inline-flex w-full items-center justify-center rounded-2xl h-11 px-4 text-sm font-black text-white shadow-[0_14px_32px_rgba(183,121,31,0.24)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
                                                 style={{ backgroundColor: PRIMARY }}
                                             >
                                                 Cómo llegar
@@ -708,7 +605,7 @@ export default async function BusinessPage({
 
                                             <Link
                                                 href={`/b/${businessSlug}/reservar`}
-                                                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black text-slate-900 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 active:scale-[0.98]"
+                                                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white h-11 px-4 text-sm font-black text-slate-900 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-200 active:scale-[0.98]"
                                             >
                                                 Reservar cita
                                             </Link>
@@ -717,20 +614,20 @@ export default async function BusinessPage({
 
                                     <section className="rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] md:rounded-[32px] md:p-7">
                                         <div className="mb-5 flex items-end justify-between gap-4">
-                                            <div>
+                                            <div className="mb-4">
                                                 <p
-                                                    className="text-[11px] font-black uppercase tracking-[0.28em] md:text-xs"
+                                                    className="text-[10px] font-black uppercase tracking-[0.28em] md:text-xs"
                                                     style={{ color: PRIMARY }}
                                                 >
-                                                    Equipo
+                                                    Ubicación
                                                 </p>
 
-                                                <h3 className="mt-2 text-2xl font-black leading-tight text-slate-950 md:text-4xl">
-                                                    Elige tu barbero
+                                                <h3 className="mt-1.5 text-2xl font-black leading-tight text-slate-950 md:text-4xl">
+                                                    Cómo llegar
                                                 </h3>
 
-                                                <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 md:text-base">
-                                                    Reserva con el profesional que prefieras y revisa sus trabajos recientes.
+                                                <p className="mt-2 line-clamp-2 text-xs font-medium leading-5 text-slate-500 md:text-base">
+                                                    Encuéntranos fácilmente y reserva tu próxima cita en pocos pasos.
                                                 </p>
                                             </div>
 
