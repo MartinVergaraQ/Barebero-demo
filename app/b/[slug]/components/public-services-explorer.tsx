@@ -131,7 +131,7 @@ export function PublicServicesExplorer({
 
     return (
         <div className="space-y-4 md:space-y-6">
-            <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.035] p-3 shadow-[0_14px_34px_rgba(0,0,0,0.22)] backdrop-blur md:rounded-[28px] md:p-4">
+            <div className="rounded-[22px] border border-white/[0.07] bg-white/[0.025] p-3 shadow-[0_14px_34px_rgba(0,0,0,0.18)] backdrop-blur md:rounded-[28px] md:p-4">
                 <div className="relative">
                     <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
                         ⌕
@@ -244,7 +244,7 @@ export function PublicServicesExplorer({
                                             {service.name}
                                         </h2>
 
-                                        <p className="mt-1 line-clamp-1 text-[11px] font-semibold leading-4 text-slate-500 md:text-sm">
+                                        <p className="mt-1 line-clamp-1 text-[11px] font-semibold leading-4 text-slate-400 md:text-sm">
                                             {service.description || 'Servicio profesional de barbería.'}
                                         </p>
                                     </div>
@@ -264,14 +264,14 @@ export function PublicServicesExplorer({
                                 </div>
 
                                 <div className="mt-3 flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
                                         <span>⏱</span>
                                         <span>{service.duration_minutes} min</span>
                                     </div>
 
                                     <Link
                                         href={`/b/${businessSlug}/reservar?serviceId=${service.id}`}
-                                        className="inline-flex h-9 items-center justify-center rounded-xl px-4 text-xs font-black text-white shadow-[0_10px_22px_rgba(200,148,46,0.20)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] md:h-11 md:text-sm"
+                                        className="inline-flex h-9 items-center justify-center rounded-[14px] px-4 text-xs font-black text-white shadow-[0_10px_22px_rgba(200,148,46,0.20)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] md:h-11 md:text-sm"
                                         style={{ backgroundColor: primary }}
                                     >
                                         Reservar
@@ -286,7 +286,7 @@ export function PublicServicesExplorer({
                             <button
                                 type="button"
                                 onClick={() => setShowAll((current) => !current)}
-                                className="inline-flex items-center justify-center rounded-full border border-border-soft bg-surface px-5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 hover:text-foreground active:scale-[0.98]"
+                                className="inline-flex items-center justify-center rounded-full border border-border-soft bg-white/[0.04] px-5 py-2.5 text-sm font-black text-slate-300 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-white/[0.07] hover:text-foreground active:scale-[0.98]"
                             >
                                 {showAll
                                     ? 'Ver menos servicios'
