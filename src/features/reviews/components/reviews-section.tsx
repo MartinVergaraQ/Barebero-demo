@@ -102,11 +102,11 @@ export function ReviewsSection({
                                 </p>
                             </div>
 
-                            <h2 className="font-display text-[34px] leading-none tracking-wide text-foreground md:text-5xl">
+                            <h2 className="mt-2 font-display text-[34px] leading-none tracking-wide text-foreground md:text-5xl">
                                 Reseñas de clientes
                             </h2>
 
-                            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-400 md:text-base md:leading-7">
+                            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-300 md:text-base md:leading-7">
                                 Mira lo que opinan otros clientes y comparte tu experiencia
                                 después de visitar la barbería.
                             </p>
@@ -174,7 +174,7 @@ export function ReviewsSection({
                         return (
                             <article
                                 key={review.id}
-                                className="group relative overflow-hidden rounded-[26px] border border-border-soft bg-surface p-5 shadow-[0_16px_45px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_24px_70px_rgba(0,0,0,0.34)]"
+                                className="group relative overflow-hidden rounded-[24px] border border-border-soft bg-surface p-4 shadow-[0_16px_45px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_24px_70px_rgba(0,0,0,0.34)]"
                             >
                                 <div
                                     className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100"
@@ -198,11 +198,11 @@ export function ReviewsSection({
                                             </div>
 
                                             <div className="min-w-0">
-                                                <p className="truncate text-base font-black text-foreground">
+                                                <p className="truncate text-sm font-extrabold text-foreground">
                                                     {customerName}
                                                 </p>
 
-                                                <p className="mt-0.5 text-xs font-medium text-slate-400">
+                                                <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
                                                     {formatReviewDate(review.created_at)}
                                                 </p>
                                             </div>
