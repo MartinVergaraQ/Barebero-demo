@@ -137,23 +137,23 @@ export function PublicGallerySection({
 
                 <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
-                        <h2 className="max-w-3xl text-2xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl">
+                        <h2 className="max-w-3xl font-display text-[34px] leading-none tracking-wide text-foreground md:text-6xl">
                             Trabajos recientes
                         </h2>
 
-                        <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 md:mt-4 md:text-lg md:leading-8">
+                        <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-400 md:mt-4 md:text-lg md:leading-8">
                             Inspírate con resultados reales, revisa quién lo realizó y
                             reserva directamente con ese barbero.
                         </p>
                     </div>
 
-                    <div className="w-fit rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-[0_10px_30px_rgba(15,23,42,0.08)] md:px-5 md:py-3 md:text-sm">
+                    <div className="hidden w-fit rounded-full border border-border-soft bg-white/[0.04] px-4 py-2 text-xs font-black text-slate-300 shadow-[0_12px_30px_rgba(0,0,0,0.22)] md:block md:px-5 md:py-3 md:text-sm">
                         {items.length} trabajo{items.length === 1 ? '' : 's'}
                     </div>
                 </div>
             </header>
 
-            <div className="mb-5 rounded-[22px] border border-white bg-white/90 p-2 shadow-[0_14px_38px_rgba(15,23,42,0.07)] backdrop-blur md:mb-7 md:rounded-[28px] md:p-3">
+            <div className="mb-5 rounded-[22px] border border-border-soft bg-white/[0.04] p-2 shadow-[0_14px_38px_rgba(0,0,0,0.22)] backdrop-blur md:mb-7 md:rounded-[28px] md:p-3">
                 <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
                     {filters.map((filter) => {
                         const active = activeBarberId === filter.id
@@ -165,7 +165,7 @@ export function PublicGallerySection({
                                 onClick={() => setActiveBarberId(filter.id)}
                                 className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-black transition duration-300 active:scale-95 md:px-5 md:py-3 ${active
                                     ? 'text-white shadow-[0_12px_26px_rgba(183,121,31,0.24)]'
-                                    : 'border border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-amber-200 hover:text-slate-950 hover:shadow-sm'
+                                    : 'border border-border-soft bg-white/[0.04] text-slate-300 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-white/[0.07] hover:text-foreground hover:shadow-sm'
                                     }`}
                                 style={active ? { backgroundColor: PRIMARY } : undefined}
                             >
@@ -205,7 +205,7 @@ export function PublicGallerySection({
                             return (
                                 <article
                                     key={item.id}
-                                    className={`group relative overflow-hidden bg-slate-950 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ring-1 ring-white/80 transition duration-500 hover:-translate-y-0.5 hover:shadow-[0_22px_55px_rgba(15,23,42,0.18)] ${shouldUseListLayout
+                                    className={`group relative overflow-hidden bg-slate-950 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ring-1 ring-white/10 transition duration-500 hover:-translate-y-0.5 hover:shadow-[0_22px_55px_rgba(15,23,42,0.18)] ${shouldUseListLayout
                                         ? 'rounded-[24px]'
                                         : featured
                                             ? 'col-span-2 rounded-[24px] md:col-span-2 md:row-span-2 md:rounded-[30px]'
@@ -235,20 +235,27 @@ export function PublicGallerySection({
                                         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/5 to-black/80" />
 
                                         <div className="absolute left-3 top-3 flex items-center gap-2">
-                                            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-amber-700 shadow-sm backdrop-blur md:px-3 md:py-1.5 md:text-[10px]">
+                                            <span
+                                                className="rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em] shadow-sm backdrop-blur md:px-3 md:py-1.5 md:text-[10px]"
+                                                style={{
+                                                    borderColor: `${PRIMARY}66`,
+                                                    backgroundColor: 'rgba(15,17,21,0.72)',
+                                                    color: '#F6D58A',
+                                                }}
+                                            >
                                                 Trabajo real
                                             </span>
                                         </div>
 
-                                        <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-white/60 bg-white/95 text-[10px] font-black text-slate-950 shadow-sm backdrop-blur md:h-10 md:w-10 md:text-sm">
+                                        <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/45 text-[10px] font-black text-white shadow-sm backdrop-blur md:h-10 md:w-10 md:text-sm">
                                             {getInitials(barberName)}
                                         </div>
 
-                                        <div className="absolute inset-x-0 bottom-0 p-3 md:p-5">
+                                        <div className="absolute inset-x-0 bottom-0 p-3 pb-4 md:p-5">
                                             <h3
                                                 className={`font-black leading-tight text-white drop-shadow-sm ${featured
                                                     ? 'line-clamp-2 text-xl md:text-3xl'
-                                                    : 'line-clamp-1 text-[11px] md:text-xl'
+                                                    : 'line-clamp-2 text-[12px] leading-tight md:text-xl'
                                                     }`}
                                             >
                                                 {itemTitle}
@@ -265,7 +272,7 @@ export function PublicGallerySection({
                                                 <div className="mt-3 flex items-center justify-between gap-3">
                                                     <Link
                                                         href={getBookingHref(item)}
-                                                        className="relative z-20 inline-flex items-center justify-center rounded-full border border-white/30 bg-white/15 px-4 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-white shadow-sm backdrop-blur-md transition duration-300 hover:bg-white hover:text-slate-950 active:scale-95 md:px-5 md:py-2.5 md:text-[10px]"
+                                                        className="inline-flex h-8 items-center justify-center rounded-full border border-white/20 bg-black/35 px-4 text-[9px] font-black uppercase tracking-[0.16em] text-white shadow-sm backdrop-blur-md transition duration-300 hover:border-primary/60 hover:bg-primary hover:text-white active:scale-95 md:h-9 md:px-5 md:text-[10px]"
                                                     >
                                                         Reservar estilo
                                                     </Link>
@@ -293,7 +300,7 @@ export function PublicGallerySection({
                             <button
                                 type="button"
                                 onClick={() => setShowAll((current) => !current)}
-                                className="inline-flex min-w-[170px] items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 hover:text-slate-950 active:scale-[0.98]"
+                                className="inline-flex items-center justify-center rounded-full border border-border-soft bg-white/[0.04] px-5 py-2.5 text-sm font-black text-slate-300 shadow-[0_12px_28px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-white/[0.07] hover:text-foreground active:scale-[0.98]"
                             >
                                 {showAll
                                     ? 'Ver menos trabajos'

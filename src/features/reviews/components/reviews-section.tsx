@@ -78,12 +78,12 @@ export function ReviewsSection({
 
     return (
         <section className="pb-12">
-            <div className="mb-7 overflow-hidden rounded-[30px] border border-white bg-white shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+            <div className="mb-5 overflow-hidden rounded-[28px] border border-border-soft bg-surface shadow-[0_22px_60px_rgba(0,0,0,0.28)]">
                 <div
                     className="relative p-5 md:p-7"
                     style={{
                         background:
-                            'radial-gradient(circle at top left, rgba(183,121,31,0.13), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.98), rgba(250,247,241,0.78))',
+                            'radial-gradient(circle at top left, rgba(200,148,46,0.16), transparent 34%), linear-gradient(135deg, rgba(23,26,33,0.98), rgba(15,17,21,0.96))',
                     }}
                 >
                     <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
@@ -102,19 +102,19 @@ export function ReviewsSection({
                                 </p>
                             </div>
 
-                            <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-5xl">
+                            <h2 className="font-display text-[34px] leading-none tracking-wide text-foreground md:text-5xl">
                                 Reseñas de clientes
                             </h2>
 
-                            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 md:text-base md:leading-7">
+                            <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-400 md:text-base md:leading-7">
                                 Mira lo que opinan otros clientes y comparte tu experiencia
                                 después de visitar la barbería.
                             </p>
                         </div>
 
                         <div className="flex flex-col gap-3 sm:flex-row md:items-center">
-                            <div className="rounded-[24px] bg-white/80 px-5 py-4 text-center shadow-sm ring-1 ring-slate-100">
-                                <p className="text-4xl font-black leading-none text-slate-950">
+                            <div className="rounded-[22px] bg-white/[0.05] px-5 py-4 text-center ring-1 ring-white/10">
+                                <p className="text-4xl font-black leading-none text-foreground">
                                     {averageRating}
                                     <span style={{ color: primary }}> ★</span>
                                 </p>
@@ -174,13 +174,13 @@ export function ReviewsSection({
                         return (
                             <article
                                 key={review.id}
-                                className="group relative overflow-hidden rounded-[28px] border border-white bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
+                                className="group relative overflow-hidden rounded-[26px] border border-border-soft bg-surface p-5 shadow-[0_16px_45px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_24px_70px_rgba(0,0,0,0.34)]"
                             >
                                 <div
                                     className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100"
                                     style={{
                                         background:
-                                            'radial-gradient(circle at top right, rgba(183,121,31,0.12), transparent 36%)',
+                                            'radial-gradient(circle at top right, rgba(200,148,46,0.12), transparent 36%)',
                                     }}
                                 />
 
@@ -198,7 +198,7 @@ export function ReviewsSection({
                                             </div>
 
                                             <div className="min-w-0">
-                                                <p className="truncate text-base font-black text-slate-950">
+                                                <p className="truncate text-base font-black text-foreground">
                                                     {customerName}
                                                 </p>
 
@@ -209,12 +209,12 @@ export function ReviewsSection({
                                         </div>
 
                                         <div className="shrink-0 inline-flex items-center gap-1 text-sm font-black">
-                                            <span className="text-slate-950">{review.rating}</span>
+                                            <span className="text-foreground">{review.rating}</span>
                                             <span style={{ color: primary }}>★</span>
                                         </div>
                                     </div>
 
-                                    <p className="mt-2 line-clamp-2 text-sm font-medium leading-5 text-slate-600">
+                                    <p className="mt-3 line-clamp-3 text-sm font-medium leading-5 text-slate-300">
                                         {review.comment || 'Excelente atención y servicio profesional.'}
                                     </p>
                                 </div>
@@ -229,7 +229,7 @@ export function ReviewsSection({
                     <button
                         type="button"
                         onClick={() => setShowAll((current) => !current)}
-                        className="inline-flex min-w-[170px] items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 hover:text-slate-950 active:scale-[0.98]"
+                        className="inline-flex min-w-[170px] items-center justify-center rounded-full border border-border-soft bg-white/[0.04] px-5 py-2.5 text-sm font-black text-slate-300 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-white/[0.07] hover:text-foreground active:scale-[0.98]"
                     >
                         {showAll
                             ? 'Ver menos reseñas'
