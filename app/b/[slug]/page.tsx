@@ -484,9 +484,9 @@ export default async function BusinessPage({
                                             </div>
 
                                             <span
-                                                className={`shrink-0 rounded-full px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] ${isOpenNow
-                                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                                    : 'bg-white/[0.06] text-slate-400 ring-1 ring-slate-200'
+                                                className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] ring-1 ${isOpenNow
+                                                    ? 'bg-emerald-400/12 text-emerald-300 ring-emerald-400/25'
+                                                    : 'bg-white/[0.05] text-slate-300 ring-white/10'
                                                     }`}
                                             >
                                                 {isOpenNow ? 'Abierto' : 'Cerrado'}
@@ -494,7 +494,7 @@ export default async function BusinessPage({
                                         </div>
 
                                         <div className="overflow-hidden rounded-[22px] border border-border-soft bg-white/[0.03]">
-                                            <div className="grid grid-cols-[1.25fr_1fr_1fr] bg-white/[0.06] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 md:text-xs">
+                                            <div className="grid grid-cols-[1.4fr_0.8fr_1fr] bg-white/[0.08] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">
                                                 <span>Día</span>
                                                 <span className="text-center">Abre</span>
                                                 <span className="text-center">Cierra</span>
@@ -506,14 +506,14 @@ export default async function BusinessPage({
                                                 return (
                                                     <div
                                                         key={item.dayKey}
-                                                        className="grid grid-cols-[1.25fr_1fr_1fr] items-center border-t border-white/10 px-4 py-3 text-sm md:py-4"
+                                                        className="grid grid-cols-[1.4fr_0.8fr_1fr] items-center border-t border-white/10 px-4 py-3 text-sm md:py-4"
                                                         style={isToday ? { backgroundColor: PRIMARY_SOFT } : undefined}
                                                     >
                                                         <div className="flex min-w-0 items-center gap-2">
                                                             <span
                                                                 className={`truncate ${isToday
                                                                     ? 'font-black text-foreground'
-                                                                    : 'font-medium text-slate-500'
+                                                                    : 'font-semibold text-slate-300'
                                                                     }`}
                                                             >
                                                                 {item.label}
@@ -532,12 +532,15 @@ export default async function BusinessPage({
                                                             )}
                                                         </div>
 
-                                                        <span className="text-center font-bold text-slate-300">
+                                                        <span
+                                                            className={`text-center font-black ${item.closed ? 'text-slate-500' : 'text-slate-200'
+                                                                }`}
+                                                        >
                                                             {item.closed ? '—' : item.open}
                                                         </span>
 
                                                         <span
-                                                            className={`text-center font-bold ${item.closed ? 'text-slate-400' : 'text-foreground'
+                                                            className={`text-center font-black ${item.closed ? 'text-slate-500' : 'text-foreground'
                                                                 }`}
                                                         >
                                                             {item.closed ? 'Cerrado' : item.close}
@@ -570,7 +573,7 @@ export default async function BusinessPage({
                                         </div>
 
                                         <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.06] shadow-inner">
-                                            <div className="absolute left-3 top-3 z-10 rounded-full border border-border-soft/70 bg-surface/90 px-3 py-2 text-xs font-black text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur md:left-4 md:top-4 md:px-4">
+                                            <div className="absolute left-3 top-3 z-10 max-w-[82%] truncate rounded-full border border-white/10 bg-[#0f1115]/85 px-3 py-2 text-xs font-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.28)] backdrop-blur md:left-4 md:top-4 md:px-4">
                                                 📍 {businessAddress}
                                             </div>
 
@@ -585,7 +588,7 @@ export default async function BusinessPage({
                                             />
                                         </div>
 
-                                        <div className="mt-3 rounded-[20px] border border-border-soft bg-white/[0.04] p-3.5 md:p-5">
+                                        <div className="mt-3 rounded-[20px] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.03] p-3.5 shadow-inner md:p-5">
                                             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 md:text-xs">
                                                 Dirección
                                             </p>
@@ -594,7 +597,7 @@ export default async function BusinessPage({
                                                 {businessAddress}
                                             </h4>
 
-                                            <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-5 text-slate-400 md:text-base">
+                                            <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-5 text-slate-300 md:text-base">
                                                 Atención presencial, reserva online y confirmación rápida para tu cita.
                                             </p>
                                         </div>
@@ -639,14 +642,14 @@ export default async function BusinessPage({
                                             </div>
 
                                             {barbers.length > 0 && (
-                                                <span className="hidden rounded-full bg-white/[0.04]px-4 py-2 text-xs font-black text-slate-400 ring-1 ring-slate-100 md:inline-flex">
+                                                <span className="hidden rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black text-slate-400 md:inline-flex">
                                                     {barbers.length} barbero{barbers.length === 1 ? '' : 's'}
                                                 </span>
                                             )}
                                         </div>
 
                                         {barbers.length === 0 ? (
-                                            <div className="rounded-2xl border border-dashed border-slate-200 bg-white/[0.04]p-5 text-sm font-medium text-slate-400">
+                                            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.04] p-5 text-sm font-medium text-slate-400">
                                                 No hay barberos activos por ahora.
                                             </div>
                                         ) : (
@@ -696,27 +699,33 @@ export default async function BusinessPage({
 
                                                             <div className="p-3.5">
                                                                 <div className="mb-3 flex items-center justify-between gap-2">
-                                                                    <div className="rounded-2xl bg-white/[0.04]px-3 py-2 ring-1 ring-slate-100">
-                                                                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                                                                            Trabajos
-                                                                        </p>
-
-                                                                        <p className="mt-0.5 text-sm font-black text-foreground">
+                                                                    <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                                                                        <span
+                                                                            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-white shadow-[0_10px_22px_rgba(200,148,46,0.20)]"
+                                                                            style={{ backgroundColor: PRIMARY }}
+                                                                        >
                                                                             {workCount}
-                                                                        </p>
+                                                                        </span>
+
+                                                                        <div>
+                                                                            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                                                                                Trabajos
+                                                                            </p>
+
+                                                                            <p className="text-xs font-black text-slate-200">
+                                                                                realizados
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
 
-                                                                    <div
-                                                                        className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-black text-white shadow-[0_10px_22px_rgba(183,121,31,0.22)]"
-                                                                        style={{ backgroundColor: PRIMARY }}
-                                                                    >
+                                                                    <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-black text-slate-300">
                                                                         {getInitials(barber.name)}
                                                                     </div>
                                                                 </div>
 
                                                                 <Link
                                                                     href={`/b/${businessSlug}/reservar?barberId=${barber.id}`}
-                                                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.22)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                                                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.22)] transition duration-300 hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98]"
                                                                     style={{ backgroundColor: PRIMARY }}
                                                                 >
                                                                     Reservar con {barber.name.split(' ')[0]}
