@@ -78,11 +78,6 @@ type SuccessfulReservation = {
 const PRIMARY = '#C8942E'
 const PRIMARY_SOFT = 'rgba(200,148,46,0.14)'
 
-const PAGE_BG = '#0f1115'
-const SURFACE = '#171a21'
-const SURFACE_SOFT = '#1f232c'
-const BORDER = 'rgba(255,255,255,0.10)'
-
 function formatPrice(price: number | string) {
     const numericPrice = typeof price === 'string' ? Number(price) : price
     if (Number.isNaN(numericPrice)) return '$0'
@@ -215,7 +210,7 @@ export default function ReservarClient({
 
     const normalizedClientName = normalizeWhitespace(form.client_name)
     const normalizedClientEmail = normalizeWhitespace(form.client_email)
-
+    const [hasTriedSubmit, setHasTriedSubmit] = useState(false)
     const isClientNameValid = !validateClientName(normalizedClientName)
     const isClientEmailValid = !validateClientEmail(normalizedClientEmail)
     const isClientPhoneValid = !validateClientPhone(form.client_phone)
@@ -327,19 +322,19 @@ export default function ReservarClient({
     function getFieldBorderClass(
         fieldName: 'client_name' | 'client_email' | 'client_phone'
     ) {
-        if (fieldErrors[fieldName] && touchedFields[fieldName]) {
+        const value = form[fieldName].trim()
+        const hasError = !!fieldErrors[fieldName]
+        const wasTouched = touchedFields[fieldName]
+
+        if (hasError && wasTouched && value) {
             return 'border-red-400 focus:border-red-400 focus:shadow-[0_0_0_4px_rgba(248,113,113,0.12)]'
         }
 
-        if (
-            touchedFields[fieldName] &&
-            !fieldErrors[fieldName] &&
-            form[fieldName].trim()
-        ) {
+        if (wasTouched && !hasError && value) {
             return 'border-emerald-400 focus:border-emerald-400 focus:shadow-[0_0_0_4px_rgba(52,211,153,0.12)]'
         }
 
-        return 'border-slate-200 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)]'
+        return 'border-border-soft focus:border-[#C8942E] focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)]'
     }
 
     const filteredServices = useMemo(() => {
@@ -847,6 +842,7 @@ export default function ReservarClient({
         setAvailabilityMessage('')
         setSuccessfulReservation(null)
         setStep(1)
+        setHasTriedSubmit(false)
 
         setFieldErrors({
             client_name: '',
@@ -876,7 +872,7 @@ export default function ReservarClient({
                 <div className="mx-auto w-full max-w-7xl">
                     <header className="sticky top-0 z-20 border-b border-border-soft bg-background/92 backdrop-blur">
                         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
-                            <div className="h-10 w-10 rounded-full bg-surface shadow-sm ring-1 ring-slate-100" />
+                            <div className="h-10 w-10 rounded-full bg-surface shadow-sm ring-1 ring-white/10" />
 
                             <div className="h-7 w-40 rounded-full bg-white/10/80" />
 
@@ -919,7 +915,7 @@ export default function ReservarClient({
                                             <div className="mt-3 h-4 w-56 rounded-full bg-white/10/80" />
                                         </div>
 
-                                        <div className="h-8 w-28 rounded-full bg-slate-100" />
+                                        <div className="h-8 w-28 rounded-full bg-white/5" />
                                     </div>
 
                                     <div className="grid gap-4 sm:grid-cols-2">
@@ -930,7 +926,7 @@ export default function ReservarClient({
                                             >
                                                 <div className="mx-auto h-20 w-20 rounded-full bg-white/10/90" />
                                                 <div className="mx-auto mt-4 h-4 w-24 rounded-full bg-white/10/90" />
-                                                <div className="mx-auto mt-2 h-3 w-20 rounded-full bg-slate-100" />
+                                                <div className="mx-auto mt-2 h-3 w-20 rounded-full bg-white/5" />
                                             </div>
                                         ))}
                                     </div>
@@ -946,7 +942,7 @@ export default function ReservarClient({
                                             <div className="mt-3 h-4 w-64 rounded-full bg-white/10/80" />
                                         </div>
 
-                                        <div className="h-8 w-28 rounded-full bg-slate-100" />
+                                        <div className="h-8 w-28 rounded-full bg-white/5" />
                                     </div>
 
                                     <div className="space-y-3">
@@ -957,9 +953,9 @@ export default function ReservarClient({
                                             >
                                                 <div className="flex items-start justify-between gap-4">
                                                     <div className="min-w-0 flex-1">
-                                                        <div className="h-3 w-20 rounded-full bg-slate-100" />
+                                                        <div className="h-3 w-20 rounded-full bg-white/5" />
                                                         <div className="mt-3 h-6 w-48 rounded-full bg-white/10/90" />
-                                                        <div className="mt-3 h-4 w-full max-w-sm rounded-full bg-slate-100" />
+                                                        <div className="mt-3 h-4 w-full max-w-sm rounded-full bg-white/5" />
                                                     </div>
 
                                                     <div className="h-7 w-24 rounded-full bg-white/10/80" />
@@ -981,7 +977,7 @@ export default function ReservarClient({
                                         {[1, 2, 3, 4, 5].map((item) => (
                                             <div
                                                 key={item}
-                                                className="h-16 min-w-[88px] rounded-2xl border border-slate-100 bg-surface-soft"
+                                                className="h-16 min-w-[88px] rounded-2xl border border-border-soft bg-surface-soft"
                                             />
                                         ))}
                                     </div>
@@ -998,7 +994,7 @@ export default function ReservarClient({
                                     {Array.from({ length: 9 }).map((_, index) => (
                                         <div
                                             key={index}
-                                            className="h-12 rounded-2xl border border-slate-100 bg-surface-soft"
+                                            className="h-12 rounded-2xl border border-border-soft bg-surface-soft"
                                         />
                                     ))}
                                 </div>
@@ -1006,7 +1002,7 @@ export default function ReservarClient({
                         </div>
                     </section>
 
-                    <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-surface/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur">
+                    <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-border-soft bg-background/95 px-3 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))] ring-1 ring-white/10 shadow-[0_-18px_45px_rgba(0,0,0,0.35)] backdrop-blur">
                         <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
                             <div className="min-w-0 shrink-0">
                                 <div className="h-3 w-24 rounded-full bg-white/10" />
@@ -1032,10 +1028,10 @@ export default function ReservarClient({
     return (
         <main
             className={`min-h-screen overflow-x-hidden bg-background text-foreground ${step === 2
-                ? 'pb-44 md:pb-32'
+                ? 'pb-52 md:pb-32'
                 : step === 3
                     ? 'pb-8'
-                    : 'pb-24 md:pb-28'
+                    : 'pb-36 md:pb-28'
                 }`}
         >
             <div className="mx-auto w-full max-w-7xl overflow-x-hidden">
@@ -1066,7 +1062,7 @@ export default function ReservarClient({
                             <div className="w-10" />
                         )}
 
-                        <h1 className="font-display text-2xl leading-none tracking-wide text-foreground md:text-4xl">
+                        <h1 className="font-display text-3xl leading-none tracking-wide text-foreground md:text-5xl">
                             {step === 1
                                 ? 'Reservar cita'
                                 : step === 2
@@ -1118,12 +1114,18 @@ export default function ReservarClient({
                                         </h2>
                                     </div>
 
-                                    <span className="text-sm font-black text-slate-400 md:text-base">
+                                    <span
+                                        className="rounded-full px-3 py-1 text-xs font-black"
+                                        style={{
+                                            backgroundColor: PRIMARY_SOFT,
+                                            color: PRIMARY,
+                                        }}
+                                    >
                                         50%
                                     </span>
                                 </div>
 
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-surface/10">
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
                                     <div
                                         className="h-full w-1/2 rounded-full"
                                         style={{ backgroundColor: PRIMARY }}
@@ -1163,7 +1165,7 @@ export default function ReservarClient({
                                                                 className="block h-full w-full object-cover"
                                                             />
                                                         ) : (
-                                                            <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-600 md:text-lg">
+                                                            <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-300 md:text-lg">
                                                                 {getInitials(selectedBarber.name)}
                                                             </div>
                                                         )}
@@ -1225,7 +1227,7 @@ export default function ReservarClient({
                                                                 setAvailabilityMessage('')
                                                                 setServiceHint('')
                                                             }}
-                                                            className={`group relative min-w-0 overflow-hidden rounded-[22px] border p-3 text-center transition duration-300 active:scale-[0.98] md:rounded-[24px] md:p-4 ${isSelected
+                                                            className={`group relative min-w-0 overflow-hidden rounded-[24px] border p-3.5 text-center transition duration-300 active:scale-[0.98] md:rounded-[26px] md:p-4 ${isSelected
                                                                 ? 'border-[rgba(200,148,46,0.75)] bg-[rgba(200,148,46,0.12)] shadow-[0_16px_36px_rgba(200,148,46,0.14)]'
                                                                 : 'border-border-soft bg-surface-soft hover:-translate-y-0.5 hover:border-[rgba(200,148,46,0.45)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.22)]'
                                                                 }`}
@@ -1244,7 +1246,7 @@ export default function ReservarClient({
                                                                     <span
                                                                         className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] md:text-[10px] ${servicesCount > 0
                                                                             ? 'bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20'
-                                                                            : 'bg-white/5 text-slate-500 ring-1 ring-white/10'
+                                                                            : 'bg-white/5 text-slate-400 ring-1 ring-white/10'
                                                                             }`}
                                                                     >
                                                                         {servicesCount > 0 ? 'Disponible' : 'Sin servicios'}
@@ -1253,7 +1255,7 @@ export default function ReservarClient({
                                                                     <span
                                                                         className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black transition ${isSelected
                                                                             ? 'text-white'
-                                                                            : 'border border-slate-200 bg-surface text-transparent'
+                                                                            : 'border border-border-soft bg-surface text-transparent'
                                                                             }`}
                                                                         style={isSelected ? { backgroundColor: PRIMARY } : undefined}
                                                                     >
@@ -1263,7 +1265,7 @@ export default function ReservarClient({
 
                                                                 <div className="flex flex-col items-center">
                                                                     <div
-                                                                        className={`relative h-14 w-14 overflow-hidden rounded-full bg-white/10 p-0.5 ring-1 ring-white/10 transition duration-300 md:h-20 md:w-20 ${isSelected ? 'shadow-[0_0_0_3px_rgba(200,148,46,0.24)]' : ''
+                                                                        className={`relative h-16 w-16 overflow-hidden rounded-full bg-white/10 p-0.5 ring-1 ring-white/10 transition duration-300 md:h-20 md:w-20 ${isSelected ? 'shadow-[0_0_0_3px_rgba(200,148,46,0.24)]' : ''
                                                                             }`}
                                                                     >
                                                                         <div className="h-full w-full overflow-hidden rounded-full">
@@ -1329,12 +1331,12 @@ export default function ReservarClient({
                                                     Elige tu barbero primero
                                                 </p>
 
-                                                <p className="mt-2 text-sm text-slate-400">
+                                                <p className="mx-auto mt-2 max-w-[260px] text-sm leading-6 text-slate-400">
                                                     Así mostramos solo los servicios que ese profesional tiene disponibles.
                                                 </p>
                                             </div>
                                         ) : filteredServices.length === 0 ? (
-                                            <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-5 py-6">
+                                            <div className="rounded-[24px] border border-dashed border-white/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] px-5 py-8 text-center shadow-inner">
                                                 <p className="font-black text-amber-800">
                                                     Este barbero no tiene servicios disponibles
                                                 </p>
@@ -1451,7 +1453,7 @@ export default function ReservarClient({
                                         )}
 
                                         {serviceHint && (
-                                            <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                            <div className="mt-3 rounded-xl border border-amber-300 bg-[rgba(200,148,46,0.10)] px-4 py-3 text-sm text-amber-800">
                                                 <p className="font-semibold">
                                                     Servicio no disponible para este barbero
                                                 </p>
@@ -1460,12 +1462,6 @@ export default function ReservarClient({
                                             </div>
                                         )}
 
-                                        {selectedService && (
-                                            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800">
-                                                Servicio seleccionado:{' '}
-                                                <span className="font-black">{selectedService.name}</span>
-                                            </div>
-                                        )}
                                     </div>
 
                                     <div className="rounded-[26px] border border-border-soft bg-surface p-4 shadow-[0_18px_45px_rgba(0,0,0,0.22)] md:p-5">
@@ -1513,7 +1509,7 @@ export default function ReservarClient({
                                                         </div>
 
                                                         {!option.isToday && !option.isTomorrow && (
-                                                            <div className="mt-1 text-xs text-slate-500">
+                                                            <div className="mt-1 text-xs text-slate-400">
                                                                 {option.label}
                                                             </div>
                                                         )}
@@ -1559,9 +1555,9 @@ export default function ReservarClient({
 
                                     {loadingSlots ? (
                                         <div className="space-y-3">
-                                            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-                                            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-                                            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+                                            <div className="h-12 animate-pulse rounded-2xl bg-white/5" />
+                                            <div className="h-12 animate-pulse rounded-2xl bg-white/5" />
+                                            <div className="h-12 animate-pulse rounded-2xl bg-white/5" />
                                         </div>
                                     ) : availableSlots.length > 0 ? (
                                         <div className="space-y-5">
@@ -1595,7 +1591,7 @@ export default function ReservarClient({
                                                             <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">
                                                                 {group.title}
                                                             </p>
-                                                            <div className="h-px flex-1 bg-slate-100" />
+                                                            <div className="h-px flex-1 bg-white/5" />
                                                         </div>
 
                                                         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 md:gap-3">
@@ -1609,7 +1605,7 @@ export default function ReservarClient({
                                                                         onClick={() => setSelectedSlot(slot)}
                                                                         className={`group relative w-full rounded-xl border px-3 py-3 text-center text-sm font-black transition duration-300 active:scale-[0.98] md:rounded-2xl md:px-4 md:py-4 md:text-base ${isSelected
                                                                             ? 'shadow-[0_14px_30px_rgba(183,121,31,0.18)]'
-                                                                            : 'border-slate-200 bg-surface text-slate-900 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-sm'
+                                                                            : 'border-border-soft bg-surface text-foreground hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-sm'
                                                                             }`}
                                                                         style={
                                                                             isSelected
@@ -1640,14 +1636,26 @@ export default function ReservarClient({
 
                                             {selectedSlot && (
                                                 <div
-                                                    className="rounded-2xl border px-4 py-3 text-sm font-semibold"
+                                                    className="rounded-2xl border px-4 py-3"
                                                     style={{
-                                                        borderColor: PRIMARY,
-                                                        backgroundColor: PRIMARY_SOFT,
+                                                        borderColor: 'rgba(200,148,46,0.45)',
+                                                        background: 'linear-gradient(135deg, rgba(200,148,46,0.16), rgba(200,148,46,0.07))',
                                                         color: PRIMARY,
                                                     }}
                                                 >
-                                                    Hora seleccionada: <span className="font-black">{selectedSlot.label}</span>
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.18em]">
+                                                        Hora seleccionada
+                                                    </p>
+
+                                                    <div className="mt-1 flex items-center justify-between gap-3">
+                                                        <p className="text-xl font-black leading-none">
+                                                            {selectedSlot.label}
+                                                        </p>
+
+                                                        <span className="rounded-full bg-[rgba(200,148,46,0.18)] px-3 py-1 text-xs font-black">
+                                                            Lista
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             )}
 
@@ -1656,7 +1664,7 @@ export default function ReservarClient({
                                             </p>
                                         </div>
                                     ) : availabilityMessage ? (
-                                        <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+                                        <div className="rounded-[24px] border border-amber-200 bg-[rgba(200,148,46,0.10)] p-5 text-sm text-amber-800">
                                             <p className="font-black">Sin horarios disponibles</p>
                                             <p className="mt-1">{availabilityMessage}</p>
                                         </div>
@@ -1674,7 +1682,7 @@ export default function ReservarClient({
                             </div>
                         </section>
 
-                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-border-soft bg-background/92 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-18px_45px_rgba(0,0,0,0.35)] backdrop-blur">
+                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-border-soft bg-background/92 px-3 py-3 ring-1 ring-white/10 shadow-[0_-18px_45px_rgba(0,0,0,0.35)] backdrop-blur">
                             <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate text-[11px] font-bold text-slate-400">
@@ -1700,7 +1708,7 @@ export default function ReservarClient({
                                     type="button"
                                     onClick={handleContinueToStepTwo}
                                     disabled={!canContinueToStepTwo}
-                                    className="w-[145px] rounded-2xl px-4 py-3 text-sm font-black text-white shadow-lg transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:w-[260px] md:py-4 md:text-base"
+                                    className="h-13 w-[145px] rounded-2xl px-4 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 md:h-14 md:w-[260px] md:text-base"
                                     style={{ backgroundColor: PRIMARY }}
                                 >
                                     Siguiente
@@ -1719,12 +1727,14 @@ export default function ReservarClient({
                                         <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: PRIMARY }}>
                                             Paso 2 de 2
                                         </p>
-                                        <h2 className="text-2xl font-black md:text-4xl">Tus datos</h2>
+                                        <h2 className="font-display text-4xl leading-none tracking-wide text-foreground md:text-6xl">
+                                            Tus datos
+                                        </h2>
                                     </div>
                                     <span className="text-sm font-black text-slate-400 md:text-base">100%</span>
                                 </div>
 
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-surface/10">
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
                                     <div className="h-full w-full rounded-full" style={{ backgroundColor: PRIMARY }} />
                                 </div>
                             </div>
@@ -1747,7 +1757,7 @@ export default function ReservarClient({
                                             Resumen de reserva
                                         </p>
 
-                                        <h3 className="mt-2 text-xl font-black text-slate-950 md:text-3xl">
+                                        <h3 className="mt-2 text-xl font-black text-foreground md:text-3xl">
                                             {selectedService?.name || 'Servicio'}
                                         </h3>
 
@@ -1756,30 +1766,33 @@ export default function ReservarClient({
                                         </p>
 
                                         <div className="mt-4 grid grid-cols-2 gap-2 md:space-y-3 md:block">
-                                            <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-slate-100 md:flex md:items-center md:justify-between md:px-4 md:py-3">
+                                            <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-white/10 md:flex md:items-center md:justify-between md:px-4 md:py-3">
                                                 <span className="block text-[11px] font-bold text-slate-400 md:text-sm">Barbero</span>
-                                                <span className="mt-0.5 block truncate text-sm font-black text-slate-950 md:mt-0">
+                                                <span className="mt-0.5 block truncate text-sm font-black text-foreground md:mt-0">
                                                     {selectedBarber?.name || '-'}
                                                 </span>
                                             </div>
 
-                                            <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-slate-100 md:flex md:items-center md:justify-between md:px-4 md:py-3">
+                                            <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-white/10 md:flex md:items-center md:justify-between md:px-4 md:py-3">
                                                 <span className="block text-[11px] font-bold text-slate-400 md:text-sm">Fecha</span>
-                                                <span className="mt-0.5 block truncate text-sm font-black text-slate-950 md:mt-0">
+                                                <span className="mt-0.5 block truncate text-sm font-black text-foreground md:mt-0">
                                                     {formatHumanDate(form.appointment_date)}
                                                 </span>
                                             </div>
 
-                                            <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-slate-100 md:flex md:items-center md:justify-between md:px-4 md:py-3">
+                                            <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-white/10 md:flex md:items-center md:justify-between md:px-4 md:py-3">
                                                 <span className="block text-[11px] font-bold text-slate-400 md:text-sm">Hora</span>
-                                                <span className="mt-0.5 block truncate text-sm font-black text-slate-950 md:mt-0">
+                                                <span className="mt-0.5 block truncate text-sm font-black text-foreground md:mt-0">
                                                     {selectedSlot?.label || '-'}
                                                 </span>
                                             </div>
 
-                                            <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-slate-100 md:flex md:items-center md:justify-between md:px-4 md:py-3">
-                                                <span className="text-sm font-bold text-slate-400">Duración</span>
-                                                <span className="text-sm font-black text-slate-950">
+                                            <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-white/10 md:flex md:items-center md:justify-between md:px-4 md:py-3">
+                                                <span className="block text-[11px] font-bold text-slate-400 md:text-sm">
+                                                    Duración
+                                                </span>
+
+                                                <span className="mt-0.5 block truncate text-sm font-black text-foreground md:mt-0">
                                                     {selectedService?.duration_minutes ?? 0} min
                                                 </span>
                                             </div>
@@ -1798,7 +1811,7 @@ export default function ReservarClient({
 
                                 <div className="space-y-3">
                                     <div className="rounded-[28px] border border-border-soft bg-surface p-4 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition duration-300 focus-within:-translate-y-0.5 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.11)] md:p-5">
-                                        <label htmlFor="client_name" className="mb-2 block text-sm font-bold text-slate-600">
+                                        <label className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">
                                             Nombre completo
                                         </label>
                                         <input
@@ -1812,15 +1825,17 @@ export default function ReservarClient({
                                             placeholder="Ej. Juan Pérez"
                                             autoComplete="name"
                                             maxLength={80}
-                                            className={`w-full rounded-2xl border bg-surface px-4 py-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_name')}`}
+                                            className={`w-full rounded-2xl border bg-[#11141a] px-4 py-4 text-sm font-bold text-foreground outline-none transition placeholder:text-slate-500 focus:border-[#C8942E] focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] md:text-base ${getFieldBorderClass('client_name')}`}
                                         />
-                                        {!fieldErrors.client_name && touchedFields.client_name && (
-                                            <p className="mt-2 text-sm text-green-600">Nombre válido</p>
+                                        {fieldErrors.client_name && (touchedFields.client_name || hasTriedSubmit) && (
+                                            <p className="mt-2 text-xs font-bold text-red-300">
+                                                {fieldErrors.client_name}
+                                            </p>
                                         )}
                                     </div>
 
                                     <div className="rounded-[28px] border border-border-soft bg-surface p-4 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition duration-300 focus-within:-translate-y-0.5 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.11)] md:p-5">
-                                        <label htmlFor="client_email" className="mb-2 block text-sm font-bold text-slate-600">
+                                        <label className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">
                                             Correo electrónico
                                         </label>
                                         <input
@@ -1834,15 +1849,17 @@ export default function ReservarClient({
                                             placeholder="tu@correo.com"
                                             autoComplete="email"
                                             maxLength={120}
-                                            className={`w-full rounded-2xl border bg-surface px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_email')}`}
+                                            className={`w-full rounded-2xl border bg-[#11141a] px-4 py-4 text-sm font-bold text-foreground outline-none transition placeholder:text-slate-500 focus:border-[#C8942E] focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] md:text-base ${getFieldBorderClass('client_email')}`}
                                         />
-                                        {!fieldErrors.client_email && touchedFields.client_email && form.client_email.trim() && (
-                                            <p className="mt-2 text-sm text-green-600">Correo válido</p>
+                                        {fieldErrors.client_email && (touchedFields.client_email || hasTriedSubmit) && (
+                                            <p className="mt-2 text-xs font-bold text-red-300">
+                                                {fieldErrors.client_email}
+                                            </p>
                                         )}
                                     </div>
 
                                     <div className="rounded-[28px] border border-border-soft bg-surface p-4 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition duration-300 focus-within:-translate-y-0.5 focus-within:shadow-[0_22px_60px_rgba(15,23,42,0.11)] md:p-5">
-                                        <label htmlFor="client_phone" className="mb-2 block text-sm font-bold text-slate-600">
+                                        <label className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">
                                             Número de celular
                                         </label>
                                         <input
@@ -1857,32 +1874,26 @@ export default function ReservarClient({
                                             autoComplete="tel"
                                             inputMode="numeric"
                                             maxLength={15}
-                                            className={`w-full rounded-2xl border bg-surface px-4 py-3.5 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:shadow-[0_0_0_4px_rgba(183,121,31,0.10)] md:text-base ${getFieldBorderClass('client_phone')}`}
+                                            className={`w-full rounded-2xl border bg-[#11141a] px-4 py-4 text-sm font-bold text-foreground outline-none transition placeholder:text-slate-500 focus:border-[#C8942E] focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] md:text-base ${getFieldBorderClass('client_phone')}`}
                                         />
-                                        {!fieldErrors.client_phone && touchedFields.client_phone && form.client_phone.trim() && (
-                                            <p className="mt-2 text-sm text-green-600">Teléfono válido</p>
+                                        {fieldErrors.client_phone && (touchedFields.client_phone || hasTriedSubmit) && (
+                                            <p className="mt-2 text-xs font-bold text-red-300">
+                                                {fieldErrors.client_phone}
+                                            </p>
                                         )}
                                     </div>
                                 </div>
                             </div>
                         </section>
 
-                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-surface/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_32px_rgba(15,23,42,0.08)] backdrop-blur">
+                        <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-border-soft bg-background/92 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] ring-1 ring-white/10 shadow-[0_-18px_45px_rgba(0,0,0,0.35)] backdrop-blur">
                             <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setStep(1)}
-                                    className="h-14 w-[104px] shrink-0 rounded-2xl border border-slate-200 bg-surface px-4 text-sm font-black text-slate-800 shadow-sm transition active:scale-[0.98] md:w-32"
-                                >
-                                    Volver
-                                </button>
-
                                 <div className="min-w-0 flex-1">
                                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                                         Total
                                     </p>
 
-                                    <p className="truncate text-xl font-black leading-none text-slate-950">
+                                    <p className="truncate text-xl font-black leading-none text-foreground">
                                         {selectedService ? formatPrice(selectedService.price) : '$0'}
                                     </p>
 
@@ -1894,7 +1905,7 @@ export default function ReservarClient({
                                 <button
                                     type="submit"
                                     disabled={submitting || !isStepTwoFormValid}
-                                    className="h-14 w-[150px] shrink-0 rounded-2xl px-4 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.22)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 md:w-[240px]"
+                                    className="h-14 w-[160px] shrink-0 rounded-2xl px-4 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 md:w-[260px] md:text-base"
                                     style={{ backgroundColor: PRIMARY }}
                                 >
                                     {submitting ? 'Guardando...' : 'Confirmar'}
@@ -1913,8 +1924,8 @@ export default function ReservarClient({
                                         'radial-gradient(circle at top left, rgba(16,185,129,0.16), transparent 34%), linear-gradient(135deg, rgba(23,26,33,0.98), rgba(15,17,21,0.96))',
                                 }}
                             >
-                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 shadow-[0_0_0_9px_rgba(16,185,129,0.10)] md:h-14 md:w-14">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-xl font-black text-white shadow-[0_8px_22px_rgba(16,185,129,0.28)] md:h-10 md:w-10 md:text-2xl">
+                                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-400/10 ring-1 ring-emerald-400/30 shadow-[0_0_35px_rgba(16,185,129,0.18)]">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-xl font-black text-white shadow-[0_10px_28px_rgba(16,185,129,0.30)]">
                                         ✓
                                     </div>
                                 </div>
@@ -1926,24 +1937,24 @@ export default function ReservarClient({
                                     Reserva confirmada
                                 </p>
 
-                                <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
+                                <h2 className="mt-1 font-display text-4xl leading-none tracking-wide text-foreground md:text-5xl">
                                     Todo listo
                                 </h2>
 
-                                <p className="mx-auto mt-1.5 max-w-sm text-xs font-medium leading-5 text-slate-400 md:text-sm md:leading-6">
+                                <p className="mx-auto mt-2 max-w-sm text-[13px] font-medium leading-5 text-slate-400 md:text-sm md:leading-6">
                                     Ya registramos tu cita. Puedes confirmarla por WhatsApp.
                                 </p>
                             </div>
 
                             <div className="px-4 pb-5 md:px-6 md:pb-6">
-                                <div className="rounded-[22px] border border-slate-100 bg-surface-soft/80 p-3.5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] md:p-4">
+                                <div className="rounded-[22px] border border-border-soft bg-surface-soft/80 p-3.5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] md:p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
                                             <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">
                                                 Resumen
                                             </p>
 
-                                            <h3 className="mt-1.5 line-clamp-1 text-lg font-black leading-tight text-slate-950 md:text-xl">
+                                            <h3 className="mt-1.5 line-clamp-1 text-lg font-black leading-tight text-foreground md:text-xl">
                                                 {successfulReservation.service_name}
                                             </h3>
                                         </div>
@@ -1961,45 +1972,45 @@ export default function ReservarClient({
                                             </p>
                                         </div>
                                     </div>
-
+                                    <div className="mt-4 h-px bg-white/10" />
                                     <div className="mt-4 grid gap-2">
-                                        <div className="rounded-2xl border border-slate-100 bg-surface px-3 py-2.5 shadow-sm">
+                                        <div className="rounded-2xl border border-border-soft bg-surface px-3 py-2.5 shadow-sm">
                                             <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
                                                 Barbero
                                             </p>
 
-                                            <p className="mt-0.5 truncate text-sm font-black text-slate-950">
+                                            <p className="mt-0.5 truncate text-sm font-black  text-foreground">
                                                 {successfulReservation.barber_name}
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl border border-slate-100 bg-surface px-3 py-2.5 shadow-sm">
+                                        <div className="rounded-2xl border border-border-soft bg-surface px-3 py-2.5 shadow-sm">
                                             <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
                                                 Fecha
                                             </p>
 
-                                            <p className="mt-0.5 truncate text-sm font-black text-slate-950">
+                                            <p className="mt-0.5 truncate text-sm font-black  text-foreground">
                                                 {formatHumanDate(successfulReservation.appointment_date)}
                                             </p>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2">
-                                            <div className="rounded-2xl border border-slate-100 bg-surface px-3 py-2.5 shadow-sm">
+                                            <div className="rounded-2xl border border-border-soft bg-surface px-3 py-2.5 shadow-sm">
                                                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
                                                     Hora
                                                 </p>
 
-                                                <p className="mt-0.5 text-sm font-black text-slate-950">
+                                                <p className="mt-0.5 text-sm font-black  text-foreground">
                                                     {successfulReservation.slot_label}
                                                 </p>
                                             </div>
 
-                                            <div className="rounded-2xl border border-slate-100 bg-surface px-3 py-2.5 shadow-sm">
+                                            <div className="rounded-2xl border border-border-soft bg-surface px-3 py-2.5 shadow-sm">
                                                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
                                                     Cliente
                                                 </p>
 
-                                                <p className="mt-0.5 truncate text-sm font-black text-slate-950">
+                                                <p className="mt-0.5 truncate text-sm font-black  text-foreground">
                                                     {successfulReservation.client_name}
                                                 </p>
                                             </div>
@@ -2008,40 +2019,36 @@ export default function ReservarClient({
                                 </div>
 
                                 <div className="mt-4 grid gap-2.5">
-                                    <Link
-                                        href={`/b/${businessSlug}?tab=services`}
-                                        className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-surface px-4 text-sm font-black text-slate-800 shadow-sm transition active:scale-[0.98] md:h-13"
-                                    >
-                                        Ir al inicio
-                                    </Link>
-
-                                    {hasWhatsApp ? (
+                                    {hasWhatsApp && (
                                         <a
                                             href={whatsappUrl}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="inline-flex h-12 items-center justify-center rounded-2xl px-4 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.24)] transition active:scale-[0.98] md:h-13"
+                                            className="inline-flex h-12 items-center justify-center rounded-2xl px-4 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.24)] transition active:scale-[0.98]"
                                             style={{ backgroundColor: PRIMARY }}
                                         >
                                             Confirmar por WhatsApp →
                                         </a>
-                                    ) : (
-                                        <div className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-surface-soft px-4 text-sm font-black text-slate-400">
-                                            WhatsApp no configurado
-                                        </div>
                                     )}
+
+                                    <Link
+                                        href={`/b/${businessSlug}?tab=services`}
+                                        className="inline-flex h-11 items-center justify-center rounded-2xl border border-border-soft bg-white/[0.03] px-4 text-sm font-bold text-slate-300 shadow-sm transition active:scale-[0.98]"
+                                    >
+                                        Ir al inicio
+                                    </Link>
 
                                     <button
                                         type="button"
                                         onClick={resetBooking}
-                                        className="text-xs font-bold text-slate-400 underline underline-offset-4 transition hover:text-slate-800"
+                                        className="inline-flex h-10 items-center justify-center rounded-xl text-xs font-black text-slate-400 transition hover:bg-white/5 hover:text-foreground"
                                     >
                                         Hacer otra reserva
                                     </button>
                                 </div>
 
                                 {hasWhatsApp && (
-                                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-xs font-bold leading-5 text-emerald-700">
+                                    <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(16,185,129,0.04))] px-4 py-3 text-center text-xs font-bold leading-5 text-emerald-200">
                                         Recomendamos confirmar por WhatsApp para que el negocio tenga tu reserva a mano.
                                     </div>
                                 )}
