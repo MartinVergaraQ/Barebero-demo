@@ -742,6 +742,7 @@ export default function ReservarClient({
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
+        setHasTriedSubmit(true)
         setSubmitting(true)
         setMessage('')
         setErrorMessage('')
@@ -1765,17 +1766,17 @@ export default function ReservarClient({
                                             Revisa los datos antes de confirmar tu cita.
                                         </p>
 
-                                        <div className="mt-4 grid grid-cols-2 gap-2 md:space-y-3 md:block">
+                                        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 md:block md:space-y-3">
                                             <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-white/10 md:flex md:items-center md:justify-between md:px-4 md:py-3">
                                                 <span className="block text-[11px] font-bold text-slate-400 md:text-sm">Barbero</span>
-                                                <span className="mt-0.5 block truncate text-sm font-black text-foreground md:mt-0">
+                                                <span className="mt-0.5 block line-clamp-2 break-words text-sm font-black leading-5 text-foreground md:mt-0">
                                                     {selectedBarber?.name || '-'}
                                                 </span>
                                             </div>
 
                                             <div className="rounded-2xl bg-surface/75 px-3 py-2.5 ring-1 ring-white/10 md:flex md:items-center md:justify-between md:px-4 md:py-3">
                                                 <span className="block text-[11px] font-bold text-slate-400 md:text-sm">Fecha</span>
-                                                <span className="mt-0.5 block truncate text-sm font-black text-foreground md:mt-0">
+                                                <span className="mt-0.5 block line-clamp-2 break-words text-sm font-black leading-5 text-foreground md:mt-0">
                                                     {formatHumanDate(form.appointment_date)}
                                                 </span>
                                             </div>
@@ -1954,7 +1955,7 @@ export default function ReservarClient({
                                                 Resumen
                                             </p>
 
-                                            <h3 className="mt-1.5 line-clamp-1 text-lg font-black leading-tight text-foreground md:text-xl">
+                                            <h3 className="mt-1.5 line-clamp-2 max-w-[170px] text-lg font-black leading-tight text-foreground md:max-w-none md:text-xl">
                                                 {successfulReservation.service_name}
                                             </h3>
                                         </div>
@@ -2000,20 +2001,30 @@ export default function ReservarClient({
                                                     Hora
                                                 </p>
 
-                                                <p className="mt-0.5 text-sm font-black  text-foreground">
+                                                <p className="mt-0.5 text-sm font-black text-foreground">
                                                     {successfulReservation.slot_label}
                                                 </p>
                                             </div>
 
                                             <div className="rounded-2xl border border-border-soft bg-surface px-3 py-2.5 shadow-sm">
                                                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
-                                                    Cliente
+                                                    Total
                                                 </p>
 
-                                                <p className="mt-0.5 truncate text-sm font-black  text-foreground">
-                                                    {successfulReservation.client_name}
+                                                <p className="mt-0.5 text-sm font-black text-foreground">
+                                                    {formatPrice(successfulReservation.price)}
                                                 </p>
                                             </div>
+                                        </div>
+
+                                        <div className="rounded-2xl border border-border-soft bg-surface px-3 py-2.5 shadow-sm">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
+                                                Cliente
+                                            </p>
+
+                                            <p className="mt-0.5 line-clamp-2 break-words text-sm font-black leading-5 text-foreground">
+                                                {successfulReservation.client_name}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
