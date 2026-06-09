@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
-import { updateAppointment } from '@/src/features/booking/api/update-appointment'
 import { toast } from 'sonner'
-
+import { updateAppointment } from '@/src/features/booking/api/update-appointment'
+import { AdminInput } from '@/src/features/admin/components/admin-input'
+import { AdminSelect } from '@/src/features/admin/components/admin-select'
 import {
     utcToBusinessTime,
     businessLocalToUtcIso,
 } from '@/src/features/booking/utils/datetime'
-
 
 type Service = {
     id: string
@@ -81,13 +81,10 @@ export function AdminAppointmentEditSheet({
         }
     }, [open])
 
-    function handleChange(
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-    ) {
-        const { name, value } = e.target
+    function updateField(field: keyof typeof form, value: string) {
         setForm((prev) => ({
             ...prev,
-            [name]: value,
+            [field]: value,
         }))
     }
 
@@ -174,36 +171,41 @@ export function AdminAppointmentEditSheet({
             <button
                 type="button"
                 onClick={handleOpen}
-                className="h-[42px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm font-semibold text-[#2d2a26] sm:w-auto"
+                className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-black/10 bg-white px-4 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] sm:w-auto"
             >
                 Editar reserva
             </button>
 
-            {open ? (
+            {open && (
                 <div className="fixed inset-0 z-[80]">
                     <button
                         type="button"
-                        className="absolute inset-0 bg-black/40"
+                        className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
                         onClick={() => setOpen(false)}
                         aria-label="Cerrar edición"
                     />
 
                     <div className="absolute inset-x-0 bottom-0 top-0 flex items-end md:items-center md:justify-center md:p-6">
-                        <section className="relative flex h-[92vh] w-full flex-col rounded-t-[20px] bg-[#f8f5ee] shadow-2xl md:h-auto md:max-h-[90vh] md:max-w-[760px] md:rounded-[18px]">
-                            <div className="flex items-center justify-between border-b border-[#e7dfcf] px-5 py-4 md:px-6">
+                        <section className="relative flex h-[92vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_30px_90px_rgba(0,0,0,0.35)] md:h-auto md:max-h-[90vh] md:max-w-[780px] md:rounded-[30px]">
+                            <div className="flex items-start justify-between gap-4 border-b border-black/10 px-5 py-5 md:px-6">
                                 <div>
-                                    <h2 className="text-[20px] font-bold text-[#1f1f1f]">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                        Gestión de cita
+                                    </p>
+
+                                    <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
                                         Editar reserva
                                     </h2>
-                                    <p className="mt-1 text-sm text-[#6a655d]">
-                                        Actualiza cliente, horario, servicio y barbero
+
+                                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                                        Actualiza cliente, horario, servicio y barbero.
                                     </p>
                                 </div>
 
                                 <button
                                     type="button"
                                     onClick={() => setOpen(false)}
-                                    className="flex h-10 w-10 items-center justify-center rounded-[8px] border border-[#ddd6c8] bg-white text-[#2c2a26]"
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:bg-[#FBF7EE] active:scale-95"
                                     aria-label="Cerrar"
                                 >
                                     <X className="h-5 w-5" />
@@ -214,135 +216,103 @@ export function AdminAppointmentEditSheet({
                                 onSubmit={handleSubmit}
                                 className="flex-1 overflow-y-auto px-5 py-5 md:px-6"
                             >
-                                {errorMessage ? (
-                                    <div className="mb-4 rounded-[10px] border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+                                {errorMessage && (
+                                    <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
                                         {errorMessage}
                                     </div>
-                                ) : null}
+                                )}
 
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Nombre
-                                        </label>
-                                        <input
-                                            name="client_name"
-                                            value={form.client_name}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        />
-                                    </div>
+                                    <AdminInput
+                                        id="edit-client-name"
+                                        label="Nombre"
+                                        value={form.client_name}
+                                        onChange={(value) => updateField('client_name', value)}
+                                        placeholder="Nombre del cliente"
+                                    />
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Teléfono
-                                        </label>
-                                        <input
-                                            name="client_phone"
-                                            value={form.client_phone}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        />
-                                    </div>
+                                    <AdminInput
+                                        id="edit-client-phone"
+                                        label="Teléfono"
+                                        value={form.client_phone}
+                                        onChange={(value) => updateField('client_phone', value)}
+                                        placeholder="+56 9 1234 5678"
+                                    />
 
                                     <div className="md:col-span-2">
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Email
-                                        </label>
-                                        <input
-                                            name="client_email"
+                                        <AdminInput
+                                            id="edit-client-email"
+                                            label="Email"
                                             type="email"
                                             value={form.client_email}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
+                                            onChange={(value) => updateField('client_email', value)}
+                                            placeholder="cliente@email.com"
                                         />
                                     </div>
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Barbero
-                                        </label>
-                                        <select
-                                            name="barber_id"
-                                            value={form.barber_id}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        >
-                                            {barbers.map((barber) => (
-                                                <option key={barber.id} value={barber.id}>
-                                                    {barber.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <AdminSelect
+                                        id="edit-barber"
+                                        label="Barbero"
+                                        value={form.barber_id}
+                                        onChange={(value) => updateField('barber_id', value)}
+                                        options={barbers.map((barber) => ({
+                                            value: barber.id,
+                                            label: barber.name,
+                                        }))}
+                                    />
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Servicio
-                                        </label>
-                                        <select
-                                            name="service_id"
-                                            value={form.service_id}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        >
-                                            {services.map((service) => (
-                                                <option key={service.id} value={service.id}>
-                                                    {service.name} ({service.duration_minutes} min)
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <AdminSelect
+                                        id="edit-service"
+                                        label="Servicio"
+                                        value={form.service_id}
+                                        onChange={(value) => updateField('service_id', value)}
+                                        options={services.map((service) => ({
+                                            value: service.id,
+                                            label: `${service.name} (${service.duration_minutes} min)`,
+                                        }))}
+                                    />
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Fecha
-                                        </label>
-                                        <input
-                                            name="appointment_date"
-                                            type="date"
-                                            value={form.appointment_date}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        />
-                                    </div>
+                                    <AdminInput
+                                        id="edit-date"
+                                        label="Fecha"
+                                        type="date"
+                                        value={form.appointment_date}
+                                        onChange={(value) => updateField('appointment_date', value)}
+                                    />
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Hora
-                                        </label>
-                                        <input
-                                            name="appointment_time"
-                                            type="time"
-                                            value={form.appointment_time}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        />
-                                    </div>
+                                    <AdminInput
+                                        id="edit-time"
+                                        label="Hora"
+                                        type="time"
+                                        value={form.appointment_time}
+                                        onChange={(value) => updateField('appointment_time', value)}
+                                    />
                                 </div>
 
-                                <div className="mt-5 flex flex-col gap-3 border-t border-[#e7dfcf] pt-5 sm:flex-row sm:justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={() => setOpen(false)}
-                                        className="h-[46px] rounded-[8px] border border-[#d7cfbf] bg-white px-5 text-sm font-semibold text-[#2d2a26]"
-                                    >
-                                        Cancelar
-                                    </button>
+                                <div className="mt-6 border-t border-black/10 pt-5">
+                                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpen(false)}
+                                            className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] sm:w-auto"
+                                        >
+                                            Cancelar
+                                        </button>
 
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="h-[46px] rounded-[8px] bg-black px-5 text-sm font-semibold text-white disabled:opacity-50"
-                                    >
-                                        {loading ? 'Guardando...' : 'Guardar cambios'}
-                                    </button>
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
+                                        >
+                                            {loading ? 'Guardando...' : 'Guardar cambios'}
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </section>
                     </div>
                 </div>
-            ) : null}
+            )}
         </>
     )
 }

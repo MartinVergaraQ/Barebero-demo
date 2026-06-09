@@ -5,6 +5,8 @@ export type BarberByProfile = {
     business_id: string
     profile_id: string | null
     name: string
+    photo_url: string | null
+    specialty: string | null
 }
 
 export async function getBarberByProfile(profileId: string) {
@@ -12,7 +14,14 @@ export async function getBarberByProfile(profileId: string) {
 
     const { data, error } = await supabase
         .from('barbers')
-        .select('id, business_id, profile_id, name')
+        .select(`
+            id,
+            business_id,
+            profile_id,
+            name,
+            photo_url,
+            specialty
+        `)
         .eq('profile_id', profileId)
         .single()
 

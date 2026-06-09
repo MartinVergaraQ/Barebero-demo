@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { AdminInput } from '@/src/features/admin/components/admin-input'
+import { AdminSelect } from '@/src/features/admin/components/admin-select'
 
 type BarberOption = {
     id: string
@@ -19,16 +21,44 @@ const statusOptions = [
 
 type Props = {
     barbers: BarberOption[]
+    selectedDate?: string
+    selectedStatus?: string
+    selectedBarberId?: string
+    isBarber?: boolean
 }
 
-export function AdminAppointmentsFilter({ barbers }: Props) {
+function formatDateValue(date: Date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
+}
+
+export function AdminAppointmentsFilter({
+    barbers,
+    selectedDate = '',
+    selectedStatus = '',
+    selectedBarberId = '',
+    isBarber = false,
+}: Props) {
     const router = useRouter()
     const pathname = usePathname()
     const searchParams = useSearchParams()
 
-    const currentDate = searchParams.get('date') ?? ''
-    const currentStatus = searchParams.get('status') ?? ''
-    const currentBarberId = searchParams.get('barberId') ?? ''
+    const today = formatDateValue(new Date())
+
+    const currentDate = selectedDate || searchParams.get('date') || today
+
+    const currentStatus =
+        selectedStatus === 'all'
+            ? ''
+            : selectedStatus || searchParams.get('status') || ''
+
+    const currentBarberId =
+        selectedBarberId === 'all'
+            ? ''
+            : selectedBarberId || searchParams.get('barberId') || ''
 
     const [date, setDate] = useState(currentDate)
     const [status, setStatus] = useState(currentStatus)
@@ -45,85 +75,70 @@ export function AdminAppointmentsFilter({ barbers }: Props) {
         if (status) params.set('status', status)
         else params.delete('status')
 
-        if (barberId) params.set('barberId', barberId)
-        else params.delete('barberId')
+        if (!isBarber && barberId) {
+            params.set('barberId', barberId)
+        } else {
+            params.delete('barberId')
+        }
 
         const queryString = params.toString()
+
         router.push(queryString ? `${pathname}?${queryString}` : pathname)
     }
 
     function handleClear() {
-        setDate('')
+        setDate(today)
         setStatus('')
         setBarberId('')
-        router.push(pathname)
+
+        router.push(`${pathname}?date=${today}`)
     }
 
     return (
+
         <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_auto_auto] xl:items-end">
-                <div>
-                    <label
-                        htmlFor="date"
-                        className="mb-2 block text-sm font-semibold text-[#2f2d2a]"
-                    >
-                        Fecha
-                    </label>
-                    <input
-                        id="date"
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-[15px] text-[#2d2a26] outline-none"
-                    />
-                </div>
 
-                <div>
-                    <label
-                        htmlFor="status"
-                        className="mb-2 block text-sm font-semibold text-[#2f2d2a]"
-                    >
-                        Estado
-                    </label>
-                    <select
-                        id="status"
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                        className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-[15px] text-[#2d2a26] outline-none"
-                    >
-                        {statusOptions.map((option) => (
-                            <option key={option.value || 'all'} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+            <div
+                className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${isBarber
+                    ? 'xl:grid-cols-[1.2fr_1fr_auto_auto]'
+                    : 'xl:grid-cols-[1.2fr_1fr_1fr_auto_auto]'
+                    } xl:items-end`}
+            >
+                <AdminInput
+                    id="date"
+                    label="Fecha"
+                    type="date"
+                    value={date}
+                    onChange={setDate}
+                />
 
-                <div>
-                    <label
-                        htmlFor="barberId"
-                        className="mb-2 block text-sm font-semibold text-[#2f2d2a]"
-                    >
-                        Barbero
-                    </label>
-                    <select
+                <AdminSelect
+                    id="status"
+                    label="Estado"
+                    value={status}
+                    onChange={setStatus}
+                    options={statusOptions}
+                />
+
+                {!isBarber && (
+                    <AdminSelect
                         id="barberId"
+                        label="Barbero"
                         value={barberId}
-                        onChange={(e) => setBarberId(e.target.value)}
-                        className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-[15px] text-[#2d2a26] outline-none"
-                    >
-                        <option value="">Todos</option>
-                        {barbers.map((barber) => (
-                            <option key={barber.id} value={barber.id}>
-                                {barber.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                        onChange={setBarberId}
+                        options={[
+                            { value: '', label: 'Todos' },
+                            ...barbers.map((barber) => ({
+                                value: barber.id,
+                                label: barber.name,
+                            })),
+                        ]}
+                    />
+                )}
 
                 <button
                     type="submit"
-                    className="h-[48px] w-full rounded-[8px] bg-black px-5 text-[15px] font-semibold text-white xl:w-auto"
+                    className="h-11 w-full rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] xl:w-auto"
                 >
                     Filtrar
                 </button>
@@ -131,7 +146,7 @@ export function AdminAppointmentsFilter({ barbers }: Props) {
                 <button
                     type="button"
                     onClick={handleClear}
-                    className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-5 text-[15px] font-semibold text-[#2d2a26] xl:w-auto"
+                    className="h-11 w-full rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] xl:w-auto"
                 >
                     Limpiar
                 </button>

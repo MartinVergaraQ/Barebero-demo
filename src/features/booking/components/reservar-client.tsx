@@ -94,6 +94,7 @@ type DateOption = {
     shortLabel: string
     isToday: boolean
     isTomorrow: boolean
+    isSunday: boolean
 }
 
 function formatDateValue(date: Date) {
@@ -114,19 +115,15 @@ function getDateOptions(daysToShow = 10): DateOption[] {
     tomorrow.setDate(today.getDate() + 1)
     const tomorrowValue = formatDateValue(tomorrow)
 
-    let offset = 0
-
-    while (options.length < daysToShow) {
+    for (let offset = 0; options.length < daysToShow; offset += 1) {
         const date = new Date(today)
         date.setDate(today.getDate() + offset)
-        offset += 1
-
-        const dayOfWeek = date.getDay()
-        if (dayOfWeek === 0) continue
 
         const value = formatDateValue(date)
         const isToday = value === todayValue
         const isTomorrow = value === tomorrowValue
+        const dayOfWeek = date.getDay()
+        const isSunday = dayOfWeek === 0
 
         const weekday = date.toLocaleDateString('es-CL', { weekday: 'short' })
         const day = date.toLocaleDateString('es-CL', { day: '2-digit' })
@@ -134,9 +131,14 @@ function getDateOptions(daysToShow = 10): DateOption[] {
         options.push({
             value,
             label: `${weekday.replace('.', '')} ${day}`,
-            shortLabel: isToday ? 'Hoy' : isTomorrow ? 'Mañana' : `${weekday.replace('.', '')} ${day}`,
+            shortLabel: isToday
+                ? 'Hoy'
+                : isTomorrow
+                    ? 'Mañana'
+                    : `${weekday.replace('.', '')} ${day}`,
             isToday,
             isTomorrow,
+            isSunday,
         })
     }
 
@@ -1501,8 +1503,10 @@ export default function ReservarClient({
                                                         disabled={disabled}
                                                         onClick={() => handleDateSelect(option.value)}
                                                         className={`min-w-[88px] shrink-0 snap-start rounded-2xl border px-3 py-3 text-center transition disabled:cursor-not-allowed disabled:opacity-35 ${isSelected
-                                                            ? 'border-[rgba(200,148,46,0.75)] bg-[rgba(200,148,46,0.14)] text-[#C8942E] shadow-[0_12px_26px_rgba(200,148,46,0.12)]'
-                                                            : 'border-border-soft bg-surface-soft text-slate-300 hover:border-[rgba(200,148,46,0.45)]'
+                                                                ? 'border-[rgba(200,148,46,0.75)] bg-[rgba(200,148,46,0.14)] text-[#C8942E] shadow-[0_12px_26px_rgba(200,148,46,0.12)]'
+                                                                : option.isSunday
+                                                                    ? 'border-border-soft bg-white/10 text-slate-300 hover:border-[rgba(200,148,46,0.45)]'
+                                                                    : 'border-border-soft bg-surface-soft text-slate-300 hover:border-[rgba(200,148,46,0.45)]'
                                                             }`}
                                                     >
                                                         <div className="text-sm font-black md:text-base">

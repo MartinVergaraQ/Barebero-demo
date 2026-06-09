@@ -1,82 +1,164 @@
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/server'
-import {
-    getAppointments,
-    type AppointmentItem,
-} from '@/src/features/booking/api/get-appointments'
-import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
-import { AppointmentStatusSelect } from '@/src/features/booking/api/components/appointment-status-select'
 import { AdminAppointmentsFilter } from '@/src/features/booking/api/components/admin-appointments-filter'
-import { DeleteAppointmentButton } from '@/src/features/booking/api/components/delete-appointment-button'
-import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
-import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
-import { AdminAppointmentEditSheet } from '@/src/features/booking/api/components/admin-appointment-edit-sheet'
 import { AdminCreateAppointmentSheet } from '@/src/features/booking/api/components/admin-create-appointment-sheet'
-import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
-import { getBarberByProfile } from '@/src/features/barbers/api/get-barber-by-profile'
-import {
-    canAccessBusiness,
-    isBarberRole,
-    isFullAdminRole,
-} from '@/src/features/auth/utils/admin-scope'
-import { utcToBusinessTime } from '@/src/features/booking/utils/datetime'
-import {
-    normalizeAppointmentStatus,
-    formatAppointmentStatus,
-    getAppointmentStatusClasses,
-} from '@/src/features/booking/utils/appointment-status'
+import { AdminAppointmentEditSheet } from '@/src/features/booking/api/components/admin-appointment-edit-sheet'
+import { DeleteAppointmentButton } from '@/src/features/booking/api/components/delete-appointment-button'
+import { AppointmentStatusSelect } from '@/src/features/booking/api/components/appointment-status-select'
+import { canManageAppointments, } from '@/src/features/auth/utils/admin-access'
+import { isBarberRole } from '@/src/features/auth/utils/admin-scope'
+import { ExportAppointmentsButton } from '@/src/features/booking/components/export-appointments-button'
+
+type AdminReservasPageProps = {
+    params: Promise<{
+        slug: string
+    }>
+    searchParams?: Promise<{
+        date?: string
+        status?: string
+        barberId?: string
+    }>
+}
+
+type BusinessRow = {
+    id: string
+    name: string
+    slug: string
+}
+
+type ProfileRow = {
+    id: string
+    business_id: string
+    role: string
+}
+
+type BarberRow = {
+    id: string
+    name: string
+}
+
+type ServiceRow = {
+    id: string
+    name: string
+    duration_minutes: number
+}
+
+type RelationName =
+    | {
+        name: string | null
+    }
+    | {
+        name: string | null
+    }[]
+    | null
+
+type AppointmentRow = {
+    id: string
+    business_id: string
+    barber_id: string
+    service_id: string
+    client_name: string | null
+    client_email: string | null
+    client_phone: string | null
+    appointment_date: string
+    start_at: string
+    end_at: string
+    status: string | null
+    notes?: string | null
+    barber?: RelationName
+    service?: RelationName
+}
 
 const COLORS = {
-    primary: '#a87408',
-    primarySoft: '#e3cfab',
-    bgSoft: '#efecdf',
-    border: '#e7dfcf',
-    text: '#1f1f1f',
-    textSoft: '#625d54',
-    blueSoft: '#d9e8f7',
-    blueText: '#285f96',
-    pendingSoft: '#dbe6eb',
-    pendingText: '#556770',
-    dangerSoft: '#f1c8c5',
-    dangerText: '#b73a32',
-    doneSoft: '#e7e3d6',
-    doneText: '#6c6657',
+    primary: '#C8942E',
+    primaryDark: '#8A5D16',
+    primarySoft: 'rgba(200,148,46,0.12)',
+    bg: '#F4EFE5',
+    card: '#FFFCF4',
+    cardSoft: '#FBF7EE',
+    border: 'rgba(15,23,42,0.10)',
 }
 
-function getRelationName(
-    relation: { name: string } | { name: string }[] | null
-) {
-    if (!relation) return '-'
-    if (Array.isArray(relation)) return relation[0]?.name ?? '-'
-    return relation.name
+function formatDateValue(date: Date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
 }
 
-function countByStatus(
-    appointments: AppointmentItem[],
-    expected: AppointmentStatus
-) {
-    return appointments.filter(
-        (appointment) => normalizeAppointmentStatus(appointment.status) === expected
-    ).length
-}
+function formatShortDate(value: string) {
+    if (!value) return '-'
 
-function formatShortDate(date: string) {
-    if (!date) return '-'
-
-    const parsed = new Date(`${date}T12:00:00`)
-    if (Number.isNaN(parsed.getTime())) return date
+    const date = new Date(`${value}T12:00:00`)
 
     return new Intl.DateTimeFormat('es-CL', {
+        weekday: 'short',
         day: '2-digit',
         month: 'short',
-    })
-        .format(parsed)
-        .replace('.', '')
+    }).format(date)
 }
 
 function formatTime(value: string) {
     if (!value) return '-'
-    return utcToBusinessTime(value)
+
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) {
+        return value.slice(11, 16) || value
+    }
+
+    return new Intl.DateTimeFormat('es-CL', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    }).format(date)
+}
+
+function normalizeAppointmentStatus(status?: string | null) {
+    const value = (status || '').toLowerCase()
+
+    if (value === 'confirmed' || value === 'confirmada' || value === 'confirmado') {
+        return 'confirmed'
+    }
+
+    if (value === 'canceled' || value === 'cancelada' || value === 'cancelado') {
+        return 'canceled'
+    }
+
+    if (value === 'completed' || value === 'completada' || value === 'completado') {
+        return 'completed'
+    }
+
+    return 'pending'
+}
+
+function formatAppointmentStatus(status?: string | null) {
+    const normalized = normalizeAppointmentStatus(status)
+
+    if (normalized === 'confirmed') return 'Confirmada'
+    if (normalized === 'canceled') return 'Cancelada'
+    if (normalized === 'completed') return 'Completada'
+
+    return 'Pendiente'
+}
+
+function getAppointmentStatusClasses(status?: string | null) {
+    const normalized = normalizeAppointmentStatus(status)
+
+    if (normalized === 'confirmed') {
+        return 'inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200'
+    }
+
+    if (normalized === 'canceled') {
+        return 'inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-black text-red-700 ring-1 ring-red-200'
+    }
+
+    if (normalized === 'completed') {
+        return 'inline-flex items-center rounded-full bg-slate-900 px-2.5 py-1 text-xs font-black text-white ring-1 ring-slate-900'
+    }
+
+    return 'inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600 ring-1 ring-slate-200'
 }
 
 function getInitials(name: string) {
@@ -88,15 +170,12 @@ function getInitials(name: string) {
         .join('')
 }
 
-type PageProps = {
-    params: Promise<{
-        slug: string
-    }>
-    searchParams: Promise<{
-        date?: string
-        status?: AppointmentStatus | ''
-        barberId?: string
-    }>
+function getRelationName(
+    relation?: { name: string | null } | { name: string | null }[] | null
+) {
+    if (!relation) return '-'
+    if (Array.isArray(relation)) return relation[0]?.name ?? '-'
+    return relation.name ?? '-'
 }
 
 function MetricCard({
@@ -113,29 +192,29 @@ function MetricCard({
     iconBg: string
 }) {
     return (
-        <article
-            className="rounded-[12px] border bg-white p-5 md:p-6"
-            style={{ borderColor: COLORS.border }}
-        >
-            <div className="flex items-start justify-between gap-4">
-                <div>
-                    <p className="text-[13px] font-semibold uppercase tracking-[0.24em] text-[#59544c]">
+        <article className="group relative overflow-hidden rounded-[22px] border border-black/10 bg-[#FFFCF4] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.09)]">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
                         {title}
                     </p>
-                    <p className="mt-3 text-[42px] font-bold leading-none text-black sm:text-[46px] md:text-[54px]">
+
+                    <p className="mt-3 text-[38px] font-black leading-none tracking-tight text-slate-950">
                         {value}
+                    </p>
+
+                    <p className="mt-3 line-clamp-1 text-sm font-medium text-slate-500">
+                        {subtitle}
                     </p>
                 </div>
 
                 <div
-                    className="flex h-12 w-12 items-center justify-center rounded-[8px] text-[18px]"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-[17px] shadow-sm ring-1 ring-black/5"
                     style={{ backgroundColor: iconBg }}
                 >
                     {icon}
                 </div>
             </div>
-
-            <p className="mt-5 text-[14px] text-[#5e584f]">{subtitle}</p>
         </article>
     )
 }
@@ -143,9 +222,14 @@ function MetricCard({
 export default async function AdminReservasPage({
     params,
     searchParams,
-}: PageProps) {
+}: AdminReservasPageProps) {
     const { slug } = await params
     const query = await searchParams
+
+    const selectedDate = query?.date || formatDateValue(new Date())
+    const selectedStatus = query?.status || 'all'
+    const selectedBarberId = query?.barberId || 'all'
+
     const supabase = await createClient()
 
     const {
@@ -163,417 +247,334 @@ export default async function AdminReservasPage({
         .single()
 
     if (profileError || !profile) {
-        redirect('/admin')
+        redirect('/admin/login')
     }
 
-    const business = await getBusinessBySlug(slug)
+    const typedProfile = profile as ProfileRow
 
-    if (
-        !canAccessBusiness({
-            profileBusinessId: profile.business_id,
-            requestedBusinessId: business.id,
-        })
-    ) {
-        redirect('/admin')
+    if (!canManageAppointments(typedProfile.role)) {
+        redirect('/admin/login')
     }
 
-    const ownBarber = await getBarberByProfile(profile.id)
+    const { data: business, error: businessError } = await supabase
+        .from('businesses')
+        .select('id, name, slug')
+        .eq('slug', slug)
+        .single()
 
-    if (
-        isBarberRole(profile.role) &&
-        (!ownBarber || ownBarber.business_id !== business.id)
-    ) {
-        redirect('/admin')
+    if (businessError || !business) {
+        notFound()
     }
 
-    const selectedDate = query.date ?? ''
-    const selectedStatus = query.status ?? ''
+    const typedBusiness = business as BusinessRow
 
-    const effectiveBarberId = isBarberRole(profile.role)
-        ? ownBarber!.id
-        : (query.barberId ?? '')
+    if (typedBusiness.id !== typedProfile.business_id) {
+        redirect('/admin/login')
+    }
 
-    const [appointments, barbers, services] = await Promise.all([
-        getAppointments({
-            businessId: business.id,
-            date: selectedDate,
-            status: selectedStatus,
-            barberId: effectiveBarberId,
-        }),
-        isFullAdminRole(profile.role)
-            ? getBarbersAdmin(business.id)
-            : Promise.resolve([
-                {
-                    id: ownBarber!.id,
-                    business_id: ownBarber!.business_id,
-                    name: ownBarber!.name,
-                },
-            ]),
-        getServicesAdmin(business.id),
+    const [{ data: barbersData }, { data: servicesData }] = await Promise.all([
+        supabase
+            .from('barbers')
+            .select('id, name')
+            .eq('business_id', typedBusiness.id)
+            .eq('is_active', true)
+            .order('display_order', { ascending: true }),
+
+        supabase
+            .from('services')
+            .select('id, name, duration_minutes')
+            .eq('business_id', typedBusiness.id)
+            .eq('is_active', true)
+            .order('display_order', { ascending: true }),
     ])
 
-    const items = appointments as AppointmentItem[]
+    const barbers = (barbersData ?? []) as BarberRow[]
+    const services = (servicesData ?? []) as ServiceRow[]
 
-    const pendingCount = countByStatus(items, 'pending')
-    const confirmedCount = countByStatus(items, 'confirmed')
-    const canceledCount = countByStatus(items, 'canceled')
+    const effectiveBarberId =
+        isBarberRole(typedProfile.role)
+            ? barbers.find((barber) => barber.id === typedProfile.id)?.id || selectedBarberId
+            : selectedBarberId
+
+    let appointmentsQuery = supabase
+        .from('appointments')
+        .select(
+            `
+            id,
+            business_id,
+            barber_id,
+            service_id,
+            client_name,
+            client_email,
+            client_phone,
+            appointment_date,
+            start_at,
+            end_at,
+            status,
+            notes,
+            barber:barbers(name),
+            service:services(name)
+        `
+        )
+        .eq('business_id', typedBusiness.id)
+        .eq('appointment_date', selectedDate)
+        .order('start_at', { ascending: true })
+
+    if (selectedStatus !== 'all') {
+        appointmentsQuery = appointmentsQuery.eq('status', selectedStatus)
+    }
+
+    if (effectiveBarberId !== 'all') {
+        appointmentsQuery = appointmentsQuery.eq('barber_id', effectiveBarberId)
+    }
+
+    const { data: appointmentsData, error: appointmentsError } =
+        await appointmentsQuery
+
+    if (appointmentsError) {
+        throw new Error(appointmentsError.message)
+    }
+
+    const items = (appointmentsData ?? []) as AppointmentRow[]
+
+    const pendingCount = items.filter(
+        (appointment) => normalizeAppointmentStatus(appointment.status) === 'pending'
+    ).length
+
+    const confirmedCount = items.filter(
+        (appointment) => normalizeAppointmentStatus(appointment.status) === 'confirmed'
+    ).length
+
+    const canceledCount = items.filter(
+        (appointment) => normalizeAppointmentStatus(appointment.status) === 'canceled'
+    ).length
 
     return (
-        <main className="space-y-6 md:space-y-8">
-            <header
-                className="flex flex-col gap-5 border-b pb-5 md:pb-7 lg:flex-row lg:items-start lg:justify-between"
-                style={{ borderColor: COLORS.border }}
-            >
-                <div>
-                    <p className="mb-2 text-sm text-[#6b655c]">{business.name}</p>
-                    <h1
-                        className="text-[42px] font-bold leading-none tracking-[-0.04em] sm:text-[48px] md:text-[60px]"
-                        style={{ color: COLORS.primary }}
-                    >
-                        Reservas
-                    </h1>
-                    <p className="mt-2 max-w-[620px] text-[15px] leading-7 text-[#4f4b45] md:text-[16px]">
-                        Gestiona citas, estados y disponibilidad del negocio
-                    </p>
-                </div>
+        <main className="min-h-screen px-4 py-5 text-slate-950 md:px-8 md:py-6">
+            <div className="mx-auto max-w-7xl space-y-5">
+                <header className="flex flex-col gap-4 border-b border-black/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p className="text-sm font-bold text-slate-500">
+                            {typedBusiness.name}
+                        </p>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                    <button
-                        className="h-[48px] w-full rounded-[6px] border bg-white px-7 text-[15px] font-semibold text-[#2a2927] sm:w-auto"
-                        style={{ borderColor: COLORS.border }}
-                        type="button"
-                    >
-                        Exportar
-                    </button>
+                        <h1 className="mt-1 text-[42px] font-black leading-none tracking-tight text-slate-950 md:text-5xl">
+                            Reservas
+                        </h1>
 
-                    <AdminCreateAppointmentSheet
-                        businessId={business.id}
+                        <p className="mt-2 max-w-[620px] text-sm leading-6 text-slate-600 md:text-base md:leading-7">
+                            Gestiona citas, estados, filtros y disponibilidad del negocio desde un solo lugar.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                        <ExportAppointmentsButton
+                            appointments={(appointmentsData ?? []).map((appointment) => ({
+                                id: appointment.id,
+                                client_name: appointment.client_name,
+                                client_email: appointment.client_email,
+                                client_phone: appointment.client_phone,
+                                appointment_date: appointment.appointment_date,
+                                start_at: appointment.start_at,
+                                status: appointment.status,
+                                service: Array.isArray(appointment.service)
+                                    ? appointment.service[0] ?? null
+                                    : appointment.service ?? null,
+                                barber: Array.isArray(appointment.barber)
+                                    ? appointment.barber[0] ?? null
+                                    : appointment.barber ?? null,
+                            }))}
+                            fileName={`reservas-${selectedDate || 'todas'}.csv`}
+                        />
+
+                        <AdminCreateAppointmentSheet
+                            businessId={typedBusiness.id}
+                            barbers={barbers.map((barber) => ({
+                                id: barber.id,
+                                name: barber.name,
+                            }))}
+                            services={services.map((service) => ({
+                                id: service.id,
+                                name: service.name,
+                                duration_minutes: service.duration_minutes,
+                            }))}
+                        />
+                    </div>
+                </header>
+
+                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <MetricCard
+                        title="Reservas hoy"
+                        value={items.length}
+                        subtitle="Total del día"
+                        icon="📅"
+                        iconBg="rgba(200,148,46,0.18)"
+                    />
+
+                    <MetricCard
+                        title="Pendientes"
+                        value={pendingCount}
+                        subtitle="Requieren atención"
+                        icon="⏳"
+                        iconBg="#EEF2F6"
+                    />
+
+                    <MetricCard
+                        title="Confirmadas"
+                        value={confirmedCount}
+                        subtitle="Listas para atender"
+                        icon="✓"
+                        iconBg="#DCFCE7"
+                    />
+
+                    <MetricCard
+                        title="Canceladas"
+                        value={canceledCount}
+                        subtitle="Registradas hoy"
+                        icon="×"
+                        iconBg="#FEE2E2"
+                    />
+                </section>
+
+                <section className="rounded-[28px] border border-black/10 bg-[#FFFCF4] p-4 shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:p-5">
+                    <div className="mb-4">
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                            Filtros
+                        </p>
+
+                        <h2 className="mt-1 text-xl font-black text-slate-950">
+                            Buscar reservas
+                        </h2>
+                    </div>
+
+                    <AdminAppointmentsFilter
                         barbers={barbers.map((barber) => ({
                             id: barber.id,
                             name: barber.name,
                         }))}
-                        services={services.map((service) => ({
-                            id: service.id,
-                            name: service.name,
-                            duration_minutes: service.duration_minutes,
-                        }))}
+                        selectedDate={selectedDate}
+                        selectedStatus={selectedStatus}
+                        selectedBarberId={effectiveBarberId}
+                        isBarber={isBarberRole(typedProfile.role)}
                     />
-                </div>
-            </header>
-
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 md:gap-6">
-                <MetricCard
-                    title="Reservas hoy"
-                    value={items.length}
-                    subtitle="+15% vs ayer"
-                    icon="🗓️"
-                    iconBg={COLORS.primarySoft}
-                />
-                <MetricCard
-                    title="Pendientes"
-                    value={pendingCount}
-                    subtitle="Requieren confirmación"
-                    icon="👜"
-                    iconBg={COLORS.pendingSoft}
-                />
-                <MetricCard
-                    title="Confirmadas"
-                    value={confirmedCount}
-                    subtitle="Listas para el servicio"
-                    icon="✓"
-                    iconBg="#d9e6f3"
-                />
-                <MetricCard
-                    title="Canceladas"
-                    value={canceledCount}
-                    subtitle="Últimas 24 horas"
-                    icon="✕"
-                    iconBg="#ecc0bc"
-                />
-            </section>
-
-            <section
-                className="rounded-[12px] p-4 md:p-5"
-                style={{ backgroundColor: COLORS.bgSoft }}
-            >
-                <AdminAppointmentsFilter
-                    barbers={barbers.map((barber) => ({
-                        id: barber.id,
-                        name: barber.name,
-                    }))}
-                />
-            </section>
-
-            {items.length === 0 ? (
-                <section
-                    className="rounded-[12px] border bg-white p-10 text-center"
-                    style={{ borderColor: COLORS.border }}
-                >
-                    <p className="text-lg font-semibold text-slate-700">
-                        No hay reservas para mostrar.
-                    </p>
-                    <p className="mt-2 text-sm text-slate-500">
-                        Ajusta los filtros o crea una nueva reserva.
-                    </p>
                 </section>
-            ) : (
-                <>
-                    <section
-                        className="hidden overflow-hidden rounded-[12px] border bg-white xl:block"
-                        style={{ borderColor: COLORS.border }}
-                    >
-                        <div
-                            className="grid grid-cols-[1.25fr_1.05fr_1fr_1fr_0.9fr_1.35fr] gap-4 border-b px-6 py-6 text-[12px] font-semibold uppercase tracking-[0.22em]"
-                            style={{ borderColor: '#efe8d8', color: '#5f5a52' }}
-                        >
-                            <div>Cliente</div>
-                            <div>Servicio</div>
-                            <div>Barbero</div>
-                            <div>Fecha / Hora</div>
-                            <div>Estado</div>
-                            <div>Acciones</div>
+
+                <section className="overflow-hidden rounded-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
+                    <div className="flex flex-col gap-2 border-b border-black/10 px-5 py-5 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                Agenda
+                            </p>
+
+                            <h2 className="mt-1 text-2xl font-black text-slate-950">
+                                Reservas encontradas
+                            </h2>
                         </div>
 
-                        <div>
-                            {items.map((appointment, index) => {
-                                const badgeLabel = formatAppointmentStatus(
-                                    appointment.status
+                        <span className="w-fit rounded-full bg-[#C8942E]/10 px-4 py-2 text-xs font-black text-[#8A5D16]">
+                            {items.length} reserva{items.length === 1 ? '' : 's'}
+                        </span>
+                    </div>
+
+                    {items.length === 0 ? (
+                        <div className="px-5 py-12 text-center">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+                                📅
+                            </div>
+
+                            <h3 className="mt-4 text-xl font-black text-slate-950">
+                                No hay reservas para mostrar
+                            </h3>
+
+                            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                                Ajusta los filtros o crea una nueva reserva manualmente.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-black/10">
+                            {items.map((appointment) => {
+                                const status = normalizeAppointmentStatus(appointment.status)
+                                const clientInitials = getInitials(
+                                    appointment.client_name || 'Cliente'
                                 )
-                                const badgeClasses = getAppointmentStatusClasses(
-                                    appointment.status
-                                )
-                                const barberName = getRelationName(
-                                    appointment.barbers
-                                )
+                                const serviceName = getRelationName(appointment.service)
+                                const barberName = getRelationName(appointment.barber)
 
                                 return (
                                     <article
                                         key={appointment.id}
-                                        className={`grid grid-cols-[1.25fr_1.05fr_1fr_1fr_0.9fr_1.35fr] gap-4 px-6 py-6 ${index !== items.length - 1
-                                                ? 'border-b'
-                                                : ''
-                                            }`}
-                                        style={{ borderColor: '#f1ebde' }}
+                                        className="grid gap-3 px-5 py-4 transition hover:bg-[#FBF7EE] lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_auto] lg:items-center"
                                     >
-                                        <div>
-                                            <p className="text-[16px] font-bold text-[#1a1a1a]">
-                                                {appointment.client_name}
-                                            </p>
-                                            <p className="mt-1 text-[14px] text-[#4f4b45]">
-                                                {appointment.client_phone}
-                                            </p>
-                                            <p className="mt-1 text-[13px] italic text-[#8d877d]">
-                                                {appointment.client_email || '-'}
-                                            </p>
-                                        </div>
-
-                                        <div className="flex items-center text-[15px] text-[#3b3833]">
-                                            {getRelationName(appointment.services)}
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#d9e2e8] text-[11px] font-bold text-[#56656d]">
-                                                {getInitials(barberName)}
+                                        <div className="flex min-w-0 items-start gap-4">
+                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-white">
+                                                {clientInitials}
                                             </div>
-                                            <p className="text-[15px] text-[#3b3833]">
-                                                {barberName}
-                                            </p>
+
+                                            <div className="min-w-0">
+                                                <h3 className="line-clamp-1 text-base font-black text-slate-950">
+                                                    {appointment.client_name || 'Cliente sin nombre'}
+                                                </h3>
+
+                                                <p className="mt-1 line-clamp-1 text-sm font-medium text-slate-500">
+                                                    {serviceName} · {barberName}
+                                                </p>
+
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                                                        {formatShortDate(appointment.appointment_date)}
+                                                    </span>
+
+                                                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                                                        {formatTime(appointment.start_at)}
+                                                    </span>
+
+                                                    {appointment.client_phone && (
+                                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                                                            {appointment.client_phone}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div>
-                                            <p className="text-[15px] font-semibold text-[#1a1a1a]">
-                                                {formatShortDate(
-                                                    appointment.appointment_date
-                                                )}
-                                            </p>
-                                            <p className="mt-1 text-[14px] text-[#4f4b45]">
-                                                {formatTime(appointment.start_at)} -{' '}
-                                                {formatTime(appointment.end_at)}
-                                            </p>
-                                        </div>
-
-                                        <div className="flex items-center">
-                                            <span
-                                                className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${badgeClasses}`}
-                                            >
-                                                {badgeLabel}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className={getAppointmentStatusClasses(status)}>
+                                                {formatAppointmentStatus(status)}
                                             </span>
-                                        </div>
 
-                                        <div className="space-y-3">
                                             <AppointmentStatusSelect
                                                 appointmentId={appointment.id}
-                                                currentStatus={appointment.status}
+                                                currentStatus={status}
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center gap-2 lg:justify-end">
+                                            <AdminAppointmentEditSheet
+                                                appointment={{
+                                                    ...appointment,
+                                                    client_name: appointment.client_name || 'Cliente sin nombre',
+                                                    client_phone: appointment.client_phone || '',
+                                                }}
+                                                barbers={barbers.map((barber) => ({
+                                                    id: barber.id,
+                                                    name: barber.name,
+                                                }))}
+                                                services={services.map((service) => ({
+                                                    id: service.id,
+                                                    name: service.name,
+                                                    duration_minutes: service.duration_minutes,
+                                                }))}
                                             />
 
-                                            <div className="flex flex-wrap gap-2">
-                                                <AdminAppointmentEditSheet
-                                                    appointment={{
-                                                        id: appointment.id,
-                                                        barber_id:
-                                                            appointment.barber_id,
-                                                        service_id:
-                                                            appointment.service_id,
-                                                        client_name:
-                                                            appointment.client_name,
-                                                        client_email:
-                                                            appointment.client_email,
-                                                        client_phone:
-                                                            appointment.client_phone,
-                                                        appointment_date:
-                                                            appointment.appointment_date,
-                                                        start_at:
-                                                            appointment.start_at,
-                                                    }}
-                                                    barbers={barbers.map(
-                                                        (barber) => ({
-                                                            id: barber.id,
-                                                            name: barber.name,
-                                                        })
-                                                    )}
-                                                    services={services.map(
-                                                        (service) => ({
-                                                            id: service.id,
-                                                            name: service.name,
-                                                            duration_minutes:
-                                                                service.duration_minutes,
-                                                        })
-                                                    )}
-                                                />
-
-                                                <DeleteAppointmentButton
-                                                    id={appointment.id}
-                                                />
-                                            </div>
+                                            <DeleteAppointmentButton id={appointment.id} />
                                         </div>
                                     </article>
                                 )
                             })}
                         </div>
-                    </section>
-
-                    <section className="grid gap-4 xl:hidden">
-                        {items.map((appointment) => {
-                            const badgeLabel = formatAppointmentStatus(
-                                appointment.status
-                            )
-                            const badgeClasses = getAppointmentStatusClasses(
-                                appointment.status
-                            )
-
-                            return (
-                                <article
-                                    key={appointment.id}
-                                    className="rounded-[12px] border bg-white p-4 sm:p-5"
-                                    style={{ borderColor: COLORS.border }}
-                                >
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        <div className="min-w-0">
-                                            <h2 className="text-[28px] font-bold leading-none text-[#1a1a1a]">
-                                                {appointment.client_name}
-                                            </h2>
-                                            <p className="mt-2 text-sm text-[#4f4b45]">
-                                                {appointment.client_phone}
-                                            </p>
-                                            <p className="mt-1 break-all text-sm italic text-[#8d877d]">
-                                                {appointment.client_email || '-'}
-                                            </p>
-                                        </div>
-
-                                        <div className="shrink-0">
-                                            <span
-                                                className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${badgeClasses}`}
-                                            >
-                                                {badgeLabel}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-5 grid gap-3 text-sm text-[#3b3833]">
-                                        <p>
-                                            <span className="font-semibold">
-                                                Servicio:
-                                            </span>{' '}
-                                            {getRelationName(appointment.services)}
-                                        </p>
-                                        <p>
-                                            <span className="font-semibold">
-                                                Barbero:
-                                            </span>{' '}
-                                            {getRelationName(appointment.barbers)}
-                                        </p>
-                                        <p>
-                                            <span className="font-semibold">
-                                                Fecha:
-                                            </span>{' '}
-                                            {formatShortDate(
-                                                appointment.appointment_date
-                                            )}
-                                        </p>
-                                        <p>
-                                            <span className="font-semibold">
-                                                Hora:
-                                            </span>{' '}
-                                            {formatTime(appointment.start_at)} -{' '}
-                                            {formatTime(appointment.end_at)}
-                                        </p>
-                                    </div>
-
-                                    <div
-                                        className="mt-5 space-y-4 border-t pt-4"
-                                        style={{ borderColor: '#efe8d8' }}
-                                    >
-                                        <AppointmentStatusSelect
-                                            appointmentId={appointment.id}
-                                            currentStatus={appointment.status}
-                                        />
-
-                                        <div className="grid grid-cols-1 gap-3">
-                                            <AdminAppointmentEditSheet
-                                                appointment={{
-                                                    id: appointment.id,
-                                                    barber_id:
-                                                        appointment.barber_id,
-                                                    service_id:
-                                                        appointment.service_id,
-                                                    client_name:
-                                                        appointment.client_name,
-                                                    client_email:
-                                                        appointment.client_email,
-                                                    client_phone:
-                                                        appointment.client_phone,
-                                                    appointment_date:
-                                                        appointment.appointment_date,
-                                                    start_at:
-                                                        appointment.start_at,
-                                                }}
-                                                barbers={barbers.map(
-                                                    (barber) => ({
-                                                        id: barber.id,
-                                                        name: barber.name,
-                                                    })
-                                                )}
-                                                services={services.map(
-                                                    (service) => ({
-                                                        id: service.id,
-                                                        name: service.name,
-                                                        duration_minutes:
-                                                            service.duration_minutes,
-                                                    })
-                                                )}
-                                            />
-
-                                            <DeleteAppointmentButton
-                                                id={appointment.id}
-                                            />
-                                        </div>
-                                    </div>
-                                </article>
-                            )
-                        })}
-                    </section>
-                </>
-            )}
+                    )}
+                </section>
+            </div>
         </main>
     )
 }

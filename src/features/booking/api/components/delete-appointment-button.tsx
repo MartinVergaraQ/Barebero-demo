@@ -38,9 +38,9 @@ export function DeleteAppointmentButton({ id }: Props) {
                 type="button"
                 onClick={() => setOpen(true)}
                 disabled={loading}
-                className="h-[42px] w-full rounded-[8px] border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 disabled:opacity-50 sm:w-auto"
+                className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
-                Eliminar reserva
+                Eliminar
             </button>
 
             <ConfirmDialog

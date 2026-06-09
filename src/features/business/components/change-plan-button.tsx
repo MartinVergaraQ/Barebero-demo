@@ -2,12 +2,14 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { requestPlanChangeServer } from '@/src/features/business/api/request-plan-change-server'
 import {
     PLAN_ORDER,
     type AllowedPlanSlug,
 } from '@/src/features/business/utils/plan-config'
 import { formatPlanLabel } from '@/src/features/business/utils/subscription-rules'
+import { ConfirmDialog } from '@/src/components/ui/confirm-dialog'
 
 type Props = {
     businessId: string
@@ -39,91 +41,69 @@ export function ChangePlanButton({
 }: Props) {
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
-    const [error, setError] = useState('')
-    const [success, setSuccess] = useState('')
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
 
     const direction = getPlanChangeDirection(currentPlanSlug, nextPlanSlug)
 
+    const confirmTitle =
+        direction === 'upgrade'
+            ? 'Confirmar upgrade de plan'
+            : direction === 'downgrade'
+                ? 'Confirmar downgrade de plan'
+                : 'Plan actual'
+
+    const confirmDescription =
+        direction === 'upgrade'
+            ? `Vas a cambiar de ${formatPlanLabel(currentPlanSlug)} a ${formatPlanLabel(nextPlanSlug)}. Este cambio aumenta la capacidad disponible del negocio.`
+            : direction === 'downgrade'
+                ? `Vas a cambiar de ${formatPlanLabel(currentPlanSlug)} a ${formatPlanLabel(nextPlanSlug)}. Este cambio reduce la capacidad del plan, así que asegúrate de seguir cumpliendo los límites.`
+                : 'Ya estás usando este plan.'
+
+    function handleConfirmChange() {
+        if (direction === 'same') return
+
+        startTransition(async () => {
+            try {
+                await requestPlanChangeServer({
+                    businessId,
+                    nextPlanSlug,
+                })
+
+                setIsConfirmOpen(false)
+                toast.success('Plan actualizado correctamente')
+                router.refresh()
+            } catch (error) {
+                toast.error(
+                    error instanceof Error
+                        ? error.message
+                        : 'No se pudo cambiar el plan'
+                )
+            }
+        })
+    }
+
     return (
-        <div className="space-y-2">
+        <>
             <button
                 type="button"
-                disabled={isPending}
-                onClick={() => {
-                    setError('')
-                    setSuccess('')
-                    setIsConfirmOpen(true)
-                }}
-                className="w-full rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                disabled={isPending || direction === 'same'}
+                onClick={() => setIsConfirmOpen(true)}
+                className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
             >
-                {label}
+                {isPending ? 'Procesando...' : label}
             </button>
 
-            {isConfirmOpen && (
-                <div className="rounded-lg border bg-slate-50 p-4">
-                    <h3 className="font-semibold">Confirmar cambio de plan</h3>
-
-                    <p className="mt-2 text-sm text-slate-700">
-                        Vas a cambiar de{' '}
-                        <strong>{formatPlanLabel(currentPlanSlug)}</strong> a{' '}
-                        <strong>{formatPlanLabel(nextPlanSlug)}</strong>.
-                    </p>
-
-                    <p className="mt-2 text-sm text-slate-600">
-                        {direction === 'upgrade'
-                            ? 'Este cambio aumenta la capacidad disponible de tu negocio.'
-                            : direction === 'downgrade'
-                                ? 'Este cambio reduce la capacidad del plan. Asegúrate de seguir cumpliendo los límites.'
-                                : 'Ya estás en este plan.'}
-                    </p>
-
-                    <div className="mt-4 flex gap-3">
-                        <button
-                            type="button"
-                            disabled={isPending || direction === 'same'}
-                            onClick={() => {
-                                setError('')
-                                setSuccess('')
-
-                                startTransition(async () => {
-                                    try {
-                                        await requestPlanChangeServer({
-                                            businessId,
-                                            nextPlanSlug,
-                                        })
-
-                                        setSuccess('Plan actualizado correctamente')
-                                        setIsConfirmOpen(false)
-                                        router.refresh()
-                                    } catch (err) {
-                                        setError(
-                                            err instanceof Error
-                                                ? err.message
-                                                : 'No se pudo cambiar el plan'
-                                        )
-                                    }
-                                })
-                            }}
-                            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-                        >
-                            {isPending ? 'Actualizando...' : 'Confirmar cambio'}
-                        </button>
-
-                        <button
-                            type="button"
-                            disabled={isPending}
-                            onClick={() => setIsConfirmOpen(false)}
-                            className="rounded-lg border px-4 py-2 text-sm font-medium"
-                        >
-                            Cancelar
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {success && <p className="text-sm text-green-600">{success}</p>}
-            {error && <p className="text-sm text-red-600">{error}</p>}
-        </div>
+            <ConfirmDialog
+                open={isConfirmOpen}
+                onOpenChange={setIsConfirmOpen}
+                title={confirmTitle}
+                description={confirmDescription}
+                confirmText={isPending ? 'Actualizando...' : 'Confirmar cambio'}
+                cancelText="Cancelar"
+                onConfirm={handleConfirmChange}
+                loading={isPending}
+                destructive={direction === 'downgrade'}
+            />
+        </>
     )
 }

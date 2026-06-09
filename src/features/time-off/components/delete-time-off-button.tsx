@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { deleteTimeOff } from '@/src/features/time-off/api/delete-time-off'
+import { ConfirmDialog } from '@/src/components/ui/confirm-dialog'
 
 type Props = {
     id: string
@@ -9,22 +11,19 @@ type Props = {
 }
 
 export function DeleteTimeOffButton({ id, onDeleted }: Props) {
+    const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [errorMessage, setErrorMessage] = useState('')
 
     async function handleDelete() {
-        const confirmed = window.confirm('¿Seguro que quieres eliminar este bloqueo?')
-
-        if (!confirmed) return
-
         setLoading(true)
-        setErrorMessage('')
 
         try {
             await deleteTimeOff(id)
             await onDeleted()
+            setOpen(false)
+            toast.success('Bloqueo eliminado correctamente')
         } catch (error) {
-            setErrorMessage(
+            toast.error(
                 error instanceof Error ? error.message : 'Error eliminando bloqueo'
             )
         } finally {
@@ -33,19 +32,27 @@ export function DeleteTimeOffButton({ id, onDeleted }: Props) {
     }
 
     return (
-        <div className="mt-3">
+        <>
             <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setOpen(true)}
                 disabled={loading}
-                className="rounded-lg border border-red-300 px-4 py-2 text-red-700 disabled:opacity-50"
+                className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
-                {loading ? 'Eliminando...' : 'Eliminar'}
+                Eliminar
             </button>
 
-            {errorMessage && (
-                <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
-            )}
-        </div>
+            <ConfirmDialog
+                open={open}
+                onOpenChange={setOpen}
+                title="Eliminar bloqueo"
+                description="Esta acción no se puede deshacer. El tramo volverá a quedar disponible para reservas si coincide con el horario de atención."
+                confirmText="Sí, eliminar"
+                cancelText="Cancelar"
+                onConfirm={handleDelete}
+                loading={loading}
+                destructive
+            />
+        </>
     )
 }

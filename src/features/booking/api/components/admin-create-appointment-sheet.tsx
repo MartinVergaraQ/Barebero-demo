@@ -1,11 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { createAppointment } from '@/src/features/booking/api/create.appointment'
 import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
+import { AdminInput } from '@/src/features/admin/components/admin-input'
+import { AdminSelect } from '@/src/features/admin/components/admin-select'
+import { AdminDateTimeRow } from '@/src/features/admin/components/admin-date-time-row'
+import {
+    AdminPhoneInput,
+    getChilePhoneForStorage,
+    validateChilePhone,
+} from '@/src/features/admin/components/admin-phone-input'
 
 type Service = {
     id: string
@@ -24,6 +32,27 @@ type Props = {
     barbers: Barber[]
 }
 
+const statusOptions: Array<{
+    value: AppointmentStatus
+    label: string
+}> = [
+        { value: 'confirmed', label: 'Confirmada' },
+        { value: 'pending', label: 'Pendiente' },
+        { value: 'completed', label: 'Completada' },
+        { value: 'canceled', label: 'Cancelada' },
+        { value: 'no_show', label: 'No asistió' },
+    ]
+
+function formatDuration(minutes?: number) {
+    if (!minutes) return '-'
+    return `${minutes} min`
+}
+
+function formatTimeValue(value: string) {
+    if (!value) return '-'
+    return value
+}
+
 export function AdminCreateAppointmentSheet({
     businessId,
     services,
@@ -35,6 +64,16 @@ export function AdminCreateAppointmentSheet({
     const [loading, setLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
 
+    const [fieldErrors, setFieldErrors] = useState({
+        client_name: '',
+        client_phone: '',
+        client_email: '',
+        barber_id: '',
+        service_id: '',
+        appointment_date: '',
+        appointment_time: '',
+    })
+
     const [form, setForm] = useState({
         client_name: '',
         client_email: '',
@@ -45,6 +84,23 @@ export function AdminCreateAppointmentSheet({
         appointment_time: '',
         status: 'confirmed' as AppointmentStatus,
     })
+
+    const selectedService = useMemo(() => {
+        return services.find((service) => service.id === form.service_id) ?? null
+    }, [services, form.service_id])
+
+    const selectedBarber = useMemo(() => {
+        return barbers.find((barber) => barber.id === form.barber_id) ?? null
+    }, [barbers, form.barber_id])
+
+    const canSubmit =
+        !!form.client_name.trim() &&
+        !!form.client_phone.trim() &&
+        !!form.barber_id &&
+        !!form.service_id &&
+        !!form.appointment_date &&
+        !!form.appointment_time &&
+        !loading
 
     useEffect(() => {
         if (!open) return
@@ -83,13 +139,10 @@ export function AdminCreateAppointmentSheet({
         setOpen(true)
     }
 
-    function handleChange(
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-    ) {
-        const { name, value } = e.target
+    function updateField(field: keyof typeof form, value: string) {
         setForm((prev) => ({
             ...prev,
-            [name]: value,
+            [field]: value,
         }))
     }
 
@@ -105,14 +158,7 @@ export function AdminCreateAppointmentSheet({
             if (!form.service_id) throw new Error('Selecciona un servicio')
             if (!form.appointment_date) throw new Error('Selecciona una fecha')
             if (!form.appointment_time) throw new Error('Selecciona una hora')
-
-            const selectedService = services.find(
-                (service) => service.id === form.service_id
-            )
-
-            if (!selectedService) {
-                throw new Error('Servicio no válido')
-            }
+            if (!selectedService) throw new Error('Servicio no válido')
 
             const startLocal = `${form.appointment_date}T${form.appointment_time}:00`
             const startDate = new Date(startLocal)
@@ -125,13 +171,40 @@ export function AdminCreateAppointmentSheet({
                 startDate.getTime() + selectedService.duration_minutes * 60 * 1000
             )
 
+            const phoneError = validateChilePhone(form.client_phone)
+
+            if (phoneError) {
+                throw new Error(phoneError)
+            }
+
+            const nextErrors = {
+                client_name: !form.client_name.trim() ? 'Ingresa el nombre' : '',
+                client_phone: validateChilePhone(form.client_phone),
+                client_email:
+                    form.client_email.trim() && !form.client_email.includes('@')
+                        ? 'Ingresa un email válido'
+                        : '',
+                barber_id: !form.barber_id ? 'Selecciona un barbero' : '',
+                service_id: !form.service_id ? 'Selecciona un servicio' : '',
+                appointment_date: !form.appointment_date ? 'Selecciona una fecha' : '',
+                appointment_time: !form.appointment_time ? 'Selecciona una hora' : '',
+            }
+
+            setFieldErrors(nextErrors)
+
+            const hasErrors = Object.values(nextErrors).some(Boolean)
+
+            if (hasErrors) {
+                throw new Error('Revisa los campos del formulario')
+            }
+
             await createAppointment({
                 business_id: businessId,
                 barber_id: form.barber_id,
                 service_id: form.service_id,
-                client_name: form.client_name,
-                client_email: form.client_email || null,
-                client_phone: form.client_phone,
+                client_name: form.client_name.trim(),
+                client_email: form.client_email.trim() || null,
+                client_phone: getChilePhoneForStorage(form.client_phone),
                 appointment_date: form.appointment_date,
                 start_at: startDate.toISOString(),
                 end_at: endDate.toISOString(),
@@ -145,6 +218,7 @@ export function AdminCreateAppointmentSheet({
         } catch (error) {
             const message =
                 error instanceof Error ? error.message : 'Error creando reserva'
+
             setErrorMessage(message)
             toast.error(message)
         } finally {
@@ -157,37 +231,41 @@ export function AdminCreateAppointmentSheet({
             <button
                 type="button"
                 onClick={handleOpen}
-                className="h-[48px] w-full rounded-[6px] px-7 text-[15px] font-semibold text-white sm:w-auto"
-                style={{ backgroundColor: '#a87408' }}
+                className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] sm:w-auto"
             >
                 Nueva reserva
             </button>
 
-            {open ? (
+            {open && (
                 <div className="fixed inset-0 z-[80]">
                     <button
                         type="button"
-                        className="absolute inset-0 bg-black/40"
+                        className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
                         onClick={() => setOpen(false)}
                         aria-label="Cerrar creación"
                     />
 
                     <div className="absolute inset-x-0 bottom-0 top-0 flex items-end md:items-center md:justify-center md:p-6">
-                        <section className="relative flex h-[92vh] w-full flex-col rounded-t-[20px] bg-[#f8f5ee] shadow-2xl md:h-auto md:max-h-[90vh] md:max-w-[760px] md:rounded-[18px]">
-                            <div className="flex items-center justify-between border-b border-[#e7dfcf] px-5 py-4 md:px-6">
+                        <section className="relative flex h-[92vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_30px_90px_rgba(0,0,0,0.35)] md:h-auto md:max-h-[88vh] md:max-w-[820px] md:rounded-[30px]">
+                            <div className="flex items-start justify-between gap-4 border-b border-black/10 px-5 py-4 md:px-6">
                                 <div>
-                                    <h2 className="text-[20px] font-bold text-[#1f1f1f]">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                        Agenda
+                                    </p>
+
+                                    <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
                                         Nueva reserva
                                     </h2>
-                                    <p className="mt-1 text-sm text-[#6a655d]">
-                                        Crea una reserva manual desde el panel
+
+                                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                                        Crea una cita manual desde el panel.
                                     </p>
                                 </div>
 
                                 <button
                                     type="button"
                                     onClick={() => setOpen(false)}
-                                    className="flex h-10 w-10 items-center justify-center rounded-[8px] border border-[#ddd6c8] bg-white text-[#2c2a26]"
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:bg-[#FBF7EE] active:scale-95"
                                     aria-label="Cerrar"
                                 >
                                     <X className="h-5 w-5" />
@@ -196,154 +274,194 @@ export function AdminCreateAppointmentSheet({
 
                             <form
                                 onSubmit={handleSubmit}
-                                className="flex-1 overflow-y-auto px-5 py-5 md:px-6"
+                                className="flex min-h-0 flex-1 flex-col"
                             >
-                                {errorMessage ? (
-                                    <div className="mb-4 rounded-[10px] border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-                                        {errorMessage}
-                                    </div>
-                                ) : null}
+                                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-6">
+                                    {errorMessage && (
+                                        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+                                            {errorMessage}
+                                        </div>
+                                    )}
 
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Nombre
-                                        </label>
-                                        <input
-                                            name="client_name"
-                                            value={form.client_name}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        />
+                                    <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                                        <section className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                                Cliente
+                                            </p>
+
+                                            <h3 className="mt-1 text-lg font-black text-slate-950">
+                                                Datos del cliente
+                                            </h3>
+
+                                            <div className="mt-4 grid gap-3">
+                                                <AdminInput
+                                                    id="create-client-name"
+                                                    label="Nombre"
+                                                    value={form.client_name}
+                                                    onChange={(value) =>
+                                                        updateField('client_name', value)
+                                                    }
+                                                    placeholder="Nombre completo"
+                                                    disabled={loading}
+                                                />
+
+                                                <AdminPhoneInput
+                                                    id="create-client-phone"
+                                                    label="Teléfono"
+                                                    value={form.client_phone}
+                                                    onChange={(value) => updateField('client_phone', value)}
+                                                    disabled={loading}
+                                                    error={fieldErrors.client_phone}
+                                                />
+
+                                                <AdminInput
+                                                    id="create-client-email"
+                                                    label="Email"
+                                                    type="email"
+                                                    value={form.client_email}
+                                                    onChange={(value) =>
+                                                        updateField('client_email', value)
+                                                    }
+                                                    placeholder="cliente@correo.com"
+                                                    disabled={loading}
+                                                />
+                                            </div>
+                                        </section>
+
+                                        <section className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                                Reserva
+                                            </p>
+
+                                            <h3 className="mt-1 text-lg font-black text-slate-950">
+                                                Detalles de la cita
+                                            </h3>
+
+                                            <div className="mt-4 grid gap-3">
+                                                <AdminSelect
+                                                    id="create-barber"
+                                                    label="Barbero"
+                                                    value={form.barber_id}
+                                                    onChange={(value) =>
+                                                        updateField('barber_id', value)
+                                                    }
+                                                    disabled={loading}
+                                                    options={[
+                                                        {
+                                                            value: '',
+                                                            label: 'Selecciona un barbero',
+                                                        },
+                                                        ...barbers.map((barber) => ({
+                                                            value: barber.id,
+                                                            label: barber.name,
+                                                        })),
+                                                    ]}
+                                                />
+
+                                                <AdminSelect
+                                                    id="create-service"
+                                                    label="Servicio"
+                                                    value={form.service_id}
+                                                    onChange={(value) =>
+                                                        updateField('service_id', value)
+                                                    }
+                                                    disabled={loading}
+                                                    options={[
+                                                        {
+                                                            value: '',
+                                                            label: 'Selecciona un servicio',
+                                                        },
+                                                        ...services.map((service) => ({
+                                                            value: service.id,
+                                                            label: `${service.name} · ${service.duration_minutes} min`,
+                                                        })),
+                                                    ]}
+                                                />
+
+                                                <AdminDateTimeRow
+                                                    dateId="create-date"
+                                                    timeId="create-time"
+                                                    dateValue={form.appointment_date}
+                                                    timeValue={form.appointment_time}
+                                                    onDateChange={(value) => updateField('appointment_date', value)}
+                                                    onTimeChange={(value) => updateField('appointment_time', value)}
+                                                    disabled={loading}
+                                                    dateError={fieldErrors.appointment_date}
+                                                    timeError={fieldErrors.appointment_time}
+                                                    compact={false}
+                                                />
+
+                                                <AdminSelect
+                                                    id="create-status"
+                                                    label="Estado inicial"
+                                                    value={form.status}
+                                                    onChange={(value) =>
+                                                        updateField('status', value as AppointmentStatus)
+                                                    }
+                                                    disabled={loading}
+                                                    options={statusOptions}
+                                                    maxMenuHeight={180}
+                                                />
+                                            </div>
+                                        </section>
                                     </div>
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Teléfono
-                                        </label>
-                                        <input
-                                            name="client_phone"
-                                            value={form.client_phone}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        />
-                                    </div>
+                                    <section className="mt-5 rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4">
+                                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                                    Resumen
+                                                </p>
 
-                                    <div className="md:col-span-2">
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Email
-                                        </label>
-                                        <input
-                                            name="client_email"
-                                            type="email"
-                                            value={form.client_email}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        />
-                                    </div>
+                                                <h3 className="mt-1 text-lg font-black text-slate-950">
+                                                    {selectedService?.name || 'Sin servicio seleccionado'}
+                                                </h3>
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Barbero
-                                        </label>
-                                        <select
-                                            name="barber_id"
-                                            value={form.barber_id}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        >
-                                            <option value="">Selecciona un barbero</option>
-                                            {barbers.map((barber) => (
-                                                <option key={barber.id} value={barber.id}>
-                                                    {barber.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                                <p className="mt-1 text-sm font-semibold text-slate-500">
+                                                    {selectedBarber?.name || 'Sin barbero'} ·{' '}
+                                                    {form.appointment_date || 'Sin fecha'} ·{' '}
+                                                    {formatTimeValue(form.appointment_time)}
+                                                </p>
+                                            </div>
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Servicio
-                                        </label>
-                                        <select
-                                            name="service_id"
-                                            value={form.service_id}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        >
-                                            <option value="">Selecciona un servicio</option>
-                                            {services.map((service) => (
-                                                <option key={service.id} value={service.id}>
-                                                    {service.name} ({service.duration_minutes} min)
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                            <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/10 md:text-right">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                    Duración
+                                                </p>
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Fecha
-                                        </label>
-                                        <input
-                                            name="appointment_date"
-                                            type="date"
-                                            value={form.appointment_date}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Hora
-                                        </label>
-                                        <input
-                                            name="appointment_time"
-                                            type="time"
-                                            value={form.appointment_time}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        />
-                                    </div>
-
-                                    <div className="md:col-span-2">
-                                        <label className="mb-2 block text-sm font-semibold text-[#2f2d2a]">
-                                            Estado inicial
-                                        </label>
-                                        <select
-                                            name="status"
-                                            value={form.status}
-                                            onChange={handleChange}
-                                            className="h-[48px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-4 text-sm"
-                                        >
-                                            <option value="confirmed">Confirmada</option>
-                                            <option value="pending">Pendiente</option>
-                                        </select>
-                                    </div>
+                                                <p className="mt-1 text-sm font-black text-slate-950">
+                                                    {formatDuration(selectedService?.duration_minutes)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </section>
                                 </div>
 
-                                <div className="mt-5 flex flex-col gap-3 border-t border-[#e7dfcf] pt-5 sm:flex-row sm:justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={() => setOpen(false)}
-                                        className="h-[46px] rounded-[8px] border border-[#d7cfbf] bg-white px-5 text-sm font-semibold text-[#2d2a26]"
-                                    >
-                                        Cancelar
-                                    </button>
+                                <div className="border-t border-black/10 bg-[#FFFCF4]/95 px-5 py-4 backdrop-blur md:px-6">
+                                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpen(false)}
+                                            disabled={loading}
+                                            className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
+                                        >
+                                            Cancelar
+                                        </button>
 
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="h-[46px] rounded-[8px] bg-black px-5 text-sm font-semibold text-white disabled:opacity-50"
-                                    >
-                                        {loading ? 'Creando...' : 'Crear reserva'}
-                                    </button>
+                                        <button
+                                            type="submit"
+                                            disabled={!canSubmit}
+                                            className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
+                                        >
+                                            {loading ? 'Creando...' : 'Crear reserva'}
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </section>
                     </div>
                 </div>
-            ) : null}
+            )}
         </>
     )
 }

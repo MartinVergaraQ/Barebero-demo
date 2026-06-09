@@ -63,7 +63,11 @@ export default async function AdminPlanHistoryPage({
         redirect('/admin')
     }
 
-    const { data: planHistory, error: planHistoryError, count } = await supabase
+    const {
+        data: planHistory,
+        error: planHistoryError,
+        count,
+    } = await supabase
         .from('business_plan_history')
         .select(
             `
@@ -91,55 +95,125 @@ export default async function AdminPlanHistoryPage({
     const totalPages = Math.max(Math.ceil(totalItems / pageSize), 1)
 
     return (
-        <main className="space-y-6">
-            <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <p className="text-sm text-slate-500">{business.name}</p>
-                    <h1 className="text-3xl font-bold">Historial de planes</h1>
-                    <p className="mt-2 text-sm text-slate-600">
-                        Revisa los últimos cambios de plan del negocio.
-                    </p>
-                </div>
+        <main className="min-h-screen bg-[#F4EFE5] px-4 py-6 text-slate-950 md:px-8 md:py-8">
+            <div className="mx-auto max-w-7xl space-y-6 md:space-y-8">
+                <header className="flex flex-col gap-5 border-b border-black/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p className="text-sm font-bold text-slate-500">
+                            {business.name}
+                        </p>
 
-                <Link
-                    href={`/admin/b/${business.slug}/plan`}
-                    className="inline-flex rounded-lg border px-4 py-2 text-sm font-medium"
-                >
-                    Volver a plan
-                </Link>
-            </header>
+                        <h1 className="mt-1 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
+                            Historial de planes
+                        </h1>
 
-            <PlanHistoryList history={history} />
+                        <p className="mt-2 max-w-[720px] text-sm leading-6 text-slate-600 md:text-base md:leading-7">
+                            Revisa los últimos cambios de plan registrados para este negocio.
+                        </p>
+                    </div>
 
-            <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-600">
-                    Página {currentPage} de {totalPages}
-                </p>
-
-                <div className="flex gap-2">
                     <Link
-                        href={`/admin/b/${business.slug}/plan/historial?page=${Math.max(
-                            currentPage - 1,
-                            1
-                        )}`}
-                        className={`rounded-lg border px-4 py-2 text-sm font-medium ${currentPage <= 1 ? 'pointer-events-none opacity-50' : ''
-                            }`}
+                        href={`/admin/b/${business.slug}/plan`}
+                        className="inline-flex h-11 w-fit items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98]"
                     >
-                        Anterior
+                        Volver a plan
                     </Link>
+                </header>
 
-                    <Link
-                        href={`/admin/b/${business.slug}/plan/historial?page=${Math.min(
-                            currentPage + 1,
-                            totalPages
-                        )}`}
-                        className={`rounded-lg border px-4 py-2 text-sm font-medium ${currentPage >= totalPages
+                <section className="grid gap-4 md:grid-cols-3">
+                    <article className="rounded-[26px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
+                            Total cambios
+                        </p>
+
+                        <h2 className="mt-3 text-4xl font-black text-slate-950">
+                            {totalItems}
+                        </h2>
+
+                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                            Movimientos registrados en la suscripción.
+                        </p>
+                    </article>
+
+                    <article className="rounded-[26px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
+                            Página actual
+                        </p>
+
+                        <h2 className="mt-3 text-4xl font-black text-slate-950">
+                            {currentPage}
+                        </h2>
+
+                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                            De {totalPages} página{totalPages === 1 ? '' : 's'}.
+                        </p>
+                    </article>
+
+                    <article className="rounded-[26px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
+                            Por página
+                        </p>
+
+                        <h2 className="mt-3 text-4xl font-black text-slate-950">
+                            {pageSize}
+                        </h2>
+
+                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                            Registros mostrados por página.
+                        </p>
+                    </article>
+                </section>
+
+                <section className="overflow-hidden rounded-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
+                    <div className="border-b border-black/10 px-5 py-5 md:px-6">
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                            Movimientos
+                        </p>
+
+                        <h2 className="mt-1 text-2xl font-black text-slate-950">
+                            Cambios registrados
+                        </h2>
+
+                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                            Lista paginada de cambios de plan.
+                        </p>
+                    </div>
+
+                    <div className="p-4 md:p-6">
+                        <PlanHistoryList items={history} />
+                    </div>
+                </section>
+
+                <div className="flex flex-col gap-3 rounded-[24px] border border-black/10 bg-[#FFFCF4] p-4 shadow-[0_14px_38px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-bold text-slate-600">
+                        Página {currentPage} de {totalPages}
+                    </p>
+
+                    <div className="flex gap-2">
+                        <Link
+                            href={`/admin/b/${business.slug}/plan/historial?page=${Math.max(
+                                currentPage - 1,
+                                1
+                            )}`}
+                            className={`inline-flex h-11 items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] ${currentPage <= 1 ? 'pointer-events-none opacity-50' : ''
+                                }`}
+                        >
+                            Anterior
+                        </Link>
+
+                        <Link
+                            href={`/admin/b/${business.slug}/plan/historial?page=${Math.min(
+                                currentPage + 1,
+                                totalPages
+                            )}`}
+                            className={`inline-flex h-11 items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] ${currentPage >= totalPages
                                 ? 'pointer-events-none opacity-50'
                                 : ''
-                            }`}
-                    >
-                        Siguiente
-                    </Link>
+                                }`}
+                        >
+                            Siguiente
+                        </Link>
+                    </div>
                 </div>
             </div>
         </main>

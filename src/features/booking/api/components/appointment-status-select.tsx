@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { updateAppointmentStatus } from '@/src/features/booking/api/update-appointment-status'
 import { toast } from 'sonner'
+import { updateAppointmentStatus } from '@/src/features/booking/api/update-appointment-status'
+import { AdminSelect } from '@/src/features/admin/components/admin-select'
 import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
 
 type Props = {
@@ -10,7 +11,7 @@ type Props = {
     currentStatus: AppointmentStatus
 }
 
-const statusOptions: Array<{ value: AppointmentStatus; label: string }> = [
+const statusOptions: Array<{ value: string; label: string }> = [
     { value: 'pending', label: 'Pendiente' },
     { value: 'confirmed', label: 'Confirmada' },
     { value: 'completed', label: 'Completada' },
@@ -25,8 +26,10 @@ export function AppointmentStatusSelect({
     const [status, setStatus] = useState<AppointmentStatus>(currentStatus)
     const [loading, setLoading] = useState(false)
 
-    async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-        const nextStatus = e.target.value as AppointmentStatus
+    async function handleChange(value: string) {
+        const previousStatus = status
+        const nextStatus = value as AppointmentStatus
+
         setStatus(nextStatus)
         setLoading(true)
 
@@ -34,30 +37,36 @@ export function AppointmentStatusSelect({
             await updateAppointmentStatus(appointmentId, nextStatus)
             toast.success('Estado actualizado')
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Error actualizando estado')
+            setStatus(previousStatus)
+
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : 'Error actualizando estado'
+            )
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div className="space-y-2">
-            <label className="block text-sm font-semibold text-[#2f2d2a]">
-                Estado
-            </label>
-
-            <select
+        <div className="min-w-[150px]">
+            <AdminSelect
+                id={`appointment-status-${appointmentId}`}
+                label="Estado"
                 value={status}
                 onChange={handleChange}
+                options={statusOptions}
                 disabled={loading}
-                className="h-[42px] w-full rounded-[8px] border border-[#d7cfbf] bg-white px-3 text-[15px] text-[#2d2a26] outline-none disabled:opacity-60"
-            >
-                {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                        {option.label}
-                    </option>
-                ))}
-            </select>
+                hideLabel
+                compact
+            />
+
+            {loading && (
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Actualizando...
+                </p>
+            )}
         </div>
     )
 }

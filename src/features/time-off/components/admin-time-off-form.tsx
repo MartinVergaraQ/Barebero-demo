@@ -7,11 +7,16 @@ import {
     type TimeOffItem,
 } from '@/src/features/time-off/api/get-time-off-by-barber'
 import { DeleteTimeOffButton } from '@/src/features/time-off/components/delete-time-off-button'
+import { AdminInput } from '@/src/features/admin/components/admin-input'
+import { AdminSelect } from '@/src/features/admin/components/admin-select'
+import { AdminAlert } from '@/src/features/admin/components/admin-alert'
 
 type Barber = {
     id: string
     business_id: string
     name: string
+    photo_url?: string | null
+    specialty?: string | null
 }
 
 type Props = {
@@ -29,12 +34,55 @@ function formatDateTimeLocal(date: Date) {
 
     return `${year}-${month}-${day}T${hours}:${minutes}`
 }
+function getInitials(name: string) {
+    return name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join('')
+}
+
+function formatDisplayDateTime(value: string) {
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) return value
+
+    return new Intl.DateTimeFormat('es-CL', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    }).format(date)
+}
+
+function getDurationLabel(startAt: string, endAt: string) {
+    const start = new Date(startAt)
+    const end = new Date(endAt)
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return '-'
+    }
+
+    const minutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
+
+    if (minutes < 60) return `${minutes} min`
+
+    const hours = Math.floor(minutes / 60)
+    const rest = minutes % 60
+
+    return rest ? `${hours} h ${rest} min` : `${hours} h`
+}
 
 export function AdminTimeOffForm({ barbers }: Props) {
     const isSingleBarber = barbers.length === 1
+
     const [selectedBarberId, setSelectedBarberId] = useState(
-        isSingleBarber ? barbers[0].id : ''
+        isSingleBarber ? barbers[0]?.id ?? '' : ''
     )
+
     const [items, setItems] = useState<TimeOffItem[]>([])
 
     const [form, setForm] = useState({
@@ -83,21 +131,10 @@ export function AdminTimeOffForm({ barbers }: Props) {
         loadItems(selectedBarberId)
     }, [selectedBarberId])
 
-    function handleChange(
-        e: React.ChangeEvent<
-            HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-        >
-    ) {
-        const { name, value } = e.target
-
-        if (name === 'barber_id') {
-            setSelectedBarberId(value)
-            return
-        }
-
+    function updateField(field: keyof typeof form, value: string) {
         setForm((prev) => ({
             ...prev,
-            [name]: value,
+            [field]: value,
         }))
     }
 
@@ -131,7 +168,7 @@ export function AdminTimeOffForm({ barbers }: Props) {
                 reason: form.reason,
             })
 
-            setMessage('Bloqueo creado correctamente')
+            setMessage('El tramo quedó bloqueado y ya no aparecerá para reservas públicas.')
             setForm({
                 start_at: '',
                 end_at: '',
@@ -149,135 +186,297 @@ export function AdminTimeOffForm({ barbers }: Props) {
     }
 
     return (
-        <section className="rounded-xl border p-4">
-            <h2 className="mb-2 text-xl font-semibold">
-                {isSingleBarber ? 'Mis bloqueos' : 'Bloqueos puntuales'}
-            </h2>
+        <section className="space-y-6">
+            <AdminAlert
+                floating
+                variant="error"
+                title="No se pudo procesar"
+                message={errorMessage}
+                onClose={() => setErrorMessage('')}
+            />
 
-            {selectedBarber && (
-                <p className="mb-4 text-sm text-slate-600">
-                    {isSingleBarber
-                        ? 'Configura tus bloqueos puntuales para horas o tramos en que no atenderás.'
-                        : `Editando bloqueos de ${selectedBarber.name}.`}
-                </p>
-            )}
-
-            {errorMessage && (
-                <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700">
-                    {errorMessage}
-                </div>
-            )}
-
-            {message && (
-                <div className="mb-4 rounded-lg border border-green-300 bg-green-50 p-4 text-green-700">
-                    {message}
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-                {!isSingleBarber && (
-                    <div className="md:col-span-2">
-                        <label className="mb-2 block font-medium">Barbero</label>
-                        <select
-                            name="barber_id"
-                            value={selectedBarberId}
-                            onChange={handleChange}
-                            className="w-full rounded-lg border p-3"
-                        >
-                            <option value="">Selecciona un barbero</option>
-                            {barbers.map((barber) => (
-                                <option key={barber.id} value={barber.id}>
-                                    {barber.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-
-                <div>
-                    <label className="mb-2 block font-medium">Inicio</label>
-                    <input
-                        name="start_at"
-                        type="datetime-local"
-                        value={form.start_at}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border p-3"
-                    />
-                </div>
-
-                <div>
-                    <label className="mb-2 block font-medium">Fin</label>
-                    <input
-                        name="end_at"
-                        type="datetime-local"
-                        value={form.end_at}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border p-3"
-                    />
-                </div>
-
-                <div className="md:col-span-2">
-                    <label className="mb-2 block font-medium">Motivo</label>
-                    <textarea
-                        name="reason"
-                        value={form.reason}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border p-3"
-                        rows={3}
-                        placeholder="Vacaciones, permiso, cierre parcial..."
-                    />
-                </div>
-
-                <div className="md:col-span-2">
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        className="rounded-lg bg-black px-4 py-3 text-white disabled:opacity-50"
-                    >
-                        {saving ? 'Guardando...' : 'Crear bloqueo'}
-                    </button>
-                </div>
-            </form>
-
-            <div className="mt-8">
-                <h3 className="mb-4 text-lg font-semibold">
-                    {isSingleBarber ? 'Mis bloqueos existentes' : 'Bloqueos existentes'}
-                </h3>
-
-                {!selectedBarberId ? (
-                    <p>Selecciona un barbero para ver sus bloqueos.</p>
-                ) : loadingList ? (
-                    <p>Cargando bloqueos...</p>
-                ) : items.length === 0 ? (
-                    <p>
-                        {isSingleBarber
-                            ? 'No tienes bloqueos registrados.'
-                            : 'No hay bloqueos registrados.'}
-                    </p>
-                ) : (
-                    <div className="space-y-3">
-                        {items.map((item) => (
-                            <article key={item.id} className="rounded-lg border p-4">
-                                <p>
-                                    <span className="font-medium">Inicio:</span>{' '}
-                                    {formatDateTimeLocal(new Date(item.start_at))}
-                                </p>
-                                <p>
-                                    <span className="font-medium">Fin:</span>{' '}
-                                    {formatDateTimeLocal(new Date(item.end_at))}
-                                </p>
-                                <p>
-                                    <span className="font-medium">Motivo:</span>{' '}
-                                    {item.reason || '-'}
-                                </p>
-                                <DeleteTimeOffButton
-                                    id={item.id}
-                                    onDeleted={() => loadItems(item.barber_id)}
+            <AdminAlert
+                floating
+                variant="success"
+                title="Bloqueos actualizados"
+                message={message}
+                onClose={() => setMessage('')}
+            />
+            <div className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] lg:items-end">
+                    <div className="flex items-center gap-4">
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[22px] bg-[#C8942E]/15 ring-1 ring-black/10">
+                            {selectedBarber?.photo_url ? (
+                                <img
+                                    src={selectedBarber.photo_url}
+                                    alt={selectedBarber.name}
+                                    className="h-full w-full object-cover"
                                 />
-                            </article>
-                        ))}
+                            ) : (
+                                <div className="flex h-full w-full items-center justify-center text-lg font-black text-[#8A5D16]">
+                                    {selectedBarber ? getInitials(selectedBarber.name) : 'B'}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                Profesional
+                            </p>
+
+                            <h3 className="mt-1 truncate text-2xl font-black leading-none text-slate-950">
+                                {selectedBarber
+                                    ? selectedBarber.name
+                                    : isSingleBarber
+                                        ? 'Mis bloqueos'
+                                        : 'Bloqueos por barbero'}
+                            </h3>
+
+                            <p className="mt-1 line-clamp-1 text-sm font-medium text-slate-500">
+                                {selectedBarber?.specialty ||
+                                    (selectedBarber
+                                        ? `${items.length} bloqueo${items.length === 1 ? '' : 's'} registrado${items.length === 1 ? '' : 's'}`
+                                        : 'Selecciona un profesional para cargar y crear bloqueos')}
+                            </p>
+                        </div>
                     </div>
-                )}
+
+                    {!isSingleBarber && (
+                        <AdminSelect
+                            id="time-off-barber"
+                            label="Cambiar barbero"
+                            value={selectedBarberId}
+                            onChange={setSelectedBarberId}
+                            options={[
+                                { value: '', label: 'Selecciona un barbero' },
+                                ...barbers.map((barber) => ({
+                                    value: barber.id,
+                                    label: barber.name,
+                                })),
+                            ]}
+                            maxMenuHeight={220}
+                        />
+                    )}
+                </div>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(360px,0.85fr)_minmax(0,1.15fr)]">
+                <section className="rounded-[24px] border border-black/10 bg-[#FFFCF4] p-4 shadow-[0_14px_38px_rgba(15,23,42,0.06)] md:p-5 xl:sticky xl:top-8 xl:h-fit">
+                    <div className="mb-5">
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                            Nuevo bloqueo
+                        </p>
+
+                        <h3 className="mt-1 text-xl font-black text-slate-950">
+                            Crear tramo no disponible
+                        </h3>
+
+                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                            Define inicio, fin y motivo del bloqueo.
+                        </p>
+                    </div>
+
+                    {!selectedBarberId ? (
+                        <div className="rounded-[22px] border border-dashed border-black/10 bg-[#FBF7EE] px-5 py-10 text-center">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
+                                🚫
+                            </div>
+
+                            <h4 className="mt-4 text-lg font-black text-slate-950">
+                                Selecciona un barbero
+                            </h4>
+
+                            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                                Primero selecciona un profesional para crear bloqueos.
+                            </p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="grid gap-4">
+                            <div className="rounded-[22px] border border-black/10 bg-white/55 p-3">
+                                <div className="mb-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#C8942E]">
+                                        Tramo
+                                    </p>
+
+                                    <p className="mt-1 text-sm font-black text-slate-950">
+                                        Define cuándo empieza y termina el bloqueo.
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-3">
+                                    <AdminInput
+                                        id="time-off-start"
+                                        label="Inicio"
+                                        type="datetime-local"
+                                        value={form.start_at}
+                                        onChange={(value) => updateField('start_at', value)}
+                                        disabled={!selectedBarber || saving}
+                                    />
+
+                                    <AdminInput
+                                        id="time-off-end"
+                                        label="Fin"
+                                        type="datetime-local"
+                                        value={form.end_at}
+                                        onChange={(value) => updateField('end_at', value)}
+                                        disabled={!selectedBarber || saving}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="time-off-reason"
+                                    className="mb-2 block text-sm font-black text-slate-700"
+                                >
+                                    Motivo
+                                </label>
+
+                                <textarea
+                                    id="time-off-reason"
+                                    value={form.reason}
+                                    onChange={(event) =>
+                                        updateField('reason', event.target.value)
+                                    }
+                                    disabled={saving}
+                                    rows={4}
+                                    placeholder="Vacaciones, permiso, cierre parcial..."
+                                    className="min-h-[120px] w-full rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3.5 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#C8942E] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={saving}
+                                className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                            >
+                                {saving ? 'Guardando...' : 'Crear bloqueo'}
+                            </button>
+                        </form>
+                    )}
+                </section>
+
+                <section className="overflow-hidden rounded-[26px] border border-black/10 bg-[#FFFCF4] shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
+                    <div className="flex flex-col gap-2 border-b border-black/10 px-5 py-5 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                Registros
+                            </p>
+
+                            <h3 className="mt-1 text-xl font-black text-slate-950">
+                                {isSingleBarber
+                                    ? 'Mis bloqueos existentes'
+                                    : 'Bloqueos existentes'}
+                            </h3>
+
+                            <p className="mt-1 text-sm leading-6 text-slate-500">
+                                Revisa los tramos actualmente bloqueados.
+                            </p>
+                        </div>
+
+                        <span className="w-fit rounded-full bg-[#C8942E]/10 px-4 py-2 text-xs font-black text-[#8A5D16]">
+                            {items.length} bloqueo{items.length === 1 ? '' : 's'}
+                        </span>
+                    </div>
+
+                    {!selectedBarberId ? (
+                        <div className="px-5 py-12 text-center">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+                                👤
+                            </div>
+
+                            <h4 className="mt-4 text-xl font-black text-slate-950">
+                                Selecciona un barbero
+                            </h4>
+
+                            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                                Al seleccionar un profesional podrás ver sus bloqueos registrados.
+                            </p>
+                        </div>
+                    ) : loadingList ? (
+                        <div className="space-y-3 p-5">
+                            {Array.from({ length: 3 }).map((_, index) => (
+                                <div
+                                    key={index}
+                                    className="h-28 animate-pulse rounded-[24px] bg-[#FBF7EE]"
+                                />
+                            ))}
+                        </div>
+                    ) : items.length === 0 ? (
+                        <div className="px-5 py-12 text-center">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+                                ✅
+                            </div>
+
+                            <h4 className="mt-4 text-xl font-black text-slate-950">
+                                Sin bloqueos registrados
+                            </h4>
+
+                            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                                {isSingleBarber
+                                    ? 'No tienes bloqueos puntuales por ahora.'
+                                    : 'Este barbero no tiene bloqueos puntuales registrados.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-black/10">
+                            {items.map((item) => (
+                                <article
+                                    key={item.id}
+                                    className="grid gap-4 px-5 py-5 transition hover:bg-[#FBF7EE] lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
+                                >
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700 ring-1 ring-red-200">
+                                                Bloqueado
+                                            </span>
+
+                                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                                                {getDurationLabel(item.start_at, item.end_at)}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                            <div className="rounded-2xl bg-[#FBF7EE] px-4 py-3 ring-1 ring-black/5">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                    Inicio
+                                                </p>
+
+                                                <p className="mt-1 text-sm font-black text-slate-950">
+                                                    {formatDisplayDateTime(item.start_at)}
+                                                </p>
+                                            </div>
+
+                                            <div className="rounded-2xl bg-[#FBF7EE] px-4 py-3 ring-1 ring-black/5">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                    Fin
+                                                </p>
+
+                                                <p className="mt-1 text-sm font-black text-slate-950">
+                                                    {formatDisplayDateTime(item.end_at)}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-500">
+                                            <span className="font-black text-slate-700">
+                                                Motivo:
+                                            </span>{' '}
+                                            {item.reason || 'Sin motivo especificado.'}
+                                        </p>
+                                    </div>
+
+                                    <div className="lg:justify-self-end">
+                                        <DeleteTimeOffButton
+                                            id={item.id}
+                                            onDeleted={() => loadItems(item.barber_id)}
+                                        />
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </section>
             </div>
         </section>
     )
