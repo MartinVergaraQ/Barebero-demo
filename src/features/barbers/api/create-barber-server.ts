@@ -14,18 +14,34 @@ export type CreateBarberServerInput = {
     whatsapp_phone?: string | null
 }
 
+function normalizeChileWhatsapp(value?: string | null) {
+    if (!value) return null
+
+    const digits = value.replace(/\D/g, '')
+
+    if (!digits) return null
+
+    let phone = digits
+
+    if (phone.startsWith('56')) {
+        phone = phone.slice(2)
+    }
+
+    if (phone.startsWith('9')) {
+        phone = phone.slice(1)
+    }
+
+    phone = phone.slice(0, 8)
+
+    if (phone.length !== 8) {
+        return value.trim()
+    }
+
+    return `+569${phone}`
+}
+
 export async function createBarberServer(input: CreateBarberServerInput) {
     const supabase = await createClient()
-
-    const { count, error: countError } = await supabase
-        .from('barbers')
-        .select('*', { count: 'exact', head: true })
-        .eq('business_id', input.business_id)
-        .eq('is_active', true)
-
-    if (countError) {
-        throw new Error(countError.message)
-    }
 
     const { data: business, error: businessError } = await supabase
         .from('businesses')
@@ -45,8 +61,24 @@ export async function createBarberServer(input: CreateBarberServerInput) {
         throw new Error('La suscripción del negocio tiene pagos pendientes')
     }
 
-    if ((count ?? 0) >= business.max_barbers) {
-        throw new Error('Tu plan actual no permite crear más barberos')
+    const wantsToCreateActive = input.is_active ?? true
+
+    if (wantsToCreateActive && business.max_barbers !== null) {
+        const { count, error: countError } = await supabase
+            .from('barbers')
+            .select('*', { count: 'exact', head: true })
+            .eq('business_id', input.business_id)
+            .eq('is_active', true)
+
+        if (countError) {
+            throw new Error(countError.message)
+        }
+
+        if ((count ?? 0) >= business.max_barbers) {
+            throw new Error(
+                `Tu plan actual permite ${business.max_barbers} barbero${business.max_barbers === 1 ? '' : 's'} activo${business.max_barbers === 1 ? '' : 's'}. Cambia de plan para crear más.`
+            )
+        }
     }
 
     const payload = {
@@ -56,9 +88,9 @@ export async function createBarberServer(input: CreateBarberServerInput) {
         bio: input.bio?.trim() || null,
         photo_url: input.photo_url?.trim() || null,
         specialty: input.specialty?.trim() || null,
-        is_active: input.is_active ?? true,
+        is_active: wantsToCreateActive,
         display_order: input.display_order ?? 0,
-        whatsapp_phone: input.whatsapp_phone?.trim() || null,
+        whatsapp_phone: normalizeChileWhatsapp(input.whatsapp_phone),
     }
 
     const { data, error } = await supabase

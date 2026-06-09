@@ -90,6 +90,8 @@ export async function requestPlanChangeServer({
         .from('businesses')
         .update({
             plan_slug: nextPlanSlug,
+            max_barbers: limits.maxBarbers,
+            max_services: limits.maxServices,
         })
         .eq('id', businessId)
 

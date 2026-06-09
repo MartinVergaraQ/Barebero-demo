@@ -26,6 +26,30 @@ function getInitials(name: string) {
         .join('')
 }
 
+function formatChileWhatsapp(value?: string | null) {
+    if (!value) return 'Sin WhatsApp'
+
+    const digits = value.replace(/\D/g, '')
+
+    let phone = digits
+
+    if (phone.startsWith('56')) {
+        phone = phone.slice(2)
+    }
+
+    if (phone.startsWith('9')) {
+        phone = phone.slice(1)
+    }
+
+    phone = phone.slice(0, 8)
+
+    if (phone.length <= 4) {
+        return `+56 9 ${phone}`
+    }
+
+    return `+56 9 ${phone.slice(0, 4)} ${phone.slice(4)}`
+}
+
 export default async function AdminBarberosPage({
     params,
 }: AdminBarberosPageProps) {
@@ -75,10 +99,27 @@ export default async function AdminBarberosPage({
     const canCreate = canCreateWithSubscription(business.subscription_status)
     const canEdit = canEditWithSubscription(business.subscription_status)
 
+    const maxBarbers = business.max_barbers
+    const hasUnlimitedBarbers = maxBarbers === null
+    const reachedBarberLimit =
+        !hasUnlimitedBarbers && activeBarbers >= maxBarbers
+
+    const canCreateBarber = canCreate && !reachedBarberLimit
+
+    const barberLimitLabel = hasUnlimitedBarbers
+        ? `${activeBarbers}/∞ activos`
+        : `${activeBarbers}/${maxBarbers} activos`
+
+    const createDisabledReason = !canCreate
+        ? 'Tu suscripción no permite crear nuevos barberos en este momento.'
+        : reachedBarberLimit
+            ? `Este plan permite ${maxBarbers} barbero${maxBarbers === 1 ? '' : 's'}. Puedes ocultar uno existente o cambiar de plan para agregar más.`
+            : ''
+
     return (
-        <main className="min-h-screen bg-[#F4EFE5] px-4 py-6 text-slate-950 md:px-8 md:py-8">
-            <div className="mx-auto max-w-7xl space-y-6 md:space-y-8">
-                <header className="flex flex-col gap-5 border-b border-black/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <main className="min-h-screen px-4 py-5 text-slate-950 md:px-8 md:py-6">
+            <div className="mx-auto max-w-7xl space-y-5">
+                <header className="flex flex-col gap-4 border-b border-black/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                         <p className="text-sm font-bold text-slate-500">
                             {business.name}
@@ -93,59 +134,41 @@ export default async function AdminBarberosPage({
                         </p>
                     </div>
 
-                    <div className="w-fit rounded-full bg-[#C8942E]/10 px-4 py-2 text-xs font-black text-[#8A5D16]">
-                        {barbers.length} barbero{barbers.length === 1 ? '' : 's'}
+                    <div className="grid w-fit grid-cols-3 overflow-hidden rounded-2xl border border-black/10 bg-[#FFFCF4] shadow-sm">
+                        <div className="px-4 py-2 text-center">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                Uso
+                            </p>
+                            <p className="text-sm font-black text-[#8A5D16]">
+                                {barberLimitLabel}
+                            </p>
+                        </div>
+
+                        <div className="border-x border-black/10 px-4 py-2 text-center">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                Activos
+                            </p>
+                            <p className="text-sm font-black text-[#8A5D16]">
+                                {activeBarbers}
+                            </p>
+                        </div>
+
+                        <div className="px-4 py-2 text-center">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                Fotos
+                            </p>
+                            <p className="text-sm font-black text-[#8A5D16]">
+                                {withPhoto}
+                            </p>
+                        </div>
                     </div>
                 </header>
-
-                <section className="grid gap-4 md:grid-cols-3">
-                    <article className="rounded-[26px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
-                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
-                            Activos
-                        </p>
-
-                        <h2 className="mt-3 text-4xl font-black text-slate-950">
-                            {activeBarbers}
-                        </h2>
-
-                        <p className="mt-2 text-sm leading-6 text-slate-500">
-                            Profesionales visibles para reservas.
-                        </p>
-                    </article>
-
-                    <article className="rounded-[26px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
-                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
-                            Inactivos
-                        </p>
-
-                        <h2 className="mt-3 text-4xl font-black text-slate-950">
-                            {inactiveBarbers}
-                        </h2>
-
-                        <p className="mt-2 text-sm leading-6 text-slate-500">
-                            Ocultos temporalmente del sitio público.
-                        </p>
-                    </article>
-
-                    <article className="rounded-[26px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
-                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
-                            Con foto
-                        </p>
-
-                        <h2 className="mt-3 text-4xl font-black text-slate-950">
-                            {withPhoto}
-                        </h2>
-
-                        <p className="mt-2 text-sm leading-6 text-slate-500">
-                            Perfiles con imagen profesional cargada.
-                        </p>
-                    </article>
-                </section>
 
                 <AdminBarberForm
                     businessId={business.id}
                     services={serviceOptions}
-                    canCreate={canCreate}
+                    canCreate={canCreateBarber}
+                    disabledReason={createDisabledReason}
                 />
 
                 <section className="overflow-hidden rounded-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
@@ -213,11 +236,11 @@ export default async function AdminBarberosPage({
 
                                                 <span
                                                     className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${barber.is_active
-                                                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                                            : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
+                                                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                                                        : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
                                                         }`}
                                                 >
-                                                    {barber.is_active ? 'Activo' : 'Inactivo'}
+                                                    {barber.is_active ? 'Visible' : 'Oculto'}
                                                 </span>
                                             </div>
 
@@ -239,7 +262,7 @@ export default async function AdminBarberosPage({
                                                 </span>
 
                                                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-                                                    WhatsApp {barber.whatsapp_phone || '-'}
+                                                    {formatChileWhatsapp(barber.whatsapp_phone)}
                                                 </span>
                                             </div>
                                         </div>

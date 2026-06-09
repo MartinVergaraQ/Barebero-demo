@@ -45,7 +45,7 @@ export function DeleteGalleryItemButton({ id, publicId }: Props) {
                 type="button"
                 onClick={() => setOpen(true)}
                 disabled={loading}
-                className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="inline-flex h-10 flex-1 items-center justify-center rounded-xl border border-red-200 bg-white px-4 text-sm font-black text-red-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-red-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
                 Eliminar
             </button>
@@ -53,9 +53,9 @@ export function DeleteGalleryItemButton({ id, publicId }: Props) {
             <ConfirmDialog
                 open={open}
                 onOpenChange={setOpen}
-                title="Eliminar imagen"
-                description="Esta acción no se puede deshacer. La imagen se eliminará de la galería y dejará de mostrarse en el sitio público."
-                confirmText="Sí, eliminar"
+                title="Eliminar imagen de la galería"
+                description="Esta acción eliminará la imagen del panel y dejará de mostrarse en el sitio público. No se puede deshacer."
+                confirmText="Eliminar imagen"
                 cancelText="Cancelar"
                 onConfirm={handleDelete}
                 loading={loading}

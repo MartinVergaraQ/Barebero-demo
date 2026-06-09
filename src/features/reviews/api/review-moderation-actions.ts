@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/src/lib/supabase/admin'
 
-export async function approveReview(id: string) {
+export async function publishReview(id: string) {
     const { error } = await supabaseAdmin
         .from('reviews')
         .update({ is_published: true })
@@ -13,20 +13,20 @@ export async function approveReview(id: string) {
         throw new Error(error.message)
     }
 
-    revalidatePath('/admin/reviews')
+    revalidatePath('/admin')
     revalidatePath('/')
 }
 
-export async function rejectReview(id: string) {
+export async function hideReview(id: string) {
     const { error } = await supabaseAdmin
         .from('reviews')
-        .delete()
+        .update({ is_published: false })
         .eq('id', id)
 
     if (error) {
         throw new Error(error.message)
     }
 
-    revalidatePath('/admin/reviews')
+    revalidatePath('/admin')
     revalidatePath('/')
 }

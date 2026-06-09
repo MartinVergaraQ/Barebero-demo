@@ -1,11 +1,11 @@
 export const PLAN_LIMITS = {
     starter: {
-        maxBarbers: 2,
-        maxServices: 10,
+        maxBarbers: 1,
+        maxServices: 5,
     },
     pro: {
-        maxBarbers: 5,
-        maxServices: 25,
+        maxBarbers: 3,
+        maxServices: 15,
     },
     studio: {
         maxBarbers: null,

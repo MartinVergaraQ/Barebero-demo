@@ -1,4 +1,4 @@
-import { supabase } from '@/src/lib/supabase/client'
+import { createClient } from '@/src/lib/supabase/server'
 
 export type AdminBarberItem = {
     id: string
@@ -15,7 +15,15 @@ export type AdminBarberItem = {
     display_order: number
 }
 
-export async function getBarbersAdmin(businessId: string) {
+export async function getBarbersAdmin(
+    businessId: string
+): Promise<AdminBarberItem[]> {
+    if (!businessId) {
+        throw new Error('businessId es requerido para cargar barberos')
+    }
+
+    const supabase = await createClient()
+
     const { data, error } = await supabase
         .from('barbers')
         .select(`
@@ -31,13 +39,14 @@ export async function getBarbersAdmin(businessId: string) {
             rating_avg,
             is_active,
             display_order
-            `)
+        `)
         .eq('business_id', businessId)
         .order('display_order', { ascending: true })
+        .order('name', { ascending: true })
 
     if (error) {
         throw new Error(error.message)
     }
 
     return (data ?? []) as AdminBarberItem[]
-}   
+}

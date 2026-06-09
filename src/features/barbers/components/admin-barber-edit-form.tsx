@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
+import { toast } from 'sonner'
 import { updateBarberServer } from '@/src/features/barbers/api/update-barber-server'
 import { uploadBarberPhoto } from '@/src/features/barbers/api/upload-barber-photo'
 import { upsertBarberServices } from '@/src/features/barbers/api/upsert-barber-services'
@@ -38,6 +39,17 @@ type SelectedServiceItem = {
     custom_duration_minutes: string
 }
 
+function slugify(value: string) {
+    return value
+        .toLowerCase()
+        .trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+}
+
 function formatPrice(price: number | string) {
     const numericPrice = typeof price === 'string' ? Number(price) : price
 
@@ -50,17 +62,8 @@ function formatPrice(price: number | string) {
     }).format(numericPrice)
 }
 
-export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
-    const router = useRouter()
-
-    const [open, setOpen] = useState(false)
-    const [loading, setLoading] = useState(false)
-    const [message, setMessage] = useState('')
-    const [errorMessage, setErrorMessage] = useState('')
-    const [uploadingImage, setUploadingImage] = useState(false)
-    const [loadingServices, setLoadingServices] = useState(false)
-
-    const [form, setForm] = useState({
+function getInitialForm(barber: Props['barber']) {
+    return {
         name: barber.name,
         slug: barber.slug,
         bio: barber.bio ?? '',
@@ -69,8 +72,18 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
         whatsapp_phone: barber.whatsapp_phone ?? '',
         is_active: barber.is_active,
         display_order: String(barber.display_order),
-    })
+    }
+}
 
+export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
+    const router = useRouter()
+
+    const [open, setOpen] = useState(false)
+    const [loading, setLoading] = useState(false)
+    const [uploadingImage, setUploadingImage] = useState(false)
+    const [loadingServices, setLoadingServices] = useState(false)
+
+    const [form, setForm] = useState(getInitialForm(barber))
     const [selectedServices, setSelectedServices] = useState<SelectedServiceItem[]>([])
 
     useEffect(() => {
@@ -80,7 +93,6 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
 
         async function loadBarberServices() {
             setLoadingServices(true)
-            setErrorMessage('')
 
             try {
                 const data = await getBarberServices(barber.id)
@@ -100,15 +112,14 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                 )
             } catch (error) {
                 if (!mounted) return
-                setErrorMessage(
+
+                toast.error(
                     error instanceof Error
                         ? error.message
                         : 'Error cargando servicios del barbero'
                 )
             } finally {
-                if (mounted) {
-                    setLoadingServices(false)
-                }
+                if (mounted) setLoadingServices(false)
             }
         }
 
@@ -137,27 +148,31 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
         }
     }, [open])
 
-    function updateField(field: keyof typeof form, value: string | boolean) {
-        setForm((prev) => ({
-            ...prev,
-            [field]: value,
-        }))
+    function handleOpen() {
+        if (!canEdit) {
+            toast.error(
+                'Tu suscripción no permite editar barberos mientras esté cancelada o con pago pendiente.'
+            )
+            return
+        }
+
+        setForm(getInitialForm(barber))
+        setOpen(true)
     }
 
-    function handleOpen() {
-        setMessage('')
-        setErrorMessage('')
-        setForm({
-            name: barber.name,
-            slug: barber.slug,
-            bio: barber.bio ?? '',
-            photo_url: barber.photo_url ?? '',
-            specialty: barber.specialty ?? '',
-            whatsapp_phone: barber.whatsapp_phone ?? '',
-            is_active: barber.is_active,
-            display_order: String(barber.display_order),
+    function updateField(field: keyof typeof form, value: string | boolean) {
+        setForm((prev) => {
+            const next = {
+                ...prev,
+                [field]: value,
+            }
+
+            if (field === 'name' && typeof value === 'string' && !prev.slug) {
+                next.slug = slugify(value)
+            }
+
+            return next
         })
-        setOpen(true)
     }
 
     async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -167,8 +182,6 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
         if (!file) return
 
         setUploadingImage(true)
-        setErrorMessage('')
-        setMessage('')
 
         try {
             const result = await uploadBarberPhoto(file)
@@ -177,8 +190,10 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                 ...prev,
                 photo_url: result.secure_url,
             }))
+
+            toast.success('Foto actualizada correctamente')
         } catch (error) {
-            setErrorMessage(
+            toast.error(
                 error instanceof Error ? error.message : 'Error subiendo imagen'
             )
         } finally {
@@ -186,67 +201,70 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
         }
     }
 
-    function toggleService(serviceId: string, checked: boolean) {
+    function toggleService(serviceId: string) {
         if (!canEdit) return
 
         setSelectedServices((prev) => {
-            if (checked) {
-                if (prev.some((item) => item.service_id === serviceId)) return prev
+            const exists = prev.some((item) => item.service_id === serviceId)
 
-                return [
-                    ...prev,
-                    {
-                        service_id: serviceId,
-                        custom_price: '',
-                        custom_duration_minutes: '',
-                    },
-                ]
+            if (exists) {
+                return prev.filter((item) => item.service_id !== serviceId)
             }
 
-            return prev.filter((item) => item.service_id !== serviceId)
+            return [
+                ...prev,
+                {
+                    service_id: serviceId,
+                    custom_price: '',
+                    custom_duration_minutes: '',
+                },
+            ]
         })
     }
 
-    function updateSelectedService(
-        serviceId: string,
-        field: 'custom_price' | 'custom_duration_minutes',
-        value: string
-    ) {
-        if (!canEdit) return
+    function validateForm() {
+        if (!form.name.trim()) {
+            throw new Error('Ingresa el nombre del barbero')
+        }
 
-        setSelectedServices((prev) =>
-            prev.map((item) =>
-                item.service_id === serviceId ? { ...item, [field]: value } : item
-            )
-        )
+        if (!form.slug.trim()) {
+            throw new Error('Ingresa el slug del barbero')
+        }
+
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug)) {
+            throw new Error('El slug debe usar solo minúsculas, números y guiones')
+        }
+
+        const displayOrder = Number(form.display_order || 0)
+
+        if (Number.isNaN(displayOrder) || displayOrder < 0) {
+            throw new Error('La posición debe ser un número válido')
+        }
     }
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
 
         if (!canEdit) {
-            setErrorMessage(
+            toast.error(
                 'Tu suscripción no permite editar barberos mientras esté cancelada o con pago pendiente.'
             )
             return
         }
 
         setLoading(true)
-        setMessage('')
-        setErrorMessage('')
 
         try {
-            if (!form.name.trim()) throw new Error('Ingresa el nombre')
-            if (!form.slug.trim()) throw new Error('Ingresa el slug')
+            validateForm()
 
             await updateBarberServer({
                 id: barber.id,
-                name: form.name,
-                slug: form.slug,
-                bio: form.bio,
+                name: form.name.trim(),
+                slug: slugify(form.slug),
+                bio: form.bio.trim(),
                 photo_url: form.photo_url,
-                specialty: form.specialty,
-                whatsapp_phone: form.whatsapp_phone,
+                specialty: form.specialty.trim(),
+                whatsapp_phone: form.whatsapp_phone.trim(),
                 is_active: form.is_active,
                 display_order: Number(form.display_order || 0),
             })
@@ -255,18 +273,20 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                 barber.id,
                 selectedServices.map((item) => ({
                     service_id: item.service_id,
-                    custom_price: item.custom_price ? Number(item.custom_price) : null,
+                    custom_price: item.custom_price
+                        ? Number(item.custom_price)
+                        : null,
                     custom_duration_minutes: item.custom_duration_minutes
                         ? Number(item.custom_duration_minutes)
                         : null,
                 }))
             )
 
-            setMessage('Barbero actualizado correctamente')
+            toast.success('Barbero actualizado correctamente')
             setOpen(false)
             router.refresh()
         } catch (error) {
-            setErrorMessage(
+            toast.error(
                 error instanceof Error ? error.message : 'Error actualizando barbero'
             )
         } finally {
@@ -276,49 +296,29 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
 
     return (
         <>
-            <div>
-                <button
-                    type="button"
-                    disabled={!canEdit}
-                    onClick={handleOpen}
-                    className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-black/10 bg-white px-4 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                >
-                    Editar
-                </button>
-
-                {!canEdit && (
-                    <p className="mt-2 max-w-xs text-xs font-semibold leading-5 text-red-600">
-                        Tu suscripción no permite editar barberos mientras esté cancelada o con pago pendiente.
-                    </p>
-                )}
-
-                {message && (
-                    <p className="mt-2 text-sm font-bold text-emerald-700">
-                        {message}
-                    </p>
-                )}
-
-                {errorMessage && !open && (
-                    <p className="mt-2 text-sm font-bold text-red-700">
-                        {errorMessage}
-                    </p>
-                )}
-            </div>
+            <button
+                type="button"
+                disabled={!canEdit}
+                onClick={handleOpen}
+                className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#C8942E]/30 bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            >
+                Editar
+            </button>
 
             {open && (
-                <div className="fixed inset-0 z-[80]">
+                <div className="fixed inset-0 z-[90]">
                     <button
                         type="button"
                         className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
                         onClick={() => setOpen(false)}
-                        aria-label="Cerrar edición"
+                        aria-label="Cerrar edición de barbero"
                     />
 
                     <div className="absolute inset-x-0 bottom-0 top-0 flex items-end md:items-center md:justify-center md:p-6">
-                        <section className="relative flex h-[92vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_30px_90px_rgba(0,0,0,0.35)] md:h-auto md:max-h-[90vh] md:max-w-[940px] md:rounded-[30px]">
-                            <div className="flex items-start justify-between gap-4 border-b border-black/10 px-5 py-5 md:px-6">
+                        <section className="relative flex h-[92vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_30px_90px_rgba(0,0,0,0.35)] md:h-auto md:max-h-[88vh] md:max-w-[960px] md:rounded-[30px]">
+                            <div className="flex items-start justify-between gap-4 border-b border-black/10 px-5 py-4 md:px-6">
                                 <div>
-                                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
                                         Equipo
                                     </p>
 
@@ -327,7 +327,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                     </h2>
 
                                     <p className="mt-1 text-sm leading-6 text-slate-500">
-                                        Actualiza perfil, foto, WhatsApp y servicios disponibles.
+                                        Actualiza perfil, foto, WhatsApp, posición y servicios.
                                     </p>
                                 </div>
 
@@ -343,98 +343,122 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
 
                             <form
                                 onSubmit={handleSubmit}
-                                className="flex-1 overflow-y-auto px-5 py-5 md:px-6"
+                                className="flex min-h-0 flex-1 flex-col"
                             >
-                                {errorMessage && (
-                                    <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-                                        {errorMessage}
-                                    </div>
-                                )}
-
-                                {loadingServices ? (
-                                    <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-8 text-center text-sm font-bold text-slate-500">
-                                        Cargando servicios del barbero...
-                                    </div>
-                                ) : (
+                                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-6">
                                     <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                                        <div className="space-y-4">
-                                            <AdminInput
-                                                id={`edit-barber-name-${barber.id}`}
-                                                label="Nombre"
-                                                value={form.name}
-                                                onChange={(value) => updateField('name', value)}
-                                                disabled={!canEdit || loading || loadingServices}
-                                            />
+                                        <section className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                                Información
+                                            </p>
 
-                                            <AdminInput
-                                                id={`edit-barber-slug-${barber.id}`}
-                                                label="Slug"
-                                                value={form.slug}
-                                                onChange={(value) => updateField('slug', value)}
-                                                disabled={!canEdit || loading || loadingServices}
-                                            />
+                                            <div className="mt-4 grid gap-4">
+                                                <div className="grid gap-4 md:grid-cols-2">
+                                                    <AdminInput
+                                                        id={`edit-barber-name-${barber.id}`}
+                                                        label="Nombre"
+                                                        value={form.name}
+                                                        onChange={(value) =>
+                                                            updateField('name', value)
+                                                        }
+                                                        disabled={loading}
+                                                    />
 
-                                            <AdminInput
-                                                id={`edit-barber-specialty-${barber.id}`}
-                                                label="Especialidad"
-                                                value={form.specialty}
-                                                onChange={(value) => updateField('specialty', value)}
-                                                disabled={!canEdit || loading || loadingServices}
-                                            />
+                                                    <AdminInput
+                                                        id={`edit-barber-slug-${barber.id}`}
+                                                        label="Slug"
+                                                        value={form.slug}
+                                                        onChange={(value) =>
+                                                            updateField('slug', slugify(value))
+                                                        }
+                                                        disabled={loading}
+                                                    />
+                                                </div>
 
-                                            <AdminInput
-                                                id={`edit-barber-whatsapp-${barber.id}`}
-                                                label="WhatsApp del barbero"
-                                                value={form.whatsapp_phone}
-                                                onChange={(value) => updateField('whatsapp_phone', value)}
-                                                placeholder="+56 9 1234 5678"
-                                                disabled={!canEdit || loading || loadingServices}
-                                            />
-
-                                            <AdminInput
-                                                id={`edit-barber-order-${barber.id}`}
-                                                label="Orden"
-                                                type="number"
-                                                value={form.display_order}
-                                                onChange={(value) => updateField('display_order', value)}
-                                                disabled={!canEdit || loading || loadingServices}
-                                            />
-
-                                            <div>
-                                                <label
-                                                    htmlFor={`edit-barber-bio-${barber.id}`}
-                                                    className="mb-2 block text-sm font-black text-slate-700"
-                                                >
-                                                    Bio
-                                                </label>
-
-                                                <textarea
-                                                    id={`edit-barber-bio-${barber.id}`}
-                                                    value={form.bio}
-                                                    onChange={(event) => updateField('bio', event.target.value)}
-                                                    disabled={!canEdit || loading || loadingServices}
-                                                    rows={4}
-                                                    className="min-h-[120px] w-full rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3.5 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#C8942E] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
+                                                <AdminInput
+                                                    id={`edit-barber-specialty-${barber.id}`}
+                                                    label="Especialidad"
+                                                    value={form.specialty}
+                                                    onChange={(value) =>
+                                                        updateField('specialty', value)
+                                                    }
+                                                    placeholder="Cortes degradados"
+                                                    disabled={loading}
                                                 />
-                                            </div>
 
-                                            <button
-                                                type="button"
-                                                disabled={!canEdit || loading || loadingServices}
-                                                onClick={() => updateField('is_active', !form.is_active)}
-                                                className={`flex h-12 w-full items-center justify-between rounded-2xl border px-4 text-sm font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${form.is_active
-                                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                                                        : 'border-black/10 bg-[#FBF7EE] text-slate-600 hover:bg-white'
-                                                    }`}
-                                            >
-                                                <span>Visible para reservas</span>
-                                                <span>{form.is_active ? 'Activo' : 'Inactivo'}</span>
-                                            </button>
-                                        </div>
+                                                <div className="grid gap-4 md:grid-cols-2">
+                                                    <AdminInput
+                                                        id={`edit-barber-whatsapp-${barber.id}`}
+                                                        label="WhatsApp"
+                                                        value={form.whatsapp_phone}
+                                                        onChange={(value) =>
+                                                            updateField('whatsapp_phone', value)
+                                                        }
+                                                        placeholder="+56 9 1234 5678"
+                                                        disabled={loading}
+                                                    />
+
+                                                    <div>
+                                                        <AdminInput
+                                                            id={`edit-barber-order-${barber.id}`}
+                                                            label="Posición"
+                                                            type="number"
+                                                            value={form.display_order}
+                                                            onChange={(value) =>
+                                                                updateField('display_order', value)
+                                                            }
+                                                            disabled={loading}
+                                                        />
+
+                                                        <p className="mt-1 text-xs font-bold text-slate-400">
+                                                            Menor número aparece primero.
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label
+                                                        htmlFor={`edit-barber-bio-${barber.id}`}
+                                                        className="mb-2 block text-sm font-black text-slate-700"
+                                                    >
+                                                        Bio
+                                                    </label>
+
+                                                    <textarea
+                                                        id={`edit-barber-bio-${barber.id}`}
+                                                        value={form.bio}
+                                                        onChange={(event) =>
+                                                            updateField('bio', event.target.value)
+                                                        }
+                                                        disabled={loading}
+                                                        rows={4}
+                                                        placeholder="Describe al barbero"
+                                                        className="min-h-[115px] w-full rounded-2xl border border-black/10 bg-white px-4 py-3.5 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#C8942E] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
+                                                    />
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    disabled={loading}
+                                                    onClick={() =>
+                                                        updateField('is_active', !form.is_active)
+                                                    }
+                                                    className={`flex h-12 w-full items-center justify-between rounded-2xl border px-4 text-sm font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${form.is_active
+                                                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                                            : 'border-black/10 bg-white text-slate-600 hover:bg-[#FFFCF4]'
+                                                        }`}
+                                                >
+                                                    <span>Visible para reservas</span>
+                                                    <span>
+                                                        {form.is_active ? 'Activo' : 'Inactivo'}
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        </section>
 
                                         <div className="space-y-5">
-                                            <div className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4">
-                                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                            <section className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
                                                     Foto
                                                 </p>
 
@@ -442,12 +466,16 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                     Imagen del perfil
                                                 </h3>
 
+                                                <p className="mt-1 text-sm leading-6 text-slate-500">
+                                                    Recomendado: foto cuadrada, rostro visible y buena iluminación.
+                                                </p>
+
                                                 <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
                                                     <div className="h-28 w-28 shrink-0 overflow-hidden rounded-[24px] bg-slate-950 ring-1 ring-black/10">
                                                         {form.photo_url ? (
                                                             <img
                                                                 src={form.photo_url}
-                                                                alt="Preview"
+                                                                alt={form.name || 'Foto del barbero'}
                                                                 className="h-full w-full object-cover"
                                                             />
                                                         ) : (
@@ -462,29 +490,23 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                             type="file"
                                                             accept="image/*"
                                                             onChange={handleImageChange}
-                                                            disabled={!canEdit || loading || uploadingImage || loadingServices}
-                                                            className="block w-full cursor-pointer rounded-2xl border border-black/10 bg-white text-sm font-semibold text-slate-700 file:mr-4 file:h-11 file:border-0 file:bg-[#C8942E] file:px-4 file:text-sm file:font-black file:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                                            disabled={loading || uploadingImage}
+                                                            className="w-full rounded-2xl border border-black/10 bg-white text-sm font-bold text-slate-600 file:mr-4 file:h-11 file:border-0 file:bg-[#C8942E] file:px-4 file:text-sm file:font-black file:text-white disabled:cursor-not-allowed disabled:opacity-60"
                                                         />
 
                                                         {uploadingImage && (
-                                                            <p className="mt-2 text-sm font-semibold text-slate-500">
+                                                            <p className="mt-2 text-sm font-bold text-slate-500">
                                                                 Subiendo imagen...
-                                                            </p>
-                                                        )}
-
-                                                        {form.photo_url && (
-                                                            <p className="mt-2 line-clamp-1 break-all text-xs font-semibold text-slate-500">
-                                                                {form.photo_url}
                                                             </p>
                                                         )}
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </section>
 
-                                            <div className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4">
-                                                <div className="mb-4 flex items-center justify-between gap-3">
+                                            <section className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4">
+                                                <div className="flex items-start justify-between gap-3">
                                                     <div>
-                                                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
                                                             Servicios
                                                         </p>
 
@@ -494,107 +516,86 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                     </div>
 
                                                     <span className="rounded-full bg-[#C8942E]/10 px-3 py-1 text-xs font-black text-[#8A5D16]">
-                                                        {selectedServices.length} seleccionados
+                                                        {selectedServices.length} seleccionado
+                                                        {selectedServices.length === 1 ? '' : 's'}
                                                     </span>
                                                 </div>
 
-                                                {services.length === 0 ? (
-                                                    <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-8 text-center text-sm font-semibold text-slate-500">
-                                                        No hay servicios creados todavía.
-                                                    </div>
-                                                ) : (
-                                                    <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
-                                                        {services.map((service) => {
-                                                            const selected = selectedServices.find(
+                                                <div className="mt-4 space-y-3">
+                                                    {loadingServices ? (
+                                                        <div className="rounded-2xl border border-black/10 bg-white px-4 py-8 text-center text-sm font-black text-slate-500">
+                                                            Cargando servicios...
+                                                        </div>
+                                                    ) : services.length === 0 ? (
+                                                        <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-8 text-center">
+                                                            <p className="text-sm font-black text-slate-950">
+                                                                No hay servicios disponibles
+                                                            </p>
+                                                            <p className="mt-1 text-sm text-slate-500">
+                                                                Primero crea servicios para poder asignarlos.
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        services.map((service) => {
+                                                            const selected = selectedServices.some(
                                                                 (item) => item.service_id === service.id
                                                             )
 
                                                             return (
-                                                                <article
+                                                                <button
                                                                     key={service.id}
-                                                                    className={`rounded-2xl border p-4 transition ${selected
-                                                                            ? 'border-[#C8942E]/45 bg-white shadow-[0_12px_28px_rgba(200,148,46,0.10)]'
-                                                                            : 'border-black/10 bg-white/70 hover:bg-white'
+                                                                    type="button"
+                                                                    onClick={() => toggleService(service.id)}
+                                                                    disabled={loading}
+                                                                    className={`flex w-full items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${selected
+                                                                            ? 'border-[#C8942E]/50 bg-[#C8942E]/10'
+                                                                            : 'border-black/10 bg-white hover:bg-[#FFFCF4]'
                                                                         }`}
                                                                 >
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={!canEdit || loading || loadingServices}
-                                                                        onClick={() => toggleService(service.id, !selected)}
-                                                                        className="flex w-full items-start justify-between gap-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
+                                                                    <div className="min-w-0">
+                                                                        <p className="line-clamp-1 text-sm font-black text-slate-950">
+                                                                            {service.name}
+                                                                        </p>
+
+                                                                        <p className="mt-1 text-xs font-bold text-slate-500">
+                                                                            {formatPrice(service.price)} ·{' '}
+                                                                            {service.duration_minutes} min
+                                                                        </p>
+                                                                    </div>
+
+                                                                    <span
+                                                                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-black ${selected
+                                                                                ? 'border-[#C8942E] bg-[#C8942E] text-white'
+                                                                                : 'border-black/10 bg-[#FBF7EE] text-transparent'
+                                                                            }`}
                                                                     >
-                                                                        <div>
-                                                                            <p className="font-black text-slate-950">
-                                                                                {service.name}
-                                                                            </p>
-
-                                                                            <p className="mt-1 text-xs font-semibold text-slate-500">
-                                                                                {formatPrice(service.price)} · {service.duration_minutes} min
-                                                                            </p>
-                                                                        </div>
-
-                                                                        <span
-                                                                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${selected
-                                                                                    ? 'bg-[#C8942E] text-white'
-                                                                                    : 'border border-black/10 bg-[#FBF7EE] text-transparent'
-                                                                                }`}
-                                                                        >
-                                                                            ✓
-                                                                        </span>
-                                                                    </button>
-
-                                                                    {selected && (
-                                                                        <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                                                            <AdminInput
-                                                                                id={`edit-custom-price-${barber.id}-${service.id}`}
-                                                                                label="Precio personalizado"
-                                                                                type="number"
-                                                                                value={selected.custom_price}
-                                                                                onChange={(value) =>
-                                                                                    updateSelectedService(service.id, 'custom_price', value)
-                                                                                }
-                                                                                placeholder={`Base: ${service.price}`}
-                                                                                disabled={!canEdit || loading || loadingServices}
-                                                                            />
-
-                                                                            <AdminInput
-                                                                                id={`edit-custom-duration-${barber.id}-${service.id}`}
-                                                                                label="Duración personalizada"
-                                                                                type="number"
-                                                                                value={selected.custom_duration_minutes}
-                                                                                onChange={(value) =>
-                                                                                    updateSelectedService(service.id, 'custom_duration_minutes', value)
-                                                                                }
-                                                                                placeholder={`Base: ${service.duration_minutes}`}
-                                                                                disabled={!canEdit || loading || loadingServices}
-                                                                            />
-                                                                        </div>
-                                                                    )}
-                                                                </article>
+                                                                        ✓
+                                                                    </span>
+                                                                </button>
                                                             )
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
+                                                        })
+                                                    )}
+                                                </div>
+                                            </section>
                                         </div>
                                     </div>
-                                )}
+                                </div>
 
-                                <div className="mt-6 border-t border-black/10 pt-5">
+                                <div className="border-t border-black/10 bg-[#FFFCF4]/95 px-5 py-4 backdrop-blur md:px-6">
                                     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                                         <button
                                             type="button"
                                             onClick={() => setOpen(false)}
-                                            disabled={loading || uploadingImage}
-                                            className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
+                                            disabled={loading}
+                                            className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                                         >
                                             Cancelar
                                         </button>
 
                                         <button
                                             type="submit"
-                                            disabled={!canEdit || loading || loadingServices || uploadingImage}
-                                            className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
+                                            disabled={loading || !canEdit}
+                                            className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                                         >
                                             {loading ? 'Guardando...' : 'Guardar cambios'}
                                         </button>

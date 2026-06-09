@@ -14,6 +14,32 @@ export type UpdateBarberServerInput = {
     whatsapp_phone?: string | null
 }
 
+function normalizeChileWhatsapp(value?: string | null) {
+    if (!value) return null
+
+    const digits = value.replace(/\D/g, '')
+
+    if (!digits) return null
+
+    let phone = digits
+
+    if (phone.startsWith('56')) {
+        phone = phone.slice(2)
+    }
+
+    if (phone.startsWith('9')) {
+        phone = phone.slice(1)
+    }
+
+    phone = phone.slice(0, 8)
+
+    if (phone.length !== 8) {
+        return value.trim()
+    }
+
+    return `+569${phone}`
+}
+
 export async function updateBarberServer(input: UpdateBarberServerInput) {
     const supabase = await createClient()
 
@@ -48,7 +74,7 @@ export async function updateBarberServer(input: UpdateBarberServerInput) {
     const wantsToBeActive = input.is_active ?? true
     const isReactivating = !currentBarber.is_active && wantsToBeActive
 
-    if (isReactivating) {
+    if (isReactivating && business.max_barbers !== null) {
         const { count, error: countError } = await supabase
             .from('barbers')
             .select('*', { count: 'exact', head: true })
@@ -60,7 +86,9 @@ export async function updateBarberServer(input: UpdateBarberServerInput) {
         }
 
         if ((count ?? 0) >= business.max_barbers) {
-            throw new Error('Tu plan actual no permite activar más barberos')
+            throw new Error(
+                `Tu plan actual permite ${business.max_barbers} barbero${business.max_barbers === 1 ? '' : 's'} activo${business.max_barbers === 1 ? '' : 's'}. Cambia de plan para activar más.`
+            )
         }
     }
 
@@ -72,7 +100,7 @@ export async function updateBarberServer(input: UpdateBarberServerInput) {
         specialty: input.specialty?.trim() || null,
         is_active: wantsToBeActive,
         display_order: input.display_order ?? 0,
-        whatsapp_phone: input.whatsapp_phone?.trim() || null,
+        whatsapp_phone: normalizeChileWhatsapp(input.whatsapp_phone),
     }
 
     const { data, error } = await supabase

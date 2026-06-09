@@ -12,6 +12,32 @@ export type UpdateBarberInput = {
     whatsapp_phone?: string | null
 }
 
+function normalizeChileWhatsapp(value?: string | null) {
+    if (!value) return null
+
+    const digits = value.replace(/\D/g, '')
+
+    if (!digits) return null
+
+    let phone = digits
+
+    if (phone.startsWith('56')) {
+        phone = phone.slice(2)
+    }
+
+    if (phone.startsWith('9')) {
+        phone = phone.slice(1)
+    }
+
+    phone = phone.slice(0, 8)
+
+    if (phone.length !== 8) {
+        return value.trim()
+    }
+
+    return `+569${phone}`
+}
+
 export async function updateBarber(input: UpdateBarberInput) {
     const supabase = createClient()
 
@@ -23,7 +49,7 @@ export async function updateBarber(input: UpdateBarberInput) {
         specialty: input.specialty?.trim() || null,
         is_active: input.is_active ?? true,
         display_order: input.display_order ?? 0,
-        whatsapp_phone: input.whatsapp_phone?.trim() || null,
+        whatsapp_phone: normalizeChileWhatsapp(input.whatsapp_phone),
     }
 
     const { data, error } = await supabase
@@ -31,6 +57,7 @@ export async function updateBarber(input: UpdateBarberInput) {
         .update(payload)
         .eq('id', input.id)
         .select()
+        .single()
 
     if (error) {
         throw new Error(error.message)

@@ -6,6 +6,9 @@ export type BusinessBySlug = {
     name: string
     slug: string
     subscription_status: string | null
+    plan_slug: string | null
+    max_barbers: number | null
+    max_services: number | null
 }
 
 export async function getBusinessBySlug(slug: string): Promise<BusinessBySlug> {
@@ -13,7 +16,15 @@ export async function getBusinessBySlug(slug: string): Promise<BusinessBySlug> {
 
     const { data, error } = await supabase
         .from('businesses')
-        .select('id, name, slug, subscription_status')
+        .select(`
+            id,
+            name,
+            slug,
+            subscription_status,
+            plan_slug,
+            max_barbers,
+            max_services
+        `)
         .eq('slug', slug)
         .single()
 

@@ -64,6 +64,16 @@ export default async function AdminServiciosPage({
     const popularServices = services.filter((service) => service.is_popular).length
     const canCreate = canCreateWithSubscription(business.subscription_status)
     const canEdit = canEditWithSubscription(business.subscription_status)
+    const maxServices = business.max_services
+    const hasUnlimitedServices = maxServices === null
+    const reachedServiceLimit =
+        !hasUnlimitedServices && services.length >= maxServices
+
+    const canCreateService = canCreate && !reachedServiceLimit
+
+    const serviceLimitLabel = hasUnlimitedServices
+        ? `${services.length}/∞ servicios`
+        : `${services.length}/${maxServices} servicios`
 
     return (
         <main className="min-h-screen px-4 py-5 text-slate-950 md:px-8 md:py-6">
@@ -94,7 +104,7 @@ export default async function AdminServiciosPage({
 
                 <AdminServiceForm
                     businessId={business.id}
-                    canCreate={canCreate}
+                    canCreate={canCreateService}
                 />
 
                 <section className="overflow-hidden rounded-[26px] border border-black/10 bg-[#FFFCF4] shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
