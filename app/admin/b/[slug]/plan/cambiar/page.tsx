@@ -21,37 +21,71 @@ const PLANS: Array<{
     name: string
     priceLabel: string
     description: string
-    highlight?: boolean
+    badge?: string
+    features: string[]
 }> = [
         {
             slug: 'starter',
             name: 'Starter',
             priceLabel: '$0',
-            description: 'Ideal para comenzar y validar el negocio.',
+            description: 'Para comenzar y validar el negocio.',
+            features: ['1 barbero activo', '5 servicios activos', 'Panel básico'],
         },
         {
             slug: 'pro',
             name: 'Pro',
             priceLabel: '$9.990',
-            description: 'Más capacidad para crecer y ordenar mejor el catálogo.',
-            highlight: true,
+            description: 'Para negocios que ya están creciendo.',
+            badge: 'Recomendado',
+            features: ['3 barberos activos', '15 servicios activos', 'Catálogo ampliado'],
         },
         {
             slug: 'studio',
             name: 'Studio',
             priceLabel: '$19.990',
-            description: 'Pensado para negocios con mayor operación y equipo.',
+            description: 'Para equipos con mayor operación.',
+            features: ['Barberos ilimitados', 'Servicios ilimitados', 'Mayor capacidad operativa'],
         },
     ]
 
-function getUsageLabel(max: number | null) {
-    return max ?? 'Ilimitados'
+function isUnlimited(max?: number | null) {
+    return max === null || max === undefined
 }
 
-function getUsagePercentage(used: number, max: number | null) {
-    if (!max || max <= 0) return 0
+function getLimitLabel(max?: number | null) {
+    return isUnlimited(max) ? 'Ilimitado' : String(max)
+}
 
+function getUsageText(used: number, max?: number | null) {
+    if (isUnlimited(max)) return `${used} activos`
+    return `${used}/${max}`
+}
+
+function getUsagePercentage(used: number, max?: number | null) {
+    if (!max || max <= 0) return 0
     return Math.min(100, Math.round((used / max) * 100))
+}
+
+function getBlockedReason({
+    activeBarbers,
+    activeServices,
+    maxBarbers,
+    maxServices,
+}: {
+    activeBarbers: number
+    activeServices: number
+    maxBarbers: number | null
+    maxServices: number | null
+}) {
+    if (maxBarbers !== null && activeBarbers > maxBarbers) {
+        return `Tienes ${activeBarbers} barberos activos y este plan permite ${maxBarbers}.`
+    }
+
+    if (maxServices !== null && activeServices > maxServices) {
+        return `Tienes ${activeServices} servicios activos y este plan permite ${maxServices}.`
+    }
+
+    return null
 }
 
 export default async function AdminCambiarPlanPage({
@@ -88,22 +122,32 @@ export default async function AdminCambiarPlanPage({
         { data: businessPlan, error: businessPlanError },
         barbersCountRes,
         servicesCountRes,
+        { data: pendingPlanRequest },
     ] = await Promise.all([
         supabase
             .from('businesses')
             .select('id, name, slug, plan_slug, subscription_status')
             .eq('id', business.id)
             .single(),
+
         supabase
             .from('barbers')
             .select('*', { count: 'exact', head: true })
             .eq('business_id', business.id)
             .eq('is_active', true),
+
         supabase
             .from('services')
             .select('*', { count: 'exact', head: true })
             .eq('business_id', business.id)
             .eq('is_active', true),
+
+        supabase
+            .from('plan_change_requests')
+            .select('id, current_plan_slug, requested_plan_slug, status')
+            .eq('business_id', business.id)
+            .eq('status', 'pending')
+            .maybeSingle(),
     ])
 
     if (businessPlanError || !businessPlan) {
@@ -112,212 +156,219 @@ export default async function AdminCambiarPlanPage({
 
     const activeBarbers = barbersCountRes.count ?? 0
     const activeServices = servicesCountRes.count ?? 0
+    const hasPendingRequest = !!pendingPlanRequest
+    const currentPlanSlug = businessPlan.plan_slug as AllowedPlanSlug
 
     return (
-        <main className="min-h-screen bg-[#F4EFE5] px-4 py-6 text-slate-950 md:px-8 md:py-8">
-            <div className="mx-auto max-w-7xl space-y-6 md:space-y-8">
-                <header className="flex flex-col gap-5 border-b border-black/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
-                    <div>
-                        <p className="text-sm font-bold text-slate-500">
-                            {businessPlan.name}
-                        </p>
+        <main className="min-h-screen px-4 py-6 text-slate-950 md:px-8 md:py-8">
+            <div className="mx-auto max-w-7xl space-y-6">
+                <header className="border-b border-black/10 pb-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                            <p className="text-sm font-bold text-slate-500">
+                                {businessPlan.name}
+                            </p>
 
-                        <h1 className="mt-1 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                            Cambiar plan
-                        </h1>
+                            <h1 className="mt-1 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
+                                Cambiar plan
+                            </h1>
 
-                        <p className="mt-2 max-w-[720px] text-sm leading-6 text-slate-600 md:text-base md:leading-7">
-                            Revisa los límites disponibles y elige el plan que mejor calce con el tamaño actual del negocio.
-                        </p>
+                            <p className="mt-2 max-w-[720px] text-sm leading-6 text-slate-600 md:text-base">
+                                Compara los planes disponibles y solicita el cambio que mejor calce con tu operación.
+                            </p>
+                        </div>
+
+                        <Link
+                            href={`/admin/b/${business.slug}/plan`}
+                            className="inline-flex h-10 w-fit items-center justify-center rounded-2xl border border-black/10 bg-white px-4 text-xs font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98]"
+                        >
+                            ← Volver a plan
+                        </Link>
                     </div>
-
-                    <Link
-                        href={`/admin/b/${business.slug}/plan`}
-                        className="inline-flex h-11 w-fit items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98]"
-                    >
-                        Volver a plan
-                    </Link>
                 </header>
 
-                <section className="grid gap-4 md:grid-cols-2">
-                    <article className="rounded-[28px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:p-6">
-                        <div className="flex items-start justify-between gap-4">
+                <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+                    <article className="rounded-[28px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                                 <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
-                                    Uso actual
+                                    Plan actual
                                 </p>
 
-                                <h2 className="mt-3 text-4xl font-black text-slate-950">
-                                    {activeBarbers}
-                                    <span className="text-base font-black text-slate-400">
-                                        {' '}
-                                        barberos
-                                    </span>
+                                <h2 className="mt-2 text-4xl font-black text-slate-950">
+                                    {formatPlanLabel(businessPlan.plan_slug)}
                                 </h2>
+
+                                <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                                    Este es el plan activo del negocio.
+                                </p>
                             </div>
 
-                            <span className="rounded-full bg-[#C8942E]/10 px-3 py-1 text-xs font-black text-[#8A5D16]">
-                                Activos
+                            <span className="w-fit rounded-full bg-[#C8942E] px-4 py-2 text-xs font-black text-white shadow-sm">
+                                Activo
                             </span>
                         </div>
 
-                        <p className="mt-3 text-sm leading-6 text-slate-500">
-                            Barberos activos que se consideran para validar límites del plan.
-                        </p>
+                        {hasPendingRequest && (
+                            <div className="mt-5 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-orange-800">
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em]">
+                                    Solicitud pendiente
+                                </p>
+
+                                <p className="mt-1 text-sm font-black">
+                                    {formatPlanLabel(pendingPlanRequest.current_plan_slug)} →{' '}
+                                    {formatPlanLabel(pendingPlanRequest.requested_plan_slug)}
+                                </p>
+
+                                <p className="mt-1 text-xs font-bold">
+                                    Administración debe revisar esta solicitud antes de enviar otra.
+                                </p>
+                            </div>
+                        )}
                     </article>
 
-                    <article className="rounded-[28px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:p-6">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
-                                    Catálogo actual
+                    <article className="rounded-[28px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                            Uso actual
+                        </p>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
+                                <p className="text-sm font-bold text-slate-600">
+                                    Barberos activos
                                 </p>
 
-                                <h2 className="mt-3 text-4xl font-black text-slate-950">
-                                    {activeServices}
-                                    <span className="text-base font-black text-slate-400">
-                                        {' '}
-                                        servicios
-                                    </span>
-                                </h2>
+                                <p className="mt-2 text-3xl font-black text-slate-950">
+                                    {activeBarbers}
+                                </p>
                             </div>
 
-                            <span className="rounded-full bg-[#C8942E]/10 px-3 py-1 text-xs font-black text-[#8A5D16]">
-                                Activos
-                            </span>
+                            <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
+                                <p className="text-sm font-bold text-slate-600">
+                                    Servicios activos
+                                </p>
+
+                                <p className="mt-2 text-3xl font-black text-slate-950">
+                                    {activeServices}
+                                </p>
+                            </div>
                         </div>
 
-                        <p className="mt-3 text-sm leading-6 text-slate-500">
-                            Servicios activos que se consideran para validar límites del plan.
+                        <p className="mt-4 text-sm font-semibold leading-6 text-slate-500">
+                            Se validan al solicitar un downgrade.
                         </p>
                     </article>
                 </section>
 
-                <section className="grid gap-4 lg:grid-cols-3">
+                <section className="grid items-start gap-4 lg:grid-cols-3">
                     {PLANS.map((plan) => {
-                        const isCurrentPlan = businessPlan.plan_slug === plan.slug
                         const limits = PLAN_LIMITS[plan.slug]
+                        const isCurrentPlan = currentPlanSlug === plan.slug
 
-                        const exceedsBarbers =
-                            limits.maxBarbers !== null &&
-                            activeBarbers > limits.maxBarbers
+                        const blockedReason = getBlockedReason({
+                            activeBarbers,
+                            activeServices,
+                            maxBarbers: limits.maxBarbers,
+                            maxServices: limits.maxServices,
+                        })
 
-                        const exceedsServices =
-                            limits.maxServices !== null &&
-                            activeServices > limits.maxServices
-
-                        const isBlocked = exceedsBarbers || exceedsServices
-
-                        let blockedReason = ''
-
-                        if (exceedsBarbers) {
-                            blockedReason = `Tienes ${activeBarbers} barberos activos y este plan permite ${limits.maxBarbers}.`
-                        } else if (exceedsServices) {
-                            blockedReason = `Tienes ${activeServices} servicios activos y este plan permite ${limits.maxServices}.`
-                        }
-
+                        const isBlocked = !!blockedReason && !isCurrentPlan
                         const barbersPercentage = getUsagePercentage(
                             activeBarbers,
                             limits.maxBarbers
                         )
-
                         const servicesPercentage = getUsagePercentage(
                             activeServices,
                             limits.maxServices
                         )
 
+                        const isUnlimitedPlan =
+                            isUnlimited(limits.maxBarbers) &&
+                            isUnlimited(limits.maxServices)
+
                         return (
                             <article
                                 key={plan.slug}
-                                className={`relative overflow-hidden rounded-[28px] border bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(15,23,42,0.11)] md:p-6 ${isCurrentPlan
-                                        ? 'border-[#C8942E]'
-                                        : 'border-black/10'
-                                    } ${isBlocked && !isCurrentPlan ? 'opacity-75' : ''}`}
+                                className={`relative flex flex-col rounded-[28px] border bg-[#FFFCF4] p-5 shadow-[0_16px_38px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_52px_rgba(15,23,42,0.1)] ${isCurrentPlan ? 'border-[#C8942E]' : 'border-black/10'
+                                    } ${isBlocked ? 'opacity-70' : ''}`}
                             >
-                                {plan.highlight && !isCurrentPlan && (
-                                    <div className="absolute right-5 top-5 rounded-full bg-[#C8942E] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
-                                        Recomendado
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                            {plan.name}
+                                        </p>
+
+                                        <h2 className="mt-2 text-3xl font-black text-slate-950">
+                                            {plan.name}
+                                        </h2>
                                     </div>
-                                )}
 
-                                <div className="pr-24">
-                                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
-                                        {formatPlanLabel(plan.slug)}
-                                    </p>
-
-                                    <h2 className="mt-2 text-3xl font-black text-slate-950">
-                                        {plan.name}
-                                    </h2>
-
-                                    <p className="mt-2 min-h-[48px] text-sm leading-6 text-slate-500">
-                                        {plan.description}
-                                    </p>
+                                    {isCurrentPlan ? (
+                                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200">
+                                            Actual
+                                        </span>
+                                    ) : plan.badge ? (
+                                        <span className="rounded-full bg-[#C8942E] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
+                                            {plan.badge}
+                                        </span>
+                                    ) : null}
                                 </div>
 
-                                {isCurrentPlan && (
-                                    <span className="mt-4 inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200">
-                                        Plan actual
-                                    </span>
-                                )}
+                                <p className="mt-3 min-h-[44px] text-sm font-semibold leading-6 text-slate-500">
+                                    {plan.description}
+                                </p>
 
-                                <div className="mt-6">
-                                    <p className="text-4xl font-black text-slate-950">
+                                <div className="mt-5">
+                                    <p className="text-4xl font-black tracking-tight text-slate-950">
                                         {plan.priceLabel}
                                     </p>
 
-                                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                                    <p className="mt-1 text-sm font-bold text-slate-500">
                                         mensual
                                     </p>
                                 </div>
 
-                                <div className="mt-6 space-y-4">
-                                    <div className="rounded-[22px] border border-black/10 bg-[#FBF7EE] p-4">
-                                        <div className="flex items-center justify-between gap-4">
-                                            <span className="text-sm font-bold text-slate-500">
-                                                Barberos
-                                            </span>
+                                <div className="mt-5 grid gap-2">
+                                    <div className="flex items-center justify-between rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
+                                        <span className="text-sm font-bold text-slate-600">
+                                            Barberos
+                                        </span>
 
-                                            <span className="text-sm font-black text-slate-950">
-                                                {activeBarbers} / {getUsageLabel(limits.maxBarbers)}
-                                            </span>
-                                        </div>
-
-                                        {limits.maxBarbers !== null && (
-                                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
-                                                <div
-                                                    className="h-full rounded-full bg-[#C8942E]"
-                                                    style={{ width: `${barbersPercentage}%` }}
-                                                />
-                                            </div>
-                                        )}
+                                        <span className="text-sm font-black text-slate-950">
+                                            {getLimitLabel(limits.maxBarbers)}
+                                        </span>
                                     </div>
 
-                                    <div className="rounded-[22px] border border-black/10 bg-[#FBF7EE] p-4">
-                                        <div className="flex items-center justify-between gap-4">
-                                            <span className="text-sm font-bold text-slate-500">
-                                                Servicios
-                                            </span>
+                                    <div className="flex items-center justify-between rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
+                                        <span className="text-sm font-bold text-slate-600">
+                                            Servicios
+                                        </span>
 
-                                            <span className="text-sm font-black text-slate-950">
-                                                {activeServices} / {getUsageLabel(limits.maxServices)}
-                                            </span>
-                                        </div>
-
-                                        {limits.maxServices !== null && (
-                                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
-                                                <div
-                                                    className="h-full rounded-full bg-[#C8942E]"
-                                                    style={{ width: `${servicesPercentage}%` }}
-                                                />
-                                            </div>
-                                        )}
+                                        <span className="text-sm font-black text-slate-950">
+                                            {getLimitLabel(limits.maxServices)}
+                                        </span>
                                     </div>
                                 </div>
 
-                                {isBlocked && !isCurrentPlan && (
-                                    <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-800">
-                                        {blockedReason}
+                                <div className="mt-5">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                        Incluye
                                     </p>
+
+                                    <ul className="mt-2 space-y-1.5 text-sm font-semibold text-slate-600">
+                                        {plan.features.map((feature) => (
+                                            <li key={feature} className="flex gap-2">
+                                                <span className="text-[#C8942E]">✓</span>
+                                                <span>{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                {isBlocked && blockedReason && (
+                                    <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold leading-6 text-red-700">
+                                        {blockedReason}
+                                    </div>
                                 )}
 
                                 <div className="mt-6">
@@ -325,45 +376,51 @@ export default async function AdminCambiarPlanPage({
                                         <button
                                             type="button"
                                             disabled
-                                            className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-500 opacity-70"
+                                            className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-black/10 bg-slate-100 px-5 text-sm font-black text-slate-400"
                                         >
                                             Plan actual
+                                        </button>
+                                    ) : hasPendingRequest ? (
+                                        <button
+                                            type="button"
+                                            disabled
+                                            className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-black/10 bg-slate-100 px-5 text-sm font-black text-slate-400"
+                                        >
+                                            Solicitud pendiente
                                         </button>
                                     ) : isBlocked ? (
                                         <button
                                             type="button"
                                             disabled
-                                            className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-500 opacity-70"
+                                            className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-5 text-sm font-black text-red-400"
                                         >
-                                            No disponible con tu uso actual
+                                            No disponible
                                         </button>
                                     ) : (
                                         <ChangePlanButton
                                             businessId={business.id}
-                                            currentPlanSlug={
-                                                businessPlan.plan_slug as AllowedPlanSlug
-                                            }
+                                            currentPlanSlug={currentPlanSlug}
                                             nextPlanSlug={plan.slug}
-                                            label={`Elegir ${formatPlanLabel(plan.slug)}`}
+                                            label="Solicitar cambio"
                                         />
                                     )}
                                 </div>
+
+                                {isUnlimitedPlan && (
+                                    <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[#C8942E]" />
+                                )}
                             </article>
                         )
                     })}
                 </section>
 
-                <section className="rounded-[28px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:p-6">
-                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                <section className="rounded-[24px] border border-[#E7B957] bg-[#FFF7E8] px-5 py-4 text-[#8A5D16] shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em]">
                         Importante
                     </p>
 
-                    <h2 className="mt-1 text-2xl font-black text-slate-950">
-                        Los límites también se validan en backend
-                    </h2>
-
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                        Si tu negocio supera los límites del plan destino, el cambio se bloqueará desde la interfaz y también desde el servidor. Esto evita inconsistencias aunque alguien intente forzar la acción.
+                    <p className="mt-1 text-sm font-semibold leading-6">
+                        Las solicitudes son revisadas por administración antes de aplicar cambios o cobros.
                     </p>
                 </section>
             </div>

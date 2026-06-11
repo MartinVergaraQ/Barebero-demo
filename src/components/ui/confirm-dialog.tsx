@@ -12,6 +12,7 @@ type Props = {
     onConfirm: () => void | Promise<void>
     loading?: boolean
     destructive?: boolean
+    children?: React.ReactNode
 }
 
 export function ConfirmDialog({
@@ -24,6 +25,7 @@ export function ConfirmDialog({
     onConfirm,
     loading = false,
     destructive = false,
+    children,
 }: Props) {
     return (
         <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -39,6 +41,8 @@ export function ConfirmDialog({
                         <AlertDialog.Description className="mt-2 text-[15px] leading-7 text-[#5d584f]">
                             {description}
                         </AlertDialog.Description>
+
+                        {children}
                     </div>
 
                     <div className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:justify-end md:px-6">

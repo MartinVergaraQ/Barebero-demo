@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { requestPlanChangeServer } from '@/src/features/business/api/request-plan-change-server'
+import { createPlanChangeRequestServer } from '@/src/features/business/api/create-plan-change-request-server'
 import {
     PLAN_ORDER,
     type AllowedPlanSlug,
@@ -44,40 +44,40 @@ export function ChangePlanButton({
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
 
     const direction = getPlanChangeDirection(currentPlanSlug, nextPlanSlug)
+    const isSamePlan = direction === 'same'
+    const isDowngrade = direction === 'downgrade'
 
-    const confirmTitle =
-        direction === 'upgrade'
-            ? 'Confirmar upgrade de plan'
-            : direction === 'downgrade'
-                ? 'Confirmar downgrade de plan'
-                : 'Plan actual'
+    const currentPlanLabel = formatPlanLabel(currentPlanSlug)
+    const nextPlanLabel = formatPlanLabel(nextPlanSlug)
 
-    const confirmDescription =
-        direction === 'upgrade'
-            ? `Vas a cambiar de ${formatPlanLabel(currentPlanSlug)} a ${formatPlanLabel(nextPlanSlug)}. Este cambio aumenta la capacidad disponible del negocio.`
-            : direction === 'downgrade'
-                ? `Vas a cambiar de ${formatPlanLabel(currentPlanSlug)} a ${formatPlanLabel(nextPlanSlug)}. Este cambio reduce la capacidad del plan, así que asegúrate de seguir cumpliendo los límites.`
-                : 'Ya estás usando este plan.'
+    const confirmTitle = isDowngrade
+        ? 'Solicitar cambio a un plan menor'
+        : 'Solicitar cambio de plan'
+
+    const confirmDescription = isDowngrade
+        ? `Solicitarás cambiar de ${currentPlanLabel} a ${nextPlanLabel}. Este cambio reduce límites, por lo que será revisado antes de aplicarse.`
+        : `Solicitarás cambiar de ${currentPlanLabel} a ${nextPlanLabel}. Administración revisará la solicitud y confirmará el cambio si corresponde.`
 
     function handleConfirmChange() {
-        if (direction === 'same') return
+        if (isSamePlan) return
 
         startTransition(async () => {
             try {
-                await requestPlanChangeServer({
+                const result = await createPlanChangeRequestServer({
                     businessId,
-                    nextPlanSlug,
+                    requestedPlanSlug: nextPlanSlug,
                 })
 
+                if (!result.ok) {
+                    toast.error(result.message)
+                    return
+                }
+
                 setIsConfirmOpen(false)
-                toast.success('Plan actualizado correctamente')
+                toast.success('Solicitud de cambio enviada correctamente')
                 router.refresh()
-            } catch (error) {
-                toast.error(
-                    error instanceof Error
-                        ? error.message
-                        : 'No se pudo cambiar el plan'
-                )
+            } catch {
+                toast.error('No se pudo enviar la solicitud')
             }
         })
     }
@@ -86,11 +86,14 @@ export function ChangePlanButton({
         <>
             <button
                 type="button"
-                disabled={isPending || direction === 'same'}
+                disabled={isPending || isSamePlan}
                 onClick={() => setIsConfirmOpen(true)}
-                className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                className={`inline-flex h-11 w-full items-center justify-center rounded-2xl px-5 text-sm font-black shadow-sm transition hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 ${isDowngrade
+                        ? 'border border-black/10 bg-white text-slate-800 hover:border-[#C8942E]/40 hover:bg-[#FFF7E8]'
+                        : 'bg-[#C8942E] text-white shadow-[0_14px_30px_rgba(200,148,46,0.22)] hover:brightness-105'
+                    }`}
             >
-                {isPending ? 'Procesando...' : label}
+                {isPending ? 'Enviando solicitud...' : label}
             </button>
 
             <ConfirmDialog
@@ -98,11 +101,11 @@ export function ChangePlanButton({
                 onOpenChange={setIsConfirmOpen}
                 title={confirmTitle}
                 description={confirmDescription}
-                confirmText={isPending ? 'Actualizando...' : 'Confirmar cambio'}
+                confirmText={isPending ? 'Enviando...' : 'Enviar solicitud'}
                 cancelText="Cancelar"
                 onConfirm={handleConfirmChange}
                 loading={isPending}
-                destructive={direction === 'downgrade'}
+                destructive={isDowngrade}
             />
         </>
     )
