@@ -285,23 +285,6 @@ export function AdminBarberForm({
                         + Nuevo barbero
                     </button>
                 </div>
-
-                {!canCreate && disabledReason && (
-                    <div className="mt-4 flex items-start gap-3 rounded-2xl border border-[#E8C46C] bg-[#FFF7E3] px-4 py-3 text-sm shadow-sm">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#C8942E] text-sm font-black text-white">
-                            !
-                        </div>
-
-                        <div className="min-w-0">
-                            <p className="font-black text-[#7A4E0E]">
-                                Límite del plan alcanzado
-                            </p>
-                            <p className="mt-0.5 font-semibold leading-5 text-[#8A5D16]">
-                                {disabledReason}
-                            </p>
-                        </div>
-                    </div>
-                )}
             </section>
 
             {open && (

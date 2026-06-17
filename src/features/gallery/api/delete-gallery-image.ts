@@ -1,3 +1,8 @@
+export type DeleteGalleryImageResult = {
+    success: boolean
+    result?: string
+}
+
 export async function deleteGalleryImage(publicId: string) {
     const response = await fetch('/api/upload/gallery-image/delete', {
         method: 'POST',
@@ -11,17 +16,26 @@ export async function deleteGalleryImage(publicId: string) {
 
     const text = await response.text()
 
-    let data: { error?: string; result?: unknown } = {}
+    let data: {
+        success?: boolean
+        error?: string
+        result?: string
+    } = {}
 
     try {
         data = text ? JSON.parse(text) : {}
     } catch {
-        throw new Error(`La respuesta no fue JSON válido: ${text}`)
+        throw new Error('El servidor devolvió una respuesta inválida')
     }
 
     if (!response.ok) {
-        throw new Error(data.error || 'Error eliminando imagen en Cloudinary')
+        throw new Error(
+            data.error || 'Error eliminando imagen en Cloudinary'
+        )
     }
 
-    return data
+    return {
+        success: data.success === true,
+        result: data.result,
+    }
 }

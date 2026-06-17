@@ -69,6 +69,17 @@ export default async function AdminBloqueosPage({
 
     const isBarber = isBarberRole(profile.role)
 
+    const canEdit =
+        business.subscription_status === 'trialing' ||
+        business.subscription_status === 'active'
+
+    const subscriptionBlockReason =
+        business.subscription_status === 'past_due'
+            ? 'Tu negocio está en modo solo lectura porque existe un pago pendiente.'
+            : business.subscription_status === 'canceled'
+                ? 'Tu negocio está en modo solo lectura porque la suscripción está cancelada.'
+                : ''
+
     return (
         <main className="min-h-screen px-4 py-5 text-slate-950 md:px-8 md:py-6">
             <div className="mx-auto max-w-7xl space-y-5">
@@ -87,12 +98,20 @@ export default async function AdminBloqueosPage({
                         </p>
                     </div>
 
-                    <div className="flex w-fit items-center gap-2 rounded-full bg-[#C8942E]/10 px-4 py-2 text-xs font-black text-[#8A5D16]">
+                    <div
+                        className={`flex w-fit items-center gap-2 rounded-full px-4 py-2 text-xs font-black ${canEdit
+                                ? 'bg-[#C8942E]/10 text-[#8A5D16]'
+                                : 'border border-slate-200 bg-slate-100 text-slate-500'
+                            }`}
+                    >
                         <span>{isBarber ? 'Mis bloqueos' : 'Equipo'}</span>
-                        <span className="h-1 w-1 rounded-full bg-[#C8942E]" />
-                        <span>
-                            {barbers.length} barbero{barbers.length === 1 ? '' : 's'}
-                        </span>
+
+                        <span
+                            className={`h-1 w-1 rounded-full ${canEdit ? 'bg-[#C8942E]' : 'bg-slate-400'
+                                }`}
+                        />
+
+                        <span>{canEdit ? 'Edición habilitada' : 'Solo lectura'}</span>
                     </div>
                 </header>
 
@@ -113,6 +132,8 @@ export default async function AdminBloqueosPage({
                 ) : (
                     <section className="overflow-hidden rounded-[26px] border border-black/10 bg-[#FFFCF4] p-4 shadow-[0_14px_35px_rgba(15,23,42,0.06)] md:p-5">
                         <AdminTimeOffForm
+                            canEdit={canEdit}
+                            subscriptionBlockReason={subscriptionBlockReason}
                             barbers={barbers.map((barber) => ({
                                 id: barber.id,
                                 business_id: barber.business_id,

@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X } from 'lucide-react'
+import { LockKeyhole, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { uploadGalleryImage } from '@/src/features/gallery/api/upload-gallery-image'
-import { createGalleryItem } from '@/src/features/gallery/api/create-gallery-item'
+import { createGalleryItemServer } from '@/src/features/gallery/api/create-gallery-item-server'
 import { AdminInput } from '@/src/features/admin/components/admin-input'
 import { AdminSelect } from '@/src/features/admin/components/admin-select'
 
@@ -15,8 +15,9 @@ type ServiceOption = {
 }
 
 type Props = {
-    businessId: string
     barberId?: string
+    canCreate: boolean
+    subscriptionBlockReason?: string
     allowBarberAssignment?: boolean
     services?: ServiceOption[]
     barbers?: Array<{
@@ -38,8 +39,9 @@ function getInitialForm(barberId?: string) {
 }
 
 export function AdminGalleryForm({
-    businessId,
     barberId,
+    canCreate,
+    subscriptionBlockReason,
     allowBarberAssignment = false,
     barbers = [],
     services = [],
@@ -50,6 +52,8 @@ export function AdminGalleryForm({
     const [uploading, setUploading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [form, setForm] = useState(getInitialForm(barberId))
+
+
 
     useEffect(() => {
         if (!open) return
@@ -74,20 +78,56 @@ export function AdminGalleryForm({
     }
 
     function handleOpen() {
+        if (!canCreate) {
+            toast.error(
+                subscriptionBlockReason ||
+                'La suscripción actual no permite agregar imágenes.'
+            )
+            return
+        }
+
         resetForm()
         setOpen(true)
     }
 
-    function updateField(field: keyof typeof form, value: string | boolean) {
+    function updateField(
+        field: keyof typeof form, value: string | boolean
+    ) {
+        if (!canCreate) return
         setForm((prev) => ({
             ...prev,
             [field]: value,
         }))
     }
 
-    async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    async function handleImageChange(
+        e: React.ChangeEvent<HTMLInputElement>
+    ) {
+        if (!canCreate) {
+            toast.error(
+                subscriptionBlockReason ||
+                'La suscripción actual no permite subir imágenes.'
+            )
+            e.target.value = ''
+            return
+        }
+
         const file = e.target.files?.[0]
         if (!file) return
+
+        if (!file.type.startsWith('image/')) {
+            toast.error('Selecciona una imagen válida')
+            e.target.value = ''
+            return
+        }
+
+        const maxSize = 5 * 1024 * 1024
+
+        if (file.size > maxSize) {
+            toast.error('La imagen no puede superar los 5 MB')
+            e.target.value = ''
+            return
+        }
 
         setUploading(true)
 
@@ -122,24 +162,40 @@ export function AdminGalleryForm({
         }
     }
 
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault()
-        setSaving(true)
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>
 
+    ) {
+        e.preventDefault()
+
+        if (!canCreate) {
+            toast.error(
+                subscriptionBlockReason ||
+                'La suscripción actual no permite agregar imágenes.'
+            )
+            return
+        }
+
+        setSaving(true)
         try {
             validateForm()
 
-            await createGalleryItem({
-                business_id: businessId,
-                barber_id: form.selectedBarberId || null,
-                service_id: form.selectedServiceId || null,
-                type: 'image',
-                title: form.title.trim(),
+            if (!form.publicId) {
+                throw new Error('Primero sube una imagen')
+            }
+
+            const result = await createGalleryItemServer({
+                title: form.title,
                 media_url: form.mediaUrl,
                 public_id: form.publicId,
                 display_order: Number(form.displayOrder || 0),
                 is_active: form.isActive,
+                barber_id: form.selectedBarberId || null,
+                service_id: form.selectedServiceId || null,
             })
+
+            if (!result.ok) {
+                throw new Error(result.message)
+            }
 
             toast.success('Imagen agregada a la galería')
             resetForm()
@@ -172,13 +228,21 @@ export function AdminGalleryForm({
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={handleOpen}
-                        className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] md:w-auto"
-                    >
-                        + Nueva imagen
-                    </button>
+                    {canCreate ? (
+                        <button
+                            type="button"
+                            onClick={handleOpen}
+                            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] md:w-auto"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Nueva imagen
+                        </button>
+                    ) : (
+                        <div className="inline-flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-5 text-sm font-black text-slate-500 md:w-auto">
+                            <LockKeyhole className="h-4 w-4" />
+                            Solo lectura
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -260,7 +324,7 @@ export function AdminGalleryForm({
                                             <div className="mt-4">
                                                 <input
                                                     type="file"
-                                                    accept="image/*"
+                                                    accept="image/jpeg,image/png,image/webp,image/avif"
                                                     onChange={handleImageChange}
                                                     disabled={uploading || saving}
                                                     className="block w-full cursor-pointer rounded-2xl border border-black/10 bg-white text-sm font-semibold text-slate-700 file:mr-4 file:h-11 file:border-0 file:bg-[#C8942E] file:px-4 file:text-sm file:font-black file:text-white disabled:cursor-not-allowed disabled:opacity-60"
@@ -367,8 +431,8 @@ export function AdminGalleryForm({
                                                         updateField('isActive', !form.isActive)
                                                     }
                                                     className={`flex h-12 w-full items-center justify-between rounded-2xl border px-4 text-sm font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${form.isActive
-                                                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                                                            : 'border-black/10 bg-white text-slate-600 hover:bg-[#FFFCF4]'
+                                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                                        : 'border-black/10 bg-white text-slate-600 hover:bg-[#FFFCF4]'
                                                         }`}
                                                 >
                                                     <span>Visible en galería pública</span>
@@ -394,7 +458,12 @@ export function AdminGalleryForm({
 
                                         <button
                                             type="submit"
-                                            disabled={saving || uploading}
+                                            disabled={
+                                                saving ||
+                                                uploading ||
+                                                !form.mediaUrl ||
+                                                !form.publicId
+                                            }
                                             className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                                         >
                                             {saving ? 'Guardando...' : 'Guardar imagen'}

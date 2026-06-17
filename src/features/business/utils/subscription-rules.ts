@@ -3,20 +3,50 @@ export type SubscriptionStatus =
     | 'active'
     | 'past_due'
     | 'canceled'
-    | string
     | null
     | undefined
 
+export function normalizeSubscriptionStatus(
+    status?: string | null
+): SubscriptionStatus {
+    if (
+        status === 'trialing' ||
+        status === 'active' ||
+        status === 'past_due' ||
+        status === 'canceled'
+    ) {
+        return status
+    }
+
+    return 'trialing'
+}
+
+export function isSubscriptionBlocked(status?: SubscriptionStatus) {
+    return status === 'past_due' || status === 'canceled'
+}
+
 export function canCreateWithSubscription(status?: SubscriptionStatus) {
-    return status !== 'past_due' && status !== 'canceled'
+    return !isSubscriptionBlocked(status)
 }
 
 export function canEditWithSubscription(status?: SubscriptionStatus) {
-    return status !== 'past_due' && status !== 'canceled'
+    return !isSubscriptionBlocked(status)
 }
 
 export function canManageCatalogWithSubscription(status?: SubscriptionStatus) {
-    return status !== 'past_due' && status !== 'canceled'
+    return !isSubscriptionBlocked(status)
+}
+
+export function getSubscriptionBlockReason(status?: SubscriptionStatus) {
+    if (status === 'past_due') {
+        return 'Hay un pago pendiente. Regulariza la suscripción para volver a crear o editar contenido.'
+    }
+
+    if (status === 'canceled') {
+        return 'La suscripción está cancelada. Reactívala para recuperar la gestión completa del negocio.'
+    }
+
+    return ''
 }
 
 export function formatPlanLabel(planSlug?: string | null) {
@@ -144,3 +174,4 @@ export function getPlanChangeType(
 
     return 'Cambio'
 }
+

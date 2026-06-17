@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
-import { updateBusiness } from '@/src/features/business/api/update-business'
+import { useRouter } from 'next/navigation'
+import { updateBusinessServer } from '@/src/features/business/api/update-business-server'
 import { createClient } from '@/src/lib/supabase/browser'
 import { AdminInput } from '@/src/features/admin/components/admin-input'
 import { AdminSelect } from '@/src/features/admin/components/admin-select'
@@ -24,23 +24,14 @@ type Props = {
         timezone: string
         whatsapp_phone: string | null
         whatsapp_routing: 'business' | 'barber' | 'fallback' | null
+
+        // Solo lectura
         plan_slug: string
         subscription_status: 'trialing' | 'active' | 'past_due' | 'canceled'
         trial_ends_at: string | null
-        max_barbers: number
-        max_services: number
+        max_barbers: number | null
+        max_services: number | null
     }
-}
-
-function slugify(value: string) {
-    return value
-        .toLowerCase()
-        .trim()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
 }
 
 function getFileExtension(fileName: string) {
@@ -62,7 +53,6 @@ const BUCKET_NAME = 'business-assests'
 
 export function AdminBusinessForm({ business }: Props) {
     const router = useRouter()
-    const pathname = usePathname()
     const supabase = createClient()
 
     const [loading, setLoading] = useState(false)
@@ -83,7 +73,6 @@ export function AdminBusinessForm({ business }: Props) {
 
     const [form, setForm] = useState({
         name: business.name ?? '',
-        slug: business.slug ?? '',
         phone: business.phone ?? '',
         email: business.email ?? '',
         address: business.address ?? '',
@@ -95,14 +84,7 @@ export function AdminBusinessForm({ business }: Props) {
         description: business.description ?? '',
         timezone: business.timezone ?? 'America/Santiago',
         whatsapp_phone: business.whatsapp_phone ?? '',
-        whatsapp_routing: business.whatsapp_routing ?? 'fallback',
-        plan_slug: business.plan_slug ?? 'starter',
-        subscription_status: business.subscription_status ?? 'trialing',
-        trial_ends_at: business.trial_ends_at
-            ? business.trial_ends_at.slice(0, 10)
-            : '',
-        max_barbers: String(business.max_barbers ?? 1),
-        max_services: String(business.max_services ?? 3),
+        whatsapp_routing: business.whatsapp_routing ?? 'fallback'
     })
 
     useEffect(() => {
@@ -119,17 +101,16 @@ export function AdminBusinessForm({ business }: Props) {
                 [field]: value,
             }
 
-            if (field === 'name' && !prev.slug) {
-                next.slug = slugify(value)
-            }
-
             return next
         })
     }
 
     async function uploadBusinessImage(file: File, type: 'logo' | 'cover') {
-        const normalizedSlug = slugify(form.slug || form.name || business.slug)
-        const filePath = getPublicAssetPath(normalizedSlug, type, file.name)
+        const filePath = getPublicAssetPath(
+            business.slug,
+            type,
+            file.name
+        )
 
         const { error: uploadError } = await supabase.storage
             .from(BUCKET_NAME)
@@ -246,22 +227,22 @@ export function AdminBusinessForm({ business }: Props) {
         }
     }
 
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(
+        e: React.FormEvent<HTMLFormElement>
+    ) {
         e.preventDefault()
         setLoading(true)
         setMessage('')
         setErrorMessage('')
 
         try {
-            if (!form.name.trim()) throw new Error('Ingresa el nombre del negocio')
-            if (!form.slug.trim()) throw new Error('Ingresa el slug')
+            if (!form.name.trim()) {
+                throw new Error('Ingresa el nombre del negocio')
+            }
 
-            const normalizedSlug = slugify(form.slug || form.name)
-
-            await updateBusiness({
+            await updateBusinessServer({
                 id: business.id,
                 name: form.name,
-                slug: normalizedSlug,
                 phone: form.phone,
                 email: form.email,
                 address: form.address,
@@ -274,32 +255,15 @@ export function AdminBusinessForm({ business }: Props) {
                 timezone: form.timezone,
                 whatsapp_phone: form.whatsapp_phone,
                 whatsapp_routing: form.whatsapp_routing,
-                plan_slug: form.plan_slug,
-                subscription_status: form.subscription_status,
-                trial_ends_at: form.trial_ends_at || null,
-                max_barbers: Number(form.max_barbers || 1),
-                max_services: Number(form.max_services || 3),
             })
 
-            const normalizedOldSlug = business.slug.trim()
-            const normalizedNewSlug = normalizedSlug.trim()
-
             setMessage('Negocio actualizado correctamente')
-
-            if (normalizedNewSlug !== normalizedOldSlug) {
-                const nextPath = pathname.replace(
-                    `/admin/b/${normalizedOldSlug}`,
-                    `/admin/b/${normalizedNewSlug}`
-                )
-
-                router.replace(nextPath)
-                return
-            }
-
             router.refresh()
         } catch (error) {
             setErrorMessage(
-                error instanceof Error ? error.message : 'Error actualizando negocio'
+                error instanceof Error
+                    ? error.message
+                    : 'Error actualizando negocio'
             )
         } finally {
             setLoading(false)
@@ -342,17 +306,16 @@ export function AdminBusinessForm({ business }: Props) {
                             />
 
                             <div>
-                                <AdminInput
-                                    id="business-slug"
-                                    label="Slug"
-                                    value={form.slug}
-                                    onChange={(value) => updateField('slug', value)}
-                                    placeholder="demo-barber-studio"
-                                    disabled={loading}
-                                />
+                                <p className="mb-2 block text-sm font-black text-slate-700">
+                                    Slug
+                                </p>
+
+                                <div className="flex min-h-12 items-center rounded-2xl border border-black/10 bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600">
+                                    {business.slug}
+                                </div>
 
                                 <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                                    Se convertirá automáticamente a formato URL válido al guardar.
+                                    El slug identifica la URL pública y no puede modificarse desde este panel.
                                 </p>
                             </div>
 
@@ -683,68 +646,78 @@ export function AdminBusinessForm({ business }: Props) {
                         </h3>
 
                         <div className="mt-5 grid gap-4 md:grid-cols-2">
-                            <AdminSelect
-                                id="business-plan"
-                                label="Plan"
-                                value={form.plan_slug}
-                                onChange={(value) => updateField('plan_slug', value)}
-                                disabled={loading}
-                                options={[
-                                    { value: 'starter', label: 'Starter' },
-                                    { value: 'pro', label: 'Pro' },
-                                    { value: 'studio', label: 'Studio' },
-                                ]}
-                            />
+                            <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
+                                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                                    Plan actual
+                                </p>
 
-                            <AdminSelect
-                                id="business-subscription-status"
-                                label="Estado de suscripción"
-                                value={form.subscription_status}
-                                onChange={(value) =>
-                                    updateField('subscription_status', value)
-                                }
-                                disabled={loading}
-                                options={[
-                                    { value: 'trialing', label: 'Trialing' },
-                                    { value: 'active', label: 'Activa' },
-                                    { value: 'past_due', label: 'Pago pendiente' },
-                                    { value: 'canceled', label: 'Cancelada' },
-                                ]}
-                            />
+                                <p className="mt-1 text-base font-black text-slate-950">
+                                    {business.plan_slug === 'studio'
+                                        ? 'Studio'
+                                        : business.plan_slug === 'pro'
+                                            ? 'Pro'
+                                            : 'Starter'}
+                                </p>
+                            </div>
 
-                            <AdminInput
-                                id="business-trial-end"
-                                label="Trial hasta"
-                                type="date"
-                                value={form.trial_ends_at}
-                                onChange={(value) =>
-                                    updateField('trial_ends_at', value)
-                                }
-                                disabled={loading}
-                            />
+                            <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
+                                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                                    Estado
+                                </p>
 
-                            <AdminInput
-                                id="business-max-barbers"
-                                label="Máximo de barberos"
-                                type="number"
-                                value={form.max_barbers}
-                                onChange={(value) =>
-                                    updateField('max_barbers', value)
-                                }
-                                disabled={loading}
-                            />
+                                <p className="mt-1 text-base font-black text-slate-950">
+                                    {business.subscription_status === 'active'
+                                        ? 'Activa'
+                                        : business.subscription_status === 'past_due'
+                                            ? 'Pago pendiente'
+                                            : business.subscription_status === 'canceled'
+                                                ? 'Cancelada'
+                                                : 'Período de prueba'}
+                                </p>
+                            </div>
 
-                            <AdminInput
-                                id="business-max-services"
-                                label="Máximo de servicios"
-                                type="number"
-                                value={form.max_services}
-                                onChange={(value) =>
-                                    updateField('max_services', value)
-                                }
-                                disabled={loading}
-                            />
+                            <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
+                                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                                    Máximo de barberos
+                                </p>
+
+                                <p className="mt-1 text-base font-black text-slate-950">
+                                    {business.max_barbers === null
+                                        ? 'Ilimitado'
+                                        : business.max_barbers}
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
+                                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                                    Máximo de servicios
+                                </p>
+
+                                <p className="mt-1 text-base font-black text-slate-950">
+                                    {business.max_services === null
+                                        ? 'Ilimitado'
+                                        : business.max_services}
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 md:col-span-2">
+                                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                                    Fin del período de prueba
+                                </p>
+
+                                <p className="mt-1 text-base font-black text-slate-950">
+                                    {business.trial_ends_at
+                                        ? new Date(
+                                            business.trial_ends_at
+                                        ).toLocaleDateString('es-CL')
+                                        : 'No aplica'}
+                                </p>
+                            </div>
                         </div>
+
+                        <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-800">
+                            El plan, los límites y el estado de suscripción son administrados por la plataforma. Puedes solicitar un cambio desde la sección de planes.
+                        </p>
 
                         <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-800">
                             Cambiar plan, límites o estado de suscripción desde aquí afecta directamente los permisos del negocio.

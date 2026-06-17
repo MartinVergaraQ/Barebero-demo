@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createTimeOff } from '@/src/features/time-off/api/create-time-off'
+import { createTimeOffServer } from '@/src/features/time-off/api/create-time-off-server'
 import {
     getTimeOffByBarber,
     type TimeOffItem,
@@ -21,6 +21,8 @@ type Barber = {
 
 type Props = {
     barbers: Barber[]
+    canEdit: boolean
+    subscriptionBlockReason?: string
 }
 
 function formatDateTimeLocal(date: Date) {
@@ -76,7 +78,7 @@ function getDurationLabel(startAt: string, endAt: string) {
     return rest ? `${hours} h ${rest} min` : `${hours} h`
 }
 
-export function AdminTimeOffForm({ barbers }: Props) {
+export function AdminTimeOffForm({ barbers, canEdit, subscriptionBlockReason }: Props) {
     const isSingleBarber = barbers.length === 1
 
     const [selectedBarberId, setSelectedBarberId] = useState(
@@ -132,6 +134,8 @@ export function AdminTimeOffForm({ barbers }: Props) {
     }, [selectedBarberId])
 
     function updateField(field: keyof typeof form, value: string) {
+        if (!canEdit) return
+
         setForm((prev) => ({
             ...prev,
             [field]: value,
@@ -140,6 +144,13 @@ export function AdminTimeOffForm({ barbers }: Props) {
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
+        if (!canEdit) {
+            setErrorMessage(
+                subscriptionBlockReason ||
+                'La suscripción actual no permite crear bloqueos.'
+            )
+            return
+        }
         setSaving(true)
         setMessage('')
         setErrorMessage('')
@@ -160,13 +171,16 @@ export function AdminTimeOffForm({ barbers }: Props) {
                 throw new Error('La fecha de inicio debe ser menor que la de fin')
             }
 
-            await createTimeOff({
-                business_id: selectedBarber.business_id,
+            const result = await createTimeOffServer({
                 barber_id: selectedBarber.id,
                 start_at: start.toISOString(),
                 end_at: end.toISOString(),
                 reason: form.reason,
             })
+
+            if (!result.ok) {
+                throw new Error(result.message)
+            }
 
             setMessage('El tramo quedó bloqueado y ya no aparecerá para reservas públicas.')
             setForm({
@@ -202,6 +216,41 @@ export function AdminTimeOffForm({ barbers }: Props) {
                 message={message}
                 onClose={() => setMessage('')}
             />
+
+            {!canEdit && (
+                <div className="flex items-start gap-3 rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-200 text-slate-600">
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="h-5 w-5"
+                            aria-hidden="true"
+                        >
+                            <rect x="5" y="10" width="14" height="10" rx="2" />
+                            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                        </svg>
+                    </div>
+
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-black text-slate-900">
+                                Bloqueos en modo lectura
+                            </p>
+
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-800">
+                                Pago pendiente
+                            </span>
+                        </div>
+
+                        <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
+                            {subscriptionBlockReason ||
+                                'Puedes consultar los bloqueos existentes, pero no crear ni eliminar registros.'}
+                        </p>
+                    </div>
+                </div>
+            )}
             <div className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] lg:items-end">
                     <div className="flex items-center gap-4">
@@ -268,11 +317,15 @@ export function AdminTimeOffForm({ barbers }: Props) {
                         </p>
 
                         <h3 className="mt-1 text-xl font-black text-slate-950">
-                            Crear tramo no disponible
+                            {canEdit
+                                ? 'Crear tramo no disponible'
+                                : 'Creación de bloqueos deshabilitada'}
                         </h3>
 
                         <p className="mt-1 text-sm leading-6 text-slate-500">
-                            Define inicio, fin y motivo del bloqueo.
+                            {canEdit
+                                ? 'Define inicio, fin y motivo del bloqueo.'
+                                : 'Puedes consultar los registros, pero no crear nuevos bloqueos.'}
                         </p>
                     </div>
 
@@ -306,20 +359,20 @@ export function AdminTimeOffForm({ barbers }: Props) {
                                 <div className="grid gap-3">
                                     <AdminInput
                                         id="time-off-start"
+                                        disabled={!canEdit || !selectedBarber || saving}
                                         label="Inicio"
                                         type="datetime-local"
                                         value={form.start_at}
                                         onChange={(value) => updateField('start_at', value)}
-                                        disabled={!selectedBarber || saving}
                                     />
 
                                     <AdminInput
                                         id="time-off-end"
+                                        disabled={!canEdit || !selectedBarber || saving}
                                         label="Fin"
                                         type="datetime-local"
                                         value={form.end_at}
                                         onChange={(value) => updateField('end_at', value)}
-                                        disabled={!selectedBarber || saving}
                                     />
                                 </div>
                             </div>
@@ -338,20 +391,38 @@ export function AdminTimeOffForm({ barbers }: Props) {
                                     onChange={(event) =>
                                         updateField('reason', event.target.value)
                                     }
-                                    disabled={saving}
+                                    disabled={!canEdit || saving}
                                     rows={4}
                                     placeholder="Vacaciones, permiso, cierre parcial..."
                                     className="min-h-[120px] w-full rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3.5 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#C8942E] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
                                 />
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={saving}
-                                className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-                            >
-                                {saving ? 'Guardando...' : 'Crear bloqueo'}
-                            </button>
+                            {canEdit ? (
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                                >
+                                    {saving ? 'Guardando...' : 'Crear bloqueo'}
+                                </button>
+                            ) : (
+                                <div className="inline-flex h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-5 text-sm font-black text-slate-500">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        className="h-4 w-4"
+                                        aria-hidden="true"
+                                    >
+                                        <rect x="5" y="10" width="14" height="10" rx="2" />
+                                        <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                                    </svg>
+
+                                    Solo lectura
+                                </div>
+                            )}
                         </form>
                     )}
                 </section>
@@ -404,8 +475,19 @@ export function AdminTimeOffForm({ barbers }: Props) {
                         </div>
                     ) : items.length === 0 ? (
                         <div className="px-5 py-12 text-center">
-                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
-                                ✅
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#C8942E]/15 bg-[#C8942E]/10 text-[#9A6818]">
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.8"
+                                    className="h-7 w-7"
+                                    aria-hidden="true"
+                                >
+                                    <rect x="3" y="5" width="18" height="16" rx="3" />
+                                    <path d="M8 3v4M16 3v4M3 10h18" />
+                                    <path d="M9 15h6" />
+                                </svg>
                             </div>
 
                             <h4 className="mt-4 text-xl font-black text-slate-950">
@@ -469,6 +551,8 @@ export function AdminTimeOffForm({ barbers }: Props) {
                                     <div className="lg:justify-self-end">
                                         <DeleteTimeOffButton
                                             id={item.id}
+                                            canEdit={canEdit}
+                                            subscriptionBlockReason={subscriptionBlockReason}
                                             onDeleted={() => loadItems(item.barber_id)}
                                         />
                                     </div>

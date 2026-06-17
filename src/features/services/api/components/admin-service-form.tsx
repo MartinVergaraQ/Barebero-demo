@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X } from 'lucide-react'
+import { LockKeyhole, Plus, X } from 'lucide-react'
 import { createServiceServer } from '@/src/features/services/api/create-service-server'
 import { AdminInput } from '@/src/features/admin/components/admin-input'
 import { AdminSelect } from '@/src/features/admin/components/admin-select'
@@ -12,6 +12,7 @@ import { AdminMoneyInput } from '@/src/features/admin/components/admin-money-inp
 type Props = {
     businessId: string
     canCreate: boolean
+    disabledReason?: string
 }
 
 function slugify(value: string) {
@@ -37,7 +38,7 @@ const initialForm = {
     display_order: '0',
 }
 
-export function AdminServiceForm({ businessId, canCreate }: Props) {
+export function AdminServiceForm({ businessId, canCreate, disabledReason }: Props) {
     const router = useRouter()
 
     const [open, setOpen] = useState(false)
@@ -121,6 +122,7 @@ export function AdminServiceForm({ businessId, canCreate }: Props) {
     }
 
     function handleOpen() {
+        if (!canCreate) return
         resetForm()
         setOpen(true)
     }
@@ -137,6 +139,7 @@ export function AdminServiceForm({ businessId, canCreate }: Props) {
     }
 
     function updateField(field: keyof typeof form, value: string | boolean) {
+        if (!canCreate) return
         setForm((prev) => {
             const next = {
                 ...prev,
@@ -179,10 +182,9 @@ export function AdminServiceForm({ businessId, canCreate }: Props) {
 
         try {
             await createServiceServer({
-                business_id: businessId,
-                name: form.name.trim(),
-                slug: slugify(form.slug),
-                description: form.description.trim(),
+                name: form.name,
+                slug: form.slug,
+                description: form.description,
                 duration_minutes: Number(form.duration_minutes),
                 price: Number(form.price),
                 currency: form.currency,
@@ -238,21 +240,22 @@ export function AdminServiceForm({ businessId, canCreate }: Props) {
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={handleOpen}
-                        disabled={!canCreate}
-                        className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 md:w-auto"
-                    >
-                        + Nuevo servicio
-                    </button>
+                    {canCreate ? (
+                        <button
+                            type="button"
+                            onClick={handleOpen}
+                            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Nuevo servicio
+                        </button>
+                    ) : (
+                        <div className="inline-flex h-11 cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-5 text-sm font-black text-slate-500">
+                            <LockKeyhole className="h-4 w-4" />
+                            Solo lectura
+                        </div>
+                    )}
                 </div>
-
-                {!canCreate && (
-                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-                        No puedes crear nuevos registros mientras la suscripción esté con pago pendiente o cancelada.
-                    </div>
-                )}
             </section>
 
             {open && (

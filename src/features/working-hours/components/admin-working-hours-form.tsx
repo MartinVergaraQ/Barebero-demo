@@ -5,7 +5,7 @@ import {
     getWorkingHoursByBarber,
     type WorkingHourItem,
 } from '@/src/features/working-hours/api/get-working-hours-by-barberos'
-import { upsertWorkingHour } from '@/src/features/working-hours/api/upsert-working-hour'
+import { upsertWorkingHourServer } from '@/src/features/working-hours/api/upsert-working-hour-server'
 import { AdminInput } from '@/src/features/admin/components/admin-input'
 import { AdminSelect } from '@/src/features/admin/components/admin-select'
 import { AdminAlert } from '../../admin/components/admin-alert'
@@ -20,6 +20,8 @@ type Barber = {
 
 type Props = {
     barbers: Barber[]
+    canEdit: boolean
+    subscriptionBlockReason?: string
 }
 
 const weekDays = [
@@ -118,7 +120,7 @@ function getInitials(name: string) {
         .join('')
 }
 
-export function AdminWorkingHoursForm({ barbers }: Props) {
+export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReason }: Props) {
     const isSingleBarber = barbers.length === 1
 
     const [selectedBarberId, setSelectedBarberId] = useState(
@@ -144,21 +146,6 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
             setSelectedBarberId(barbers[0].id)
         }
     }, [isSingleBarber, barbers, selectedBarberId])
-
-    useEffect(() => {
-        function handleBeforeUnload(event: BeforeUnloadEvent) {
-            if (!hasUnsavedChanges) return
-
-            event.preventDefault()
-            event.returnValue = ''
-        }
-
-        window.addEventListener('beforeunload', handleBeforeUnload)
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload)
-        }
-    }, [hasUnsavedChanges])
 
     useEffect(() => {
         async function loadWorkingHours() {
@@ -237,6 +224,8 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
         field: keyof WorkingHourFormRow,
         value: string | boolean
     ) {
+        if (!canEdit) return
+
         setRows((prev) =>
             prev.map((row) => {
                 if (row.day_of_week !== dayOfWeek) return row
@@ -254,6 +243,14 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
     }
 
     async function handleSave() {
+        if (!canEdit) {
+            setErrorMessage(
+                subscriptionBlockReason ||
+                'La suscripción actual no permite modificar horarios.'
+            )
+            return
+        }
+
         if (!selectedBarber) {
             setErrorMessage('Selecciona un barbero')
             return
@@ -262,18 +259,18 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
         setSaving(true)
         setMessage('')
         setErrorMessage('')
-        setHasUnsavedChanges(false)
 
         try {
             for (const row of rows) {
                 if (row.is_active && row.start_time >= row.end_time) {
                     const dayMeta = getDayMeta(row.day_of_week)
-                    throw new Error(`El horario de ${dayMeta.label} no es válido`)
+
+                    throw new Error(
+                        `El horario de ${dayMeta.label} no es válido`
+                    )
                 }
 
-                await upsertWorkingHour({
-                    id: row.id,
-                    business_id: selectedBarber.business_id,
+                await upsertWorkingHourServer({
                     barber_id: selectedBarber.id,
                     day_of_week: row.day_of_week,
                     start_time: row.start_time,
@@ -281,11 +278,16 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                     is_active: row.is_active,
                 })
             }
+
             setHasUnsavedChanges(false)
-            setMessage('La disponibilidad pública fue actualizada correctamente.')
+            setMessage(
+                'La disponibilidad pública fue actualizada correctamente.'
+            )
         } catch (error) {
             setErrorMessage(
-                error instanceof Error ? error.message : 'Error guardando horarios'
+                error instanceof Error
+                    ? error.message
+                    : 'Error guardando horarios'
             )
         } finally {
             setSaving(false)
@@ -309,6 +311,40 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                 message={message}
                 onClose={() => setMessage('')}
             />
+            {!canEdit && (
+                <div className="flex items-start gap-3 rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-200 text-slate-600">
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="h-5 w-5"
+                            aria-hidden="true"
+                        >
+                            <rect x="5" y="10" width="14" height="10" rx="2" />
+                            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                        </svg>
+                    </div>
+
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-black text-slate-900">
+                                Horarios en modo lectura
+                            </p>
+
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-800">
+                                Pago pendiente
+                            </span>
+                        </div>
+
+                        <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
+                            {subscriptionBlockReason ||
+                                'Puedes consultar los horarios, pero no modificarlos mientras la suscripción esté bloqueada.'}
+                        </p>
+                    </div>
+                </div>
+            )}
             <div className="rounded-[24px] border border-black/10 bg-[#FBF7EE] p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] lg:items-end">
                     <div className="flex items-center gap-4">
@@ -395,92 +431,98 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                 </div>
             ) : (
                 <>
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setRows((prev) =>
-                                    prev.map((row) =>
-                                        row.day_of_week >= 1 && row.day_of_week <= 5
-                                            ? {
-                                                ...row,
-                                                is_active: true,
-                                                start_time: '10:00',
-                                                end_time: '20:00',
-                                            }
-                                            : row
+                    {canEdit && (
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                disabled={!canEdit || saving || loading}
+                                onClick={() => {
+                                    setRows((prev) =>
+                                        prev.map((row) =>
+                                            row.day_of_week >= 1 && row.day_of_week <= 5
+                                                ? {
+                                                    ...row,
+                                                    is_active: true,
+                                                    start_time: '10:00',
+                                                    end_time: '20:00',
+                                                }
+                                                : row
+                                        )
                                     )
-                                )
-                                setHasUnsavedChanges(true)
-                                setMessage('')
-                                setErrorMessage('')
-                            }}
-                            className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-[#FFFCF4]"
-                        >
-                            Aplicar lunes a viernes
-                        </button>
+                                    setHasUnsavedChanges(true)
+                                    setMessage('')
+                                    setErrorMessage('')
+                                }}
+                                className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-[#FFFCF4]"
+                            >
+                                Aplicar lunes a viernes
+                            </button>
 
-                        <button
-                            type="button"
-                            onClick={() => {
-                                const monday = rows.find((row) => row.day_of_week === 1)
+                            <button
+                                type="button"
+                                disabled={!canEdit || saving || loading}
+                                onClick={() => {
+                                    const monday = rows.find((row) => row.day_of_week === 1)
 
-                                if (!monday) return
+                                    if (!monday) return
 
-                                setRows((prev) =>
-                                    prev.map((row) => ({
-                                        ...row,
-                                        start_time: monday.start_time,
-                                        end_time: monday.end_time,
-                                        is_active: row.day_of_week === 0 ? row.is_active : monday.is_active,
-                                    }))
-                                )
+                                    setRows((prev) =>
+                                        prev.map((row) => ({
+                                            ...row,
+                                            start_time: monday.start_time,
+                                            end_time: monday.end_time,
+                                            is_active: row.day_of_week === 0 ? row.is_active : monday.is_active,
+                                        }))
+                                    )
 
-                                setHasUnsavedChanges(true)
-                                setMessage('')
-                                setErrorMessage('')
-                            }}
-                            className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-[#FFFCF4]"
-                        >
-                            Copiar lunes al resto
-                        </button>
+                                    setHasUnsavedChanges(true)
+                                    setMessage('')
+                                    setErrorMessage('')
+                                }}
+                                className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-[#FFFCF4]"
+                            >
+                                Copiar lunes al resto
+                            </button>
 
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setRows((prev) =>
-                                    prev.map((row) => ({
-                                        ...row,
-                                        is_active: true,
-                                    }))
-                                )
-                                setHasUnsavedChanges(true)
-                                setMessage('')
-                                setErrorMessage('')
-                            }}
-                            className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-[#FFFCF4]"
-                        >
-                            Abrir todos
-                        </button>
+                            <button
+                                type="button"
+                                disabled={!canEdit || saving || loading}
+                                onClick={() => {
+                                    setRows((prev) =>
+                                        prev.map((row) => ({
+                                            ...row,
+                                            is_active: true,
+                                        }))
+                                    )
+                                    setHasUnsavedChanges(true)
+                                    setMessage('')
+                                    setErrorMessage('')
+                                }}
+                                className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-[#FFFCF4]"
+                            >
+                                Abrir todos
+                            </button>
 
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setRows((prev) =>
-                                    prev.map((row) => ({
-                                        ...row,
-                                        is_active: false,
-                                    }))
-                                )
-                                setHasUnsavedChanges(true)
-                                setMessage('')
-                                setErrorMessage('')
-                            }}
-                            className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-[#FFFCF4]"
-                        >
-                            Cerrar todos
-                        </button>
-                    </div>
+                            <button
+                                type="button"
+                                disabled={!canEdit || saving || loading}
+                                onClick={() => {
+                                    setRows((prev) =>
+                                        prev.map((row) => ({
+                                            ...row,
+                                            is_active: false,
+                                        }))
+                                    )
+                                    setHasUnsavedChanges(true)
+                                    setMessage('')
+                                    setErrorMessage('')
+                                }}
+                                className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-[#FFFCF4]"
+                            >
+                                Cerrar todos
+                            </button>
+                        </div>
+                    )}
 
                     <div className="space-y-2.5">
                         {rows.map((row) => {
@@ -538,7 +580,7 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                                             label="Abre"
                                             type="time"
                                             value={row.start_time}
-                                            disabled={isClosed}
+                                            disabled={!canEdit || isClosed || saving}
                                             compact
                                             onChange={(value) =>
                                                 updateRow(row.day_of_week, 'start_time', value)
@@ -550,7 +592,7 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                                             label="Cierra"
                                             type="time"
                                             value={row.end_time}
-                                            disabled={isClosed}
+                                            disabled={!canEdit || isClosed || saving}
                                             compact
                                             onChange={(value) =>
                                                 updateRow(row.day_of_week, 'end_time', value)
@@ -559,6 +601,7 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
 
                                         <button
                                             type="button"
+                                            disabled={!canEdit || saving}
                                             onClick={() =>
                                                 updateRow(
                                                     row.day_of_week,
@@ -566,9 +609,11 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                                                     !row.is_active
                                                 )
                                             }
-                                            className={`flex h-10 w-full items-center justify-center rounded-2xl px-4 text-sm font-black transition active:scale-[0.98] ${row.is_active
-                                                ? 'bg-[#C8942E] text-white shadow-[0_10px_22px_rgba(200,148,46,0.18)] hover:brightness-105'
-                                                : 'border border-black/10 bg-white text-slate-600 hover:bg-[#FFFCF4]'
+                                            className={`flex h-10 w-full items-center justify-center rounded-2xl border px-4 text-sm font-black transition ${!canEdit
+                                                ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500 shadow-none'
+                                                : row.is_active
+                                                    ? 'border-transparent bg-[#C8942E] text-white shadow-[0_10px_22px_rgba(200,148,46,0.18)] hover:brightness-105 active:scale-[0.98]'
+                                                    : 'border-black/10 bg-white text-slate-600 hover:bg-[#FFFCF4] active:scale-[0.98]'
                                                 }`}
                                         >
                                             {row.is_active ? 'Activo' : 'Cerrado'}
@@ -587,23 +632,43 @@ export function AdminWorkingHoursForm({ barbers }: Props) {
                     <div className="sticky bottom-0 z-10 -mx-4 border-t border-black/10 bg-[#FFFCF4]/92 px-4 py-3 backdrop-blur md:-mx-5 md:px-5">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <p className="text-sm font-medium leading-6 text-slate-500">
-                                {hasUnsavedChanges
-                                    ? 'Tienes cambios sin guardar.'
-                                    : `${activeDaysCount} día${activeDaysCount === 1 ? '' : 's'} activo${activeDaysCount === 1 ? '' : 's'}. La disponibilidad pública está actualizada.`}
+                                {!canEdit
+                                    ? `${activeDaysCount} día${activeDaysCount === 1 ? '' : 's'} activo${activeDaysCount === 1 ? '' : 's'}. Puedes consultar la configuración actual.`
+                                    : hasUnsavedChanges
+                                        ? 'Tienes cambios sin guardar.'
+                                        : `${activeDaysCount} día${activeDaysCount === 1 ? '' : 's'} activo${activeDaysCount === 1 ? '' : 's'}. La disponibilidad pública está actualizada.`}
                             </p>
 
-                            <button
-                                type="button"
-                                onClick={handleSave}
-                                disabled={saving || loading}
-                                className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
-                            >
-                                {saving
-                                    ? 'Guardando...'
-                                    : hasUnsavedChanges
-                                        ? 'Guardar cambios'
-                                        : 'Guardar horarios'}
-                            </button>
+                            {canEdit ? (
+                                <button
+                                    type="button"
+                                    disabled={saving || loading || !hasUnsavedChanges}
+                                    onClick={handleSave}
+                                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
+                                >
+                                    {saving
+                                        ? 'Guardando...'
+                                        : hasUnsavedChanges
+                                            ? 'Guardar cambios'
+                                            : 'Guardar horarios'}
+                                </button>
+                            ) : (
+                                <div className="inline-flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-5 text-sm font-black text-slate-500 sm:w-auto">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        className="h-4 w-4"
+                                        aria-hidden="true"
+                                    >
+                                        <rect x="5" y="10" width="14" height="10" rx="2" />
+                                        <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                                    </svg>
+
+                                    Solo lectura
+                                </div>
+                            )}
                         </div>
                     </div>
                 </>

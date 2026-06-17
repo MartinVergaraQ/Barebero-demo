@@ -6,6 +6,8 @@ import {
     formatPlanLabel,
     formatSubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
+import { BusinessSubscriptionActions } from '@/src/features/business/components/business-subscription-actions'
+import { RegisterManualPaymentButton } from '@/src/features/business/components/register-manual-payment-button'
 
 type PageProps = {
     params: Promise<{
@@ -76,6 +78,7 @@ export default async function SuperadminBusinessDetailPage({
         servicesRes,
         requestsRes,
         historyRes,
+        paymentsRes,
     ] = await Promise.all([
         supabaseAdmin
             .from('businesses')
@@ -147,7 +150,7 @@ export default async function SuperadminBusinessDetailPage({
             )
             .eq('business_id', businessId)
             .order('created_at', { ascending: false })
-            .limit(6),
+            .limit(4),
 
         supabaseAdmin
             .from('business_plan_history')
@@ -158,6 +161,25 @@ export default async function SuperadminBusinessDetailPage({
                 next_plan_slug,
                 created_at
             `
+            )
+            .eq('business_id', businessId)
+            .order('created_at', { ascending: false })
+            .limit(6),
+
+        supabaseAdmin
+            .from('payments')
+            .select(
+                `
+        id,
+        amount,
+        currency,
+        status,
+        provider,
+        paid_at,
+        period_start,
+        period_end,
+        created_at
+    `
             )
             .eq('business_id', businessId)
             .order('created_at', { ascending: false })
@@ -174,6 +196,7 @@ export default async function SuperadminBusinessDetailPage({
     const activeServices = servicesRes.count ?? 0
     const requests = requestsRes.data ?? []
     const history = historyRes.data ?? []
+    const payments = paymentsRes.data ?? []
 
     return (
         <main className="min-h-screen bg-[#F4EFE5] px-4 py-4 text-slate-950 md:px-8 md:py-5">
@@ -217,74 +240,82 @@ export default async function SuperadminBusinessDetailPage({
                     </div>
                 </header>
 
-                <section className="overflow-hidden rounded-[24px] border border-black/10 bg-[#FFFCF4] shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
-                    <div className="grid divide-y divide-black/10 lg:grid-cols-[1fr_1.4fr_auto] lg:divide-x lg:divide-y-0">
-                        <div className="px-4 py-3">
-                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#C8942E]">
-                                Uso actual
-                            </p>
+                <section className="grid items-start gap-4 lg:grid-cols-[1fr_300px]">
+                    <article className="overflow-hidden rounded-[22px] border border-black/10 bg-[#FFFCF4] shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+                        <div className="grid divide-y divide-black/10 md:grid-cols-[0.8fr_1.2fr] md:divide-x md:divide-y-0">
+                            <div className="px-4 py-3">
+                                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#C8942E]">
+                                    Uso actual
+                                </p>
 
-                            <div className="mt-2 flex gap-2">
-                                <div className="min-w-[95px] rounded-xl border border-black/10 bg-[#FBF7EE] px-3 py-2">
-                                    <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
-                                        Barberos
-                                    </p>
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                    <div className="rounded-xl border border-black/10 bg-[#FBF7EE] px-3 py-2">
+                                        <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+                                            Barberos
+                                        </p>
 
-                                    <p className="text-xs font-black text-slate-950">
-                                        {activeBarbers}/{getLimitLabel(business.max_barbers)}
-                                    </p>
+                                        <p className="text-sm font-black text-slate-950">
+                                            {activeBarbers}/{getLimitLabel(business.max_barbers)}
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-xl border border-black/10 bg-[#FBF7EE] px-3 py-2">
+                                        <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+                                            Servicios
+                                        </p>
+
+                                        <p className="text-sm font-black text-slate-950">
+                                            {activeServices}/{getLimitLabel(business.max_services)}
+                                        </p>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div className="min-w-[95px] rounded-xl border border-black/10 bg-[#FBF7EE] px-3 py-2">
-                                    <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
-                                        Servicios
-                                    </p>
+                            <div className="px-4 py-3">
+                                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#C8942E]">
+                                    Suscripción
+                                </p>
 
-                                    <p className="text-xs font-black text-slate-950">
-                                        {activeServices}/{getLimitLabel(business.max_services)}
-                                    </p>
+                                <div className="mt-2 grid gap-x-5 gap-y-2 text-xs font-semibold text-slate-600 sm:grid-cols-2">
+                                    <div className="flex justify-between gap-3">
+                                        <span>Proveedor</span>
+                                        <span className="font-black text-slate-950">
+                                            {subscription?.provider ?? 'manual'}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between gap-3">
+                                        <span>Precio</span>
+                                        <span className="font-black text-slate-950">
+                                            ${subscription?.price_monthly ?? 0}{' '}
+                                            {subscription?.currency ?? 'CLP'}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between gap-3">
+                                        <span>Inicio</span>
+                                        <span className="font-black text-slate-950">
+                                            {formatDate(subscription?.current_period_start)}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between gap-3">
+                                        <span>Fin</span>
+                                        <span className="font-black text-slate-950">
+                                            {formatDate(subscription?.current_period_end)}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </article>
 
-                        <div className="px-4 py-3">
-                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#C8942E]">
-                                Suscripción
-                            </p>
+                    <aside className="rounded-[22px] border border-black/10 bg-[#FFFCF4] p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#C8942E]">
+                            Acciones
+                        </p>
 
-                            <div className="mt-2 grid gap-x-5 gap-y-2 text-xs font-semibold text-slate-600 sm:grid-cols-2">
-                                <div className="flex justify-between gap-3">
-                                    <span>Proveedor</span>
-                                    <span className="font-black text-slate-950">
-                                        {subscription?.provider ?? 'manual'}
-                                    </span>
-                                </div>
-
-                                <div className="flex justify-between gap-3">
-                                    <span>Precio</span>
-                                    <span className="font-black text-slate-950">
-                                        ${subscription?.price_monthly ?? 0}{' '}
-                                        {subscription?.currency ?? 'CLP'}
-                                    </span>
-                                </div>
-
-                                <div className="flex justify-between gap-3">
-                                    <span>Inicio</span>
-                                    <span className="font-black text-slate-950">
-                                        {formatDate(subscription?.current_period_start)}
-                                    </span>
-                                </div>
-
-                                <div className="flex justify-between gap-3">
-                                    <span>Fin</span>
-                                    <span className="font-black text-slate-950">
-                                        {formatDate(subscription?.current_period_end)}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2 px-4 py-3 lg:min-w-[210px]">
+                        <div className="mt-2 grid grid-cols-2 gap-2">
                             <Link
                                 href={`/admin/b/${business.slug}/plan`}
                                 className="inline-flex h-9 items-center justify-center rounded-xl border border-black/10 bg-white px-3 text-xs font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98]"
@@ -299,10 +330,30 @@ export default async function SuperadminBusinessDetailPage({
                                 Solicitudes
                             </Link>
                         </div>
-                    </div>
+
+                        <div className="mt-3 border-t border-black/10 pt-3">
+                            <p className="mb-2 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+                                Estado manual
+                            </p>
+
+                            <BusinessSubscriptionActions
+                                businessId={business.id}
+                                businessName={business.name}
+                                currentStatus={business.subscription_status}
+                            />
+
+                            <div className="mt-2">
+                                <RegisterManualPaymentButton
+                                    businessId={business.id}
+                                    businessName={business.name}
+                                    defaultAmount={subscription?.price_monthly ?? 19990}
+                                />
+                            </div>
+                        </div>
+                    </aside>
                 </section>
 
-                <section className="grid items-start gap-4 lg:grid-cols-2">
+                <section className="grid items-start gap-4 lg:grid-cols-[0.9fr_1.1fr]">
                     <article className="overflow-hidden rounded-[24px] border border-black/10 bg-[#FFFCF4] shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
                         <div className="border-b border-black/10 px-4 py-3">
                             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
@@ -314,7 +365,7 @@ export default async function SuperadminBusinessDetailPage({
                             </h2>
                         </div>
 
-                        <div className="p-4">
+                        <div className="p-3">
                             {requests.length === 0 ? (
                                 <p className="rounded-2xl border border-dashed border-black/10 bg-[#FBF7EE] px-4 py-8 text-center text-sm font-bold text-slate-500">
                                     No hay solicitudes de plan.
@@ -381,7 +432,7 @@ export default async function SuperadminBusinessDetailPage({
                             </h2>
                         </div>
 
-                        <div className="p-4">
+                        <div className="p-3">
                             {history.length === 0 ? (
                                 <p className="rounded-2xl border border-dashed border-black/10 bg-[#FBF7EE] px-4 py-8 text-center text-sm font-bold text-slate-500">
                                     No hay cambios registrados.
@@ -391,7 +442,7 @@ export default async function SuperadminBusinessDetailPage({
                                     {history.map((item, index) => (
                                         <div
                                             key={item.id}
-                                            className={`px-3 py-2.5 ${index !== history.length - 1
+                                            className={`px-3 py-2 ${index !== history.length - 1
                                                 ? 'border-b border-black/10'
                                                 : ''
                                                 }`}
@@ -415,6 +466,63 @@ export default async function SuperadminBusinessDetailPage({
                             )}
                         </div>
                     </article>
+                </section>
+                <section className="overflow-hidden rounded-[24px] border border-black/10 bg-[#FFFCF4] shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+                    <div className="border-b border-black/10 px-4 py-3">
+                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                            Pagos
+                        </p>
+
+                        <h2 className="text-lg font-black text-slate-950">
+                            Pagos recientes
+                        </h2>
+                    </div>
+
+                    <div className="p-3">
+                        {payments.length === 0 ? (
+                            <p className="rounded-2xl border border-dashed border-black/10 bg-[#FBF7EE] px-4 py-8 text-center text-sm font-bold text-slate-500">
+                                No hay pagos registrados.
+                            </p>
+                        ) : (
+                            <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
+                                {payments.map((payment, index) => (
+                                    <div
+                                        key={payment.id}
+                                        className={`flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between ${index !== payments.length - 1
+                                            ? 'border-b border-black/10'
+                                            : ''
+                                            }`}
+                                    >
+                                        <div>
+                                            <p className="text-sm font-black text-slate-950">
+                                                {new Intl.NumberFormat('es-CL', {
+                                                    style: 'currency',
+                                                    currency: 'CLP',
+                                                    maximumFractionDigits: 0,
+                                                }).format(payment.amount)}
+                                            </p>
+
+                                            <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                                                {formatDate(payment.paid_at)} ·{' '}
+                                                {payment.provider}
+                                            </p>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 ring-1 ring-emerald-200">
+                                                {payment.status}
+                                            </span>
+
+                                            <span className="text-xs font-bold text-slate-500">
+                                                {formatDate(payment.period_start)} →{' '}
+                                                {formatDate(payment.period_end)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </section>
             </div>
         </main>

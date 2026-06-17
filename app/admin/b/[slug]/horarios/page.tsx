@@ -69,6 +69,17 @@ export default async function AdminHorariosPage({
 
     const isBarber = isBarberRole(profile.role)
 
+    const canEdit =
+        business.subscription_status === 'trialing' ||
+        business.subscription_status === 'active'
+
+    const subscriptionBlockReason =
+        business.subscription_status === 'past_due'
+            ? 'Tu negocio está en modo solo lectura porque existe un pago pendiente.'
+            : business.subscription_status === 'canceled'
+                ? 'Tu negocio está en modo solo lectura porque la suscripción está cancelada.'
+                : ''
+
     return (
         <main className="min-h-screen px-4 py-5 text-slate-950 md:px-8 md:py-6">
             <div className="mx-auto max-w-7xl space-y-5">
@@ -128,14 +139,21 @@ export default async function AdminHorariosPage({
                                     </p>
                                 </div>
 
-                                <div className="rounded-full bg-[#F4E7C7] px-4 py-2 text-xs font-black text-[#8A5D16]">
-                                    Domingo editable
+                                <div
+                                    className={`rounded-full px-4 py-2 text-xs font-black ${canEdit
+                                            ? 'bg-[#F4E7C7] text-[#8A5D16]'
+                                            : 'border border-slate-200 bg-slate-100 text-slate-500'
+                                        }`}
+                                >
+                                    {canEdit ? 'Edición habilitada' : 'Solo lectura'}
                                 </div>
                             </div>
                         </div>
 
                         <div className="p-4 md:p-5">
                             <AdminWorkingHoursForm
+                                canEdit={canEdit}
+                                subscriptionBlockReason={subscriptionBlockReason}
                                 barbers={barbers.map((barber) => ({
                                     id: barber.id,
                                     business_id: barber.business_id,

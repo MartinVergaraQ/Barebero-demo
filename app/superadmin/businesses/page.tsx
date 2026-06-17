@@ -5,6 +5,8 @@ import { getPlatformBusinesses } from '@/src/features/business/api/get-platform-
 import {
     formatPlanLabel,
     formatSubscriptionStatus,
+    normalizeSubscriptionStatus,
+    type SubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
 
 function getUsageLabel(value: number | null) {
@@ -25,7 +27,7 @@ function formatDate(value?: string | null) {
     return `${day}-${month}-${year}`
 }
 
-function getStatusClasses(status: string) {
+function getStatusClasses(status?: SubscriptionStatus) {
     if (status === 'active') {
         return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
     }
@@ -66,6 +68,7 @@ export default async function SuperadminBusinessesPage() {
         (acc, business) => acc + business.pending_plan_requests,
         0
     )
+
 
     return (
         <main className="min-h-screen bg-[#F4EFE5] px-4 py-4 text-slate-950 md:px-8 md:py-5">
@@ -161,6 +164,10 @@ export default async function SuperadminBusinessesPage() {
                             {businesses.map((business) => {
                                 const hasPendingRequest = business.pending_plan_requests > 0
 
+                                const subscriptionStatus = normalizeSubscriptionStatus(
+                                    business.subscription_status
+                                )
+
                                 return (
                                     <article
                                         key={business.id}
@@ -169,13 +176,10 @@ export default async function SuperadminBusinessesPage() {
                                         <div className="min-w-0">
                                             <div className="flex flex-wrap items-center gap-1.5">
                                                 <span
-                                                    className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] ${getStatusClasses(
-                                                        business.subscription_status
-                                                    )}`}
+                                                    className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] ${getStatusClasses(subscriptionStatus)
+                                                        }`}
                                                 >
-                                                    {formatSubscriptionStatus(
-                                                        business.subscription_status
-                                                    )}
+                                                    {formatSubscriptionStatus(subscriptionStatus)}
                                                 </span>
 
                                                 <span className="rounded-full bg-[#C8942E]/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-[#8A5D16]">

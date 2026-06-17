@@ -8,7 +8,10 @@ import { canManageCatalog } from '@/src/features/auth/utils/admin-access'
 import {
     canCreateWithSubscription,
     canEditWithSubscription,
+    getSubscriptionBlockReason,
+    normalizeSubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
+import { SubscriptionRestrictedBanner } from '@/src/features/business/components/subscription-restricted-banner'
 
 type AdminServiciosPageProps = {
     params: Promise<{
@@ -57,23 +60,32 @@ export default async function AdminServiciosPage({
     if (profile.business_id !== business.id) {
         redirect('/admin')
     }
+    const subscriptionStatus = normalizeSubscriptionStatus(
+        business.subscription_status
+    )
 
     const services = await getServicesAdmin(business.id)
 
     const activeServices = services.filter((service) => service.is_active).length
     const popularServices = services.filter((service) => service.is_popular).length
-    const canCreate = canCreateWithSubscription(business.subscription_status)
-    const canEdit = canEditWithSubscription(business.subscription_status)
+    const canCreate = canCreateWithSubscription(subscriptionStatus)
+    const canEdit = canEditWithSubscription(subscriptionStatus)
     const maxServices = business.max_services
     const hasUnlimitedServices = maxServices === null
     const reachedServiceLimit =
-        !hasUnlimitedServices && services.length >= maxServices
+        !hasUnlimitedServices && activeServices >= maxServices
+
+    const createDisabledReason = !canCreate
+        ? getSubscriptionBlockReason(subscriptionStatus)
+        : reachedServiceLimit
+            ? `Este plan permite ${maxServices} servicio${maxServices === 1 ? '' : 's'} activo${maxServices === 1 ? '' : 's'}. Puedes ocultar uno existente o cambiar de plan para agregar más.`
+            : ''
 
     const canCreateService = canCreate && !reachedServiceLimit
 
     const serviceLimitLabel = hasUnlimitedServices
-        ? `${services.length}/∞ servicios`
-        : `${services.length}/${maxServices} servicios`
+        ? `${activeServices}/∞ activos`
+        : `${activeServices}/${maxServices} activos`
 
     return (
         <main className="min-h-screen px-4 py-5 text-slate-950 md:px-8 md:py-6">
@@ -102,9 +114,16 @@ export default async function AdminServiciosPage({
                     </div>
                 </header>
 
+                {!canCreate && (
+                    <SubscriptionRestrictedBanner
+                        message={getSubscriptionBlockReason(subscriptionStatus)}
+                    />
+                )}
+
                 <AdminServiceForm
                     businessId={business.id}
                     canCreate={canCreateService}
+                    disabledReason={createDisabledReason}
                 />
 
                 <section className="overflow-hidden rounded-[26px] border border-black/10 bg-[#FFFCF4] shadow-[0_14px_35px_rgba(15,23,42,0.06)]">

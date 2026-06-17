@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X } from 'lucide-react'
+import { LockKeyhole, Pencil, X } from 'lucide-react'
 import { updateServiceServer } from '@/src/features/services/api/update-service-server'
 import { AdminInput } from '@/src/features/admin/components/admin-input'
 import { AdminSelect } from '@/src/features/admin/components/admin-select'
@@ -74,6 +74,7 @@ export function AdminServiceEditForm({ service, canEdit }: Props) {
     }, [open])
 
     function updateField(field: keyof typeof form, value: string | boolean) {
+        if (!canEdit) return
         setForm((prev) => ({
             ...prev,
             [field]: value,
@@ -91,6 +92,7 @@ export function AdminServiceEditForm({ service, canEdit }: Props) {
     }
 
     function handleOpen() {
+        if (!canEdit) return
         setMessage('')
         setErrorMessage('')
         setForm(getInitialForm(service))
@@ -206,20 +208,26 @@ export function AdminServiceEditForm({ service, canEdit }: Props) {
             />
 
             <div>
-                <button
-                    type="button"
-                    disabled={!canEdit}
-                    onClick={handleOpen}
-                    className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-[#C8942E]/30 bg-[#C8942E]/10 px-4 text-sm font-black text-[#8A5D16] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#C8942E] hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                >
-                    Editar
-                </button>
-
-                {!canEdit && (
-                    <p className="mt-2 max-w-xs text-xs font-semibold leading-5 text-red-600">
-                        Tu suscripción no permite editar servicios mientras esté cancelada o con pago pendiente.
-                    </p>
-                )}
+                <div>
+                    {canEdit ? (
+                        <button
+                            type="button"
+                            onClick={handleOpen}
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 text-sm font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FBF7EE] active:scale-[0.98]"
+                        >
+                            <Pencil className="h-4 w-4" />
+                            Editar
+                        </button>
+                    ) : (
+                        <div
+                            title="La suscripción está en modo solo lectura"
+                            className="inline-flex h-10 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 text-sm font-black text-slate-500"
+                        >
+                            <LockKeyhole className="h-4 w-4" />
+                            Solo lectura
+                        </div>
+                    )}
+                </div>
             </div>
 
             {open && (

@@ -2,33 +2,59 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { deleteTimeOff } from '@/src/features/time-off/api/delete-time-off'
+import { deleteTimeOffServer } from '@/src/features/time-off/api/delete-time-off-server'
 import { ConfirmDialog } from '@/src/components/ui/confirm-dialog'
 
 type Props = {
     id: string
+    canEdit: boolean
+    subscriptionBlockReason?: string
     onDeleted: () => Promise<void> | void
 }
 
-export function DeleteTimeOffButton({ id, onDeleted }: Props) {
+export function DeleteTimeOffButton({ id, canEdit, subscriptionBlockReason, onDeleted }: Props) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
 
     async function handleDelete() {
+        if (!canEdit) {
+            toast.error(
+                subscriptionBlockReason ||
+                'La suscripción actual no permite eliminar bloqueos.'
+            )
+            return
+        }
+
         setLoading(true)
 
         try {
-            await deleteTimeOff(id)
+            const result = await deleteTimeOffServer(id)
+
+            if (!result.ok) {
+                toast.error(result.message)
+                return
+            }
+
             await onDeleted()
             setOpen(false)
             toast.success('Bloqueo eliminado correctamente')
         } catch (error) {
             toast.error(
-                error instanceof Error ? error.message : 'Error eliminando bloqueo'
+                error instanceof Error
+                    ? error.message
+                    : 'Error eliminando bloqueo'
             )
         } finally {
             setLoading(false)
         }
+    }
+
+    if (!canEdit) {
+        return (
+            <div className="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-4 text-sm font-black text-slate-500 sm:w-auto">
+                Solo lectura
+            </div>
+        )
     }
 
     return (
