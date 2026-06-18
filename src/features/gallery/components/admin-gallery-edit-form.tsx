@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
-import { updateGalleryItem } from '@/src/features/gallery/api/update-gallery-item'
+import { updateGalleryItemServer } from '@/src/features/gallery/api/update-gallery-item-server'
 import { uploadGalleryImage } from '@/src/features/gallery/api/upload-gallery-image'
 import { deleteGalleryImage } from '@/src/features/gallery/api/delete-gallery-image'
 import { AdminInput } from '@/src/features/admin/components/admin-input'
@@ -31,6 +31,8 @@ type Props = {
         id: string
         name: string
     }>
+    canEdit?: boolean
+    subscriptionBlockReason?: string
 }
 
 function getInitialForm(item: Props['item']) {
@@ -51,6 +53,8 @@ export function AdminGalleryEditForm({
     allowBarberAssignment = false,
     barbers = [],
     services = [],
+    canEdit = true,
+    subscriptionBlockReason,
 }: Props) {
     const router = useRouter()
 
@@ -83,11 +87,26 @@ export function AdminGalleryEditForm({
     }, [open])
 
     function handleOpen() {
+        if (!canEdit) {
+            toast.error(
+                subscriptionBlockReason ||
+                'La suscripción actual no permite editar imágenes.'
+            )
+            return
+        }
+
         setForm(getInitialForm(item))
         setOpen(true)
     }
 
-    function updateField(field: keyof typeof form, value: string | boolean | null) {
+    function updateField(
+        field: keyof typeof form,
+        value: string | boolean | null
+    ) {
+        if (!canEdit || loading || uploading) {
+            return
+        }
+
         setForm((prev) => ({
             ...prev,
             [field]: value,
@@ -122,50 +141,73 @@ export function AdminGalleryEditForm({
     function validateForm() {
         const displayOrder = Number(form.display_order || 0)
 
-        if (Number.isNaN(displayOrder) || displayOrder < 0) {
-            throw new Error('La posición debe ser un número válido')
+        if (
+            !Number.isInteger(displayOrder) ||
+            displayOrder < 0
+        ) {
+            throw new Error(
+                'La posición debe ser un número entero igual o mayor a 0'
+            )
         }
 
-        if (!form.media_url) {
+        if (!form.media_url || !form.public_id) {
             throw new Error('La imagen es obligatoria')
         }
     }
 
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(
+        e: React.FormEvent<HTMLFormElement>
+    ) {
         e.preventDefault()
+
+        if (!canEdit) {
+            toast.error(
+                subscriptionBlockReason ||
+                'La suscripción actual no permite editar imágenes.'
+            )
+            return
+        }
+
+        if (loading || uploading) {
+            return
+        }
+
         setLoading(true)
 
         try {
             validateForm()
 
-            await updateGalleryItem({
+            const imageChanged =
+                Boolean(form.public_id) &&
+                form.public_id !== form.previous_public_id
+
+            const result = await updateGalleryItemServer({
                 id: item.id,
-                title: form.title.trim(),
+                title: form.title,
                 display_order: Number(form.display_order || 0),
                 is_active: form.is_active,
-                ...(allowBarberAssignment
-                    ? { barber_id: form.barber_id || null }
-                    : {}),
+                barber_id: form.barber_id || null,
                 service_id: form.service_id || null,
-                media_url: form.media_url,
-                public_id: form.public_id,
+
+                ...(imageChanged && form.public_id
+                    ? {
+                        media_url: form.media_url,
+                        public_id: form.public_id,
+                    }
+                    : {}),
             })
 
-            if (
-                form.previous_public_id &&
-                form.public_id &&
-                form.previous_public_id !== form.public_id
-            ) {
-                try {
-                    await deleteGalleryImage(form.previous_public_id)
-                } catch {
-                    toast.warning(
-                        'La imagen se actualizó, pero no se pudo borrar el archivo anterior.'
-                    )
-                }
+            if (!result.ok) {
+                throw new Error(result.message)
             }
 
-            toast.success('Imagen actualizada correctamente')
+            if (result.warning) {
+                toast.warning(result.warning)
+            } else {
+                toast.success('Imagen actualizada correctamente')
+            }
+
+            setForm(getInitialForm(result.data))
             setOpen(false)
             router.refresh()
         } catch (error) {
@@ -337,8 +379,8 @@ export function AdminGalleryEditForm({
                                                 updateField('is_active', !form.is_active)
                                             }
                                             className={`flex h-12 w-full items-center justify-between rounded-2xl border px-4 text-sm font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${form.is_active
-                                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                                                    : 'border-amber-300 bg-amber-50 text-amber-800'
+                                                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                                : 'border-amber-300 bg-amber-50 text-amber-800'
                                                 }`}
                                         >
                                             <span>Visible en galería pública</span>
@@ -382,9 +424,11 @@ export function AdminGalleryEditForm({
             <button
                 type="button"
                 onClick={handleOpen}
-                className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-[#C8942E] px-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                disabled={!canEdit}
+                title={!canEdit ? subscriptionBlockReason : 'Editar imagen'}
+                className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-[#C8942E] px-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
             >
-                Editar
+                {canEdit ? 'Editar' : 'Solo lectura'}
             </button>
 
             {mounted && open ? createPortal(modal, document.body) : null}

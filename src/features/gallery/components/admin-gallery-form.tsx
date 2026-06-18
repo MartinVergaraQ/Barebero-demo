@@ -8,6 +8,7 @@ import { uploadGalleryImage } from '@/src/features/gallery/api/upload-gallery-im
 import { createGalleryItemServer } from '@/src/features/gallery/api/create-gallery-item-server'
 import { AdminInput } from '@/src/features/admin/components/admin-input'
 import { AdminSelect } from '@/src/features/admin/components/admin-select'
+import { deleteGalleryImage } from '@/src/features/gallery/api/delete-gallery-image'
 
 type ServiceOption = {
     id: string
@@ -52,15 +53,19 @@ export function AdminGalleryForm({
     const [uploading, setUploading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [form, setForm] = useState(getInitialForm(barberId))
-
-
+    const [discarding, setDiscarding] = useState(false)
 
     useEffect(() => {
         if (!open) return
 
         function handleEscape(event: KeyboardEvent) {
-            if (event.key === 'Escape') {
-                setOpen(false)
+            if (
+                event.key === 'Escape' &&
+                !saving &&
+                !uploading &&
+                !discarding
+            ) {
+                void handleClose()
             }
         }
 
@@ -71,7 +76,13 @@ export function AdminGalleryForm({
             document.removeEventListener('keydown', handleEscape)
             document.body.style.overflow = ''
         }
-    }, [open])
+    }, [
+        open,
+        saving,
+        uploading,
+        discarding,
+        form.publicId,
+    ])
 
     function resetForm() {
         setForm(getInitialForm(barberId))
@@ -91,33 +102,75 @@ export function AdminGalleryForm({
     }
 
     function updateField(
-        field: keyof typeof form, value: string | boolean
+        field: keyof typeof form,
+        value: string | boolean
     ) {
-        if (!canCreate) return
+        if (
+            !canCreate ||
+            saving ||
+            uploading ||
+            discarding
+        ) {
+            return
+        }
+
         setForm((prev) => ({
             ...prev,
             [field]: value,
         }))
     }
 
+    async function handleClose() {
+        if (saving || uploading || discarding) return
+
+        setDiscarding(true)
+
+        try {
+            if (form.publicId) {
+                await deleteGalleryImage(form.publicId)
+            }
+        } catch (error) {
+            console.error(
+                'No se pudo limpiar la imagen temporal:',
+                error
+            )
+
+            toast.warning(
+                'El formulario se cerró, pero no se pudo limpiar la imagen temporal.'
+            )
+        } finally {
+            resetForm()
+            setOpen(false)
+            setDiscarding(false)
+        }
+    }
+
     async function handleImageChange(
-        e: React.ChangeEvent<HTMLInputElement>
+        event: React.ChangeEvent<HTMLInputElement>
     ) {
         if (!canCreate) {
             toast.error(
                 subscriptionBlockReason ||
                 'La suscripción actual no permite subir imágenes.'
             )
-            e.target.value = ''
+            event.target.value = ''
             return
         }
 
-        const file = e.target.files?.[0]
+        const file = event.target.files?.[0]
+
         if (!file) return
 
-        if (!file.type.startsWith('image/')) {
-            toast.error('Selecciona una imagen válida')
-            e.target.value = ''
+        const allowedTypes = new Set([
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/avif',
+        ])
+
+        if (!allowedTypes.has(file.type)) {
+            toast.error('Usa una imagen JPG, PNG, WEBP o AVIF')
+            event.target.value = ''
             return
         }
 
@@ -125,9 +178,11 @@ export function AdminGalleryForm({
 
         if (file.size > maxSize) {
             toast.error('La imagen no puede superar los 5 MB')
-            e.target.value = ''
+            event.target.value = ''
             return
         }
+
+        const previousPublicId = form.publicId
 
         setUploading(true)
 
@@ -140,30 +195,60 @@ export function AdminGalleryForm({
                 publicId: result.public_id,
             }))
 
+            /*
+             * Primero se guarda la imagen nueva.
+             * Solo después se elimina la anterior.
+             */
+            if (
+                previousPublicId &&
+                previousPublicId !== result.public_id
+            ) {
+                try {
+                    await deleteGalleryImage(previousPublicId)
+                } catch (error) {
+                    console.error(
+                        'No se pudo eliminar la imagen anterior:',
+                        error
+                    )
+
+                    toast.warning(
+                        'La imagen nueva se subió, pero no se pudo limpiar la anterior.'
+                    )
+                }
+            }
+
             toast.success('Imagen subida correctamente')
         } catch (error) {
             toast.error(
-                error instanceof Error ? error.message : 'Error subiendo imagen'
+                error instanceof Error
+                    ? error.message
+                    : 'Error subiendo imagen'
             )
         } finally {
             setUploading(false)
+            event.target.value = ''
         }
     }
 
     function validateForm() {
-        if (!form.mediaUrl) {
+        if (!form.mediaUrl || !form.publicId) {
             throw new Error('Primero sube una imagen')
         }
 
         const displayOrder = Number(form.displayOrder || 0)
 
-        if (Number.isNaN(displayOrder) || displayOrder < 0) {
-            throw new Error('La posición debe ser un número válido')
+        if (
+            !Number.isInteger(displayOrder) ||
+            displayOrder < 0
+        ) {
+            throw new Error(
+                'La posición debe ser un número entero igual o mayor a 0'
+            )
         }
     }
 
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>
-
+    async function handleSubmit(
+        e: React.FormEvent<HTMLFormElement>
     ) {
         e.preventDefault()
 
@@ -250,8 +335,9 @@ export function AdminGalleryForm({
                 <div className="fixed inset-0 z-[90]">
                     <button
                         type="button"
-                        className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
-                        onClick={() => setOpen(false)}
+                        disabled={saving || uploading || discarding}
+                        className="absolute inset-0 bg-black/55 backdrop-blur-[2px] disabled:cursor-wait"
+                        onClick={() => void handleClose()}
                         aria-label="Cerrar creación de imagen"
                     />
 
@@ -274,8 +360,9 @@ export function AdminGalleryForm({
 
                                 <button
                                     type="button"
-                                    onClick={() => setOpen(false)}
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:bg-[#FBF7EE] active:scale-95"
+                                    onClick={() => void handleClose()}
+                                    disabled={saving || uploading || discarding}
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:bg-[#FBF7EE] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                                     aria-label="Cerrar"
                                 >
                                     <X className="h-5 w-5" />
@@ -326,7 +413,7 @@ export function AdminGalleryForm({
                                                     type="file"
                                                     accept="image/jpeg,image/png,image/webp,image/avif"
                                                     onChange={handleImageChange}
-                                                    disabled={uploading || saving}
+                                                    disabled={uploading || saving || discarding}
                                                     className="block w-full cursor-pointer rounded-2xl border border-black/10 bg-white text-sm font-semibold text-slate-700 file:mr-4 file:h-11 file:border-0 file:bg-[#C8942E] file:px-4 file:text-sm file:font-black file:text-white disabled:cursor-not-allowed disabled:opacity-60"
                                                 />
 
@@ -358,7 +445,7 @@ export function AdminGalleryForm({
                                                         updateField('title', value)
                                                     }
                                                     placeholder="Corte fade clásico"
-                                                    disabled={saving || uploading}
+                                                    disabled={uploading || saving || discarding}
                                                 />
 
                                                 {allowBarberAssignment && (
@@ -369,7 +456,7 @@ export function AdminGalleryForm({
                                                         onChange={(value) =>
                                                             updateField('selectedBarberId', value)
                                                         }
-                                                        disabled={saving || uploading}
+                                                        disabled={saving || uploading || discarding}
                                                         options={[
                                                             {
                                                                 value: '',
@@ -390,7 +477,7 @@ export function AdminGalleryForm({
                                                     onChange={(value) =>
                                                         updateField('selectedServiceId', value)
                                                     }
-                                                    disabled={saving || uploading}
+                                                    disabled={saving || uploading || discarding}
                                                     options={[
                                                         {
                                                             value: '',
@@ -416,7 +503,7 @@ export function AdminGalleryForm({
                                                         onChange={(value) =>
                                                             updateField('displayOrder', value)
                                                         }
-                                                        disabled={saving || uploading}
+                                                        disabled={uploading || saving || discarding}
                                                     />
 
                                                     <p className="mt-1 text-xs font-bold text-slate-400">
@@ -426,7 +513,7 @@ export function AdminGalleryForm({
 
                                                 <button
                                                     type="button"
-                                                    disabled={saving || uploading}
+                                                    disabled={saving || uploading || discarding}
                                                     onClick={() =>
                                                         updateField('isActive', !form.isActive)
                                                     }
@@ -449,11 +536,11 @@ export function AdminGalleryForm({
                                     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                                         <button
                                             type="button"
-                                            onClick={() => setOpen(false)}
-                                            disabled={saving || uploading}
+                                            onClick={() => void handleClose()}
+                                            disabled={saving || uploading || discarding}
                                             className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                                         >
-                                            Cancelar
+                                            {discarding ? 'Descartando...' : 'Cancelar'}
                                         </button>
 
                                         <button
@@ -461,6 +548,7 @@ export function AdminGalleryForm({
                                             disabled={
                                                 saving ||
                                                 uploading ||
+                                                discarding ||
                                                 !form.mediaUrl ||
                                                 !form.publicId
                                             }

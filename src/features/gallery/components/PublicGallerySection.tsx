@@ -11,19 +11,11 @@ type GalleryBarber = {
 type GalleryItem = {
     id: string
     title: string | null
-    image_url?: string | null
-    media_url?: string | null
+    media_url: string
     display_order: number
     barber_id: string | null
     service_id: string | null
-    barber?: {
-        id: string
-        name: string
-    } | null
-    barbers?: {
-        id: string
-        name: string
-    }[] | null
+    barber: GalleryBarber | null
 }
 
 type PublicGallerySectionProps = {
@@ -89,17 +81,15 @@ export function PublicGallerySection({
     }, [activeBarberId])
 
     function getBarberName(item: GalleryItem) {
-        const directBarber = item.barbers?.[0]?.name
-        if (directBarber) return directBarber
-
         return (
+            item.barber?.name ??
             barbers.find((barber) => barber.id === item.barber_id)?.name ??
             'Trabajo del equipo'
         )
     }
 
     function getImageUrl(item: GalleryItem) {
-        return item.image_url || item.media_url || ''
+        return item.media_url
     }
 
     function getBookingHref(item: GalleryItem) {

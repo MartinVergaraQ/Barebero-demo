@@ -2,11 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/server'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getGalleryItemsAdmin } from '@/src/features/gallery/api/get-gallery-items-admin'
-import { getGalleryItemsByBarber } from '@/src/features/gallery/api/get-gallery-items-by-barber'
 import { AdminGalleryForm } from '@/src/features/gallery/components/admin-gallery-form'
 import { AdminGalleryEditForm } from '@/src/features/gallery/components/admin-gallery-edit-form'
 import { DeleteGalleryItemButton } from '@/src/features/gallery/components/delete-gallery-item-button'
-import { canManageCatalog } from '@/src/features/auth/utils/admin-access'
+import { canManageAppointments } from '@/src/features/auth/utils/admin-access'
 import { getBarberByProfile } from '@/src/features/barbers/api/get-barber-by-profile'
 import {
     isBarberRole,
@@ -14,6 +13,7 @@ import {
 } from '@/src/features/auth/utils/admin-scope'
 import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
 import { getActiveServices } from '@/src/features/services/api/get-services'
+import { AlertTriangle } from 'lucide-react'
 
 type AdminGaleriaPageProps = {
     params: Promise<{
@@ -41,7 +41,11 @@ export default async function AdminGaleriaPage({
         .eq('id', user.id)
         .single()
 
-    if (profileError || !profile || !canManageCatalog(profile.role)) {
+    if (
+        profileError ||
+        !profile?.business_id ||
+        !canManageAppointments(profile.role)
+    ) {
         redirect('/admin')
     }
 
@@ -51,29 +55,43 @@ export default async function AdminGaleriaPage({
         redirect('/admin')
     }
 
-    const ownBarber = await getBarberByProfile(profile.id)
+    const isBarber = isBarberRole(profile.role)
+    const isFullAdmin = isFullAdminRole(profile.role)
+
+    const ownBarber = isBarber
+        ? await getBarberByProfile(profile.id)
+        : null
 
     if (
-        isBarberRole(profile.role) &&
+        isBarber &&
         (!ownBarber || ownBarber.business_id !== business.id)
     ) {
         redirect('/admin')
     }
 
-    const isBarber = isBarberRole(profile.role)
-    const isFullAdmin = isFullAdminRole(profile.role)
-
     const [items, barbers, services] = await Promise.all([
+        getGalleryItemsAdmin(),
         isFullAdmin
-            ? getGalleryItemsAdmin(business.id)
-            : getGalleryItemsByBarber(ownBarber!.id),
-        isFullAdmin ? getBarbersAdmin(business.id) : Promise.resolve([]),
+            ? getBarbersAdmin(business.id)
+            : Promise.resolve([]),
         getActiveServices(business.id),
     ])
 
     const activeItems = items.filter((item) => item.is_active).length
     const inactiveItems = items.length - activeItems
     const withService = items.filter((item) => !!item.service_id).length
+
+    const canEdit =
+        business.subscription_status === 'trialing' ||
+        business.subscription_status === 'active'
+
+    const subscriptionBlockReason = canEdit
+        ? undefined
+        : business.subscription_status === 'past_due'
+            ? 'Tu negocio está en modo solo lectura porque existe un pago pendiente.'
+            : business.subscription_status === 'canceled'
+                ? 'La suscripción está cancelada. Reactívala para modificar la galería.'
+                : 'La suscripción actual no permite modificar la galería.'
 
     return (
         <main className="min-h-screen px-4 py-6 text-slate-950 md:px-8 md:py-8">
@@ -123,12 +141,31 @@ export default async function AdminGaleriaPage({
                     </div>
                 </header>
 
+                {!canEdit && subscriptionBlockReason && (
+                    <div className="inline-flex max-w-2xl items-start gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/70 px-4 py-3 shadow-sm">
+                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                            <AlertTriangle className="h-4 w-4" />
+                        </div>
+
+                        <div>
+                            <p className="text-sm font-black text-amber-950">
+                                Galería en modo solo lectura
+                            </p>
+
+                            <p className="mt-0.5 text-xs font-semibold leading-5 text-amber-800/80">
+                                {subscriptionBlockReason}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 <AdminGalleryForm
-                    businessId={business.id}
                     barberId={isBarber ? ownBarber!.id : undefined}
                     barbers={barbers}
                     services={services}
                     allowBarberAssignment={isFullAdmin}
+                    canCreate={canEdit}
+                    subscriptionBlockReason={subscriptionBlockReason}
                 />
 
                 <section className="overflow-hidden rounded-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
@@ -247,11 +284,14 @@ export default async function AdminGaleriaPage({
                                                 barbers={barbers}
                                                 services={services}
                                                 allowBarberAssignment={isFullAdmin}
+                                                canEdit={canEdit}
+                                                subscriptionBlockReason={subscriptionBlockReason}
                                             />
 
                                             <DeleteGalleryItemButton
                                                 id={item.id}
-                                                publicId={item.public_id}
+                                                canDelete={canEdit}
+                                                subscriptionBlockReason={subscriptionBlockReason}
                                             />
                                         </div>
                                     </div>
