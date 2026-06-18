@@ -428,7 +428,7 @@ export default async function BusinessPage({
                             <ReviewsSection
                                 reviews={reviews}
                                 averageRating={averageRating}
-                                businessId={businessId}
+                                businessSlug={businessSlug}
                                 primary={PRIMARY}
                                 primarySoft={PRIMARY_SOFT}
                             />

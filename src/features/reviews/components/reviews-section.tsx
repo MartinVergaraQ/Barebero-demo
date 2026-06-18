@@ -15,7 +15,7 @@ type Review = {
 type ReviewsSectionProps = {
     reviews: Review[]
     averageRating: string
-    businessId: string
+    businessSlug: string
     primary: string
     primarySoft: string
 }
@@ -42,7 +42,7 @@ function formatReviewDate(dateString: string) {
 export function ReviewsSection({
     reviews,
     averageRating,
-    businessId,
+    businessSlug,
     primary,
     primarySoft,
 }: ReviewsSectionProps) {
@@ -272,7 +272,7 @@ export function ReviewsSection({
 
                         <div className="max-h-[82vh] overflow-y-auto px-5 py-5 sm:max-h-[78vh]">
                             <ReviewForm
-                                businessId={businessId}
+                                businessSlug={businessSlug}
                                 primary={primary}
                                 onSuccess={() => {
                                     setIsReviewModalOpen(false)
