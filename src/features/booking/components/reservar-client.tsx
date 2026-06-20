@@ -670,7 +670,13 @@ export default function ReservarClient({
             const [workingHours, appointments, timeOffRanges] = await Promise.all([
                 getBarberWorkingHours(form.barber_id, dayOfWeek),
                 getBarberAppointmentsByDate(form.barber_id, form.appointment_date),
-                getTimeOffByBarberAndDate(form.barber_id, form.appointment_date),
+                getTimeOffByBarberAndDate({
+                    businessId,
+                    businessSlug,
+                    barberId: form.barber_id,
+                    appointmentDate:
+                        form.appointment_date,
+                }),
             ])
 
             if (workingHours.length === 0) {
@@ -1503,10 +1509,10 @@ export default function ReservarClient({
                                                         disabled={disabled}
                                                         onClick={() => handleDateSelect(option.value)}
                                                         className={`min-w-[88px] shrink-0 snap-start rounded-2xl border px-3 py-3 text-center transition disabled:cursor-not-allowed disabled:opacity-35 ${isSelected
-                                                                ? 'border-[rgba(200,148,46,0.75)] bg-[rgba(200,148,46,0.14)] text-[#C8942E] shadow-[0_12px_26px_rgba(200,148,46,0.12)]'
-                                                                : option.isSunday
-                                                                    ? 'border-border-soft bg-white/10 text-slate-300 hover:border-[rgba(200,148,46,0.45)]'
-                                                                    : 'border-border-soft bg-surface-soft text-slate-300 hover:border-[rgba(200,148,46,0.45)]'
+                                                            ? 'border-[rgba(200,148,46,0.75)] bg-[rgba(200,148,46,0.14)] text-[#C8942E] shadow-[0_12px_26px_rgba(200,148,46,0.12)]'
+                                                            : option.isSunday
+                                                                ? 'border-border-soft bg-white/10 text-slate-300 hover:border-[rgba(200,148,46,0.45)]'
+                                                                : 'border-border-soft bg-surface-soft text-slate-300 hover:border-[rgba(200,148,46,0.45)]'
                                                             }`}
                                                     >
                                                         <div className="text-sm font-black md:text-base">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -17,7 +17,6 @@ type ServiceOption = {
 }
 
 type Props = {
-    businessId: string
     services: ServiceOption[]
     canCreate: boolean
     disabledReason?: string
@@ -38,6 +37,7 @@ function slugify(value: string) {
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '')
 }
 
 function formatPrice(price: number | string) {
@@ -66,7 +66,6 @@ function getEmptyForm() {
 }
 
 export function AdminBarberForm({
-    businessId,
     services,
     canCreate,
     disabledReason = '',
@@ -76,16 +75,43 @@ export function AdminBarberForm({
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [uploadingImage, setUploadingImage] = useState(false)
+    const [slugTouched, setSlugTouched] = useState(false)
 
     const [form, setForm] = useState(getEmptyForm())
-    const [selectedServices, setSelectedServices] = useState<SelectedServiceItem[]>([])
 
+    const [selectedServices, setSelectedServices] =
+        useState<SelectedServiceItem[]>([])
+
+    /*
+     * Primero declaramos resetForm.
+     */
+    const resetForm = useCallback(() => {
+        setForm(getEmptyForm())
+        setSelectedServices([])
+        setSlugTouched(false)
+    }, [])
+
+    /*
+     * Después declaramos handleClose porque depende de resetForm.
+     */
+    const handleClose = useCallback(() => {
+        if (loading || uploadingImage) {
+            return
+        }
+
+        resetForm()
+        setOpen(false)
+    }, [loading, uploadingImage, resetForm])
+
+    /*
+     * El efecto va después de handleClose.
+     */
     useEffect(() => {
         if (!open) return
 
         function handleEscape(event: KeyboardEvent) {
             if (event.key === 'Escape') {
-                setOpen(false)
+                handleClose()
             }
         }
 
@@ -93,20 +119,20 @@ export function AdminBarberForm({
         document.body.style.overflow = 'hidden'
 
         return () => {
-            document.removeEventListener('keydown', handleEscape)
+            document.removeEventListener(
+                'keydown',
+                handleEscape
+            )
+
             document.body.style.overflow = ''
         }
-    }, [open])
-
-    function resetForm() {
-        setForm(getEmptyForm())
-        setSelectedServices([])
-    }
+    }, [open, handleClose])
 
     function handleOpen() {
         if (!canCreate) {
             toast.error(
-                disabledReason || 'No puedes crear barberos con tu plan o suscripción actual.'
+                disabledReason ||
+                'No puedes crear barberos con tu plan o suscripción actual.'
             )
             return
         }
@@ -115,14 +141,29 @@ export function AdminBarberForm({
         setOpen(true)
     }
 
-    function updateField(field: keyof typeof form, value: string | boolean) {
+    function updateField(
+        field: keyof typeof form,
+        value: string | boolean
+    ) {
+        if (!canCreate || loading || uploadingImage) {
+            return
+        }
+
+        if (field === 'slug') {
+            setSlugTouched(true)
+        }
+
         setForm((prev) => {
             const next = {
                 ...prev,
                 [field]: value,
             }
 
-            if (field === 'name' && typeof value === 'string' && !prev.slug) {
+            if (
+                field === 'name' &&
+                typeof value === 'string' &&
+                !slugTouched
+            ) {
                 next.slug = slugify(value)
             }
 
@@ -130,16 +171,61 @@ export function AdminBarberForm({
         })
     }
 
-    async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-        if (!canCreate) return
+    // Continúa aquí con handleImageChange...
+
+
+    async function handleImageChange(
+        e: React.ChangeEvent<HTMLInputElement>
+    ) {
+        if (!canCreate || loading || uploadingImage) {
+            e.target.value = ''
+            return
+        }
 
         const file = e.target.files?.[0]
-        if (!file) return
+
+        if (!file) {
+            e.target.value = ''
+            return
+        }
+
+        const allowedTypes = new Set([
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/avif',
+        ])
+
+        if (!allowedTypes.has(file.type)) {
+            toast.error('Usa una imagen JPG, PNG, WEBP o AVIF')
+            e.target.value = ''
+            return
+        }
+
+        const maxFileSize = 5 * 1024 * 1024
+
+        if (file.size <= 0) {
+            toast.error('El archivo está vacío')
+            e.target.value = ''
+            return
+        }
+
+        if (file.size > maxFileSize) {
+            toast.error('La imagen no puede superar los 5 MB')
+            e.target.value = ''
+            return
+        }
 
         setUploadingImage(true)
 
         try {
             const result = await uploadBarberPhoto(file)
+
+            if (!result.secure_url) {
+                throw new Error(
+                    'El servidor no devolvió una URL válida'
+                )
+            }
 
             setForm((prev) => ({
                 ...prev,
@@ -149,15 +235,20 @@ export function AdminBarberForm({
             toast.success('Foto cargada correctamente')
         } catch (error) {
             toast.error(
-                error instanceof Error ? error.message : 'Error subiendo imagen'
+                error instanceof Error
+                    ? error.message
+                    : 'Error subiendo imagen'
             )
         } finally {
             setUploadingImage(false)
+            e.target.value = ''
         }
     }
 
     function toggleService(serviceId: string) {
-        if (!canCreate) return
+        if (!canCreate || loading || uploadingImage) {
+            return
+        }
 
         setSelectedServices((prev) => {
             const exists = prev.some((item) => item.service_id === serviceId)
@@ -178,36 +269,62 @@ export function AdminBarberForm({
     }
 
     function validateForm() {
-        if (!form.name.trim()) {
-            throw new Error('Ingresa el nombre del barbero')
-        }
-
-        if (!form.slug.trim()) {
-            throw new Error('Ingresa el slug del barbero')
-        }
-
-        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug)) {
-            throw new Error('El slug debe usar solo minúsculas, números y guiones')
-        }
-
-        if (form.whatsapp_phone.trim() && form.whatsapp_phone.trim().length < 8) {
-            throw new Error('Ingresa un WhatsApp válido')
-        }
-
+        const name = form.name.trim()
+        const slug = slugify(form.slug)
         const displayOrder = Number(form.display_order || 0)
 
-        if (Number.isNaN(displayOrder) || displayOrder < 0) {
-            throw new Error('La posición debe ser un número válido')
+        if (name.length < 2 || name.length > 80) {
+            throw new Error(
+                'El nombre debe tener entre 2 y 80 caracteres'
+            )
+        }
+
+        if (!slug) {
+            throw new Error('Ingresa un slug válido')
+        }
+
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+            throw new Error(
+                'El slug debe usar minúsculas, números y guiones'
+            )
+        }
+
+        if (form.specialty.trim().length > 120) {
+            throw new Error(
+                'La especialidad no puede superar los 120 caracteres'
+            )
+        }
+
+        if (form.bio.trim().length > 1000) {
+            throw new Error(
+                'La biografía no puede superar los 1000 caracteres'
+            )
+        }
+
+        if (
+            !Number.isInteger(displayOrder) ||
+            displayOrder < 0
+        ) {
+            throw new Error(
+                'La posición debe ser un número entero igual o mayor a 0'
+            )
         }
     }
 
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(
+        e: React.FormEvent<HTMLFormElement>
+    ) {
         e.preventDefault()
 
         if (!canCreate) {
             toast.error(
-                disabledReason || 'No puedes crear barberos con tu plan o suscripción actual.'
+                disabledReason ||
+                'No puedes crear barberos con tu plan o suscripción actual.'
             )
+            return
+        }
+
+        if (loading || uploadingImage) {
             return
         }
 
@@ -216,42 +333,52 @@ export function AdminBarberForm({
         try {
             validateForm()
 
-            const created = await createBarberServer({
-                business_id: businessId,
-                name: form.name.trim(),
+            const result = await createBarberServer({
+                name: form.name,
                 slug: slugify(form.slug),
-                bio: form.bio.trim(),
-                photo_url: form.photo_url,
-                specialty: form.specialty.trim(),
-                whatsapp_phone: form.whatsapp_phone.trim(),
+                bio: form.bio,
+                photo_url: form.photo_url || null,
+                specialty: form.specialty,
+                whatsapp_phone: form.whatsapp_phone,
                 is_active: form.is_active,
                 display_order: Number(form.display_order || 0),
             })
 
-            const barberId = created.id
-
-            if (!barberId) {
-                throw new Error('No se pudo obtener el id del barbero creado')
+            if (!result.ok) {
+                throw new Error(result.message)
             }
 
-            await upsertBarberServices(
+            const barberId = result.data.id
+
+            const servicesResult = await upsertBarberServices(
                 barberId,
                 selectedServices.map((item) => ({
                     service_id: item.service_id,
-                    custom_price: item.custom_price ? Number(item.custom_price) : null,
-                    custom_duration_minutes: item.custom_duration_minutes
-                        ? Number(item.custom_duration_minutes)
-                        : null,
+                    custom_price:
+                        item.custom_price !== ''
+                            ? Number(item.custom_price)
+                            : null,
+                    custom_duration_minutes:
+                        item.custom_duration_minutes !== ''
+                            ? Number(item.custom_duration_minutes)
+                            : null,
                 }))
             )
 
+            if (!servicesResult.ok) {
+                throw new Error(servicesResult.message)
+            }
+
             toast.success('Barbero creado correctamente')
+
             resetForm()
             setOpen(false)
             router.refresh()
         } catch (error) {
             toast.error(
-                error instanceof Error ? error.message : 'Error creando barbero'
+                error instanceof Error
+                    ? error.message
+                    : 'Error creando barbero'
             )
         } finally {
             setLoading(false)
@@ -280,9 +407,10 @@ export function AdminBarberForm({
                         type="button"
                         onClick={handleOpen}
                         disabled={!canCreate}
+                        title={!canCreate ? disabledReason : 'Crear nuevo barbero'}
                         className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 md:w-auto"
                     >
-                        + Nuevo barbero
+                        {canCreate ? '+ Nuevo barbero' : 'Solo lectura'}
                     </button>
                 </div>
             </section>
@@ -291,8 +419,9 @@ export function AdminBarberForm({
                 <div className="fixed inset-0 z-[90]">
                     <button
                         type="button"
-                        className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
-                        onClick={() => setOpen(false)}
+                        disabled={loading || uploadingImage}
+                        className="absolute inset-0 bg-black/55 backdrop-blur-[2px] disabled:cursor-wait"
+                        onClick={handleClose}
                         aria-label="Cerrar creación de barbero"
                     />
 
@@ -315,8 +444,9 @@ export function AdminBarberForm({
 
                                 <button
                                     type="button"
-                                    onClick={() => setOpen(false)}
-                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:bg-[#FBF7EE] active:scale-95"
+                                    onClick={handleClose}
+                                    disabled={loading || uploadingImage}
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:bg-[#FBF7EE] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                                     aria-label="Cerrar"
                                 >
                                     <X className="h-5 w-5" />
@@ -342,7 +472,7 @@ export function AdminBarberForm({
                                                         value={form.name}
                                                         onChange={(value) => updateField('name', value)}
                                                         placeholder="Leandro S"
-                                                        disabled={loading}
+                                                        disabled={loading || uploadingImage}
                                                     />
 
                                                     <AdminInput
@@ -353,7 +483,7 @@ export function AdminBarberForm({
                                                             updateField('slug', slugify(value))
                                                         }
                                                         placeholder="leandro-s"
-                                                        disabled={loading}
+                                                        disabled={loading || uploadingImage}
                                                     />
                                                 </div>
 
@@ -363,7 +493,7 @@ export function AdminBarberForm({
                                                     value={form.specialty}
                                                     onChange={(value) => updateField('specialty', value)}
                                                     placeholder="Cortes degradados"
-                                                    disabled={loading}
+                                                    disabled={loading || uploadingImage}
                                                 />
 
                                                 <div className="grid gap-4 md:grid-cols-2">
@@ -375,7 +505,7 @@ export function AdminBarberForm({
                                                             updateField('whatsapp_phone', value)
                                                         }
                                                         placeholder="+56 9 1234 5678"
-                                                        disabled={loading}
+                                                        disabled={loading || uploadingImage}
                                                     />
 
                                                     <div>
@@ -388,7 +518,7 @@ export function AdminBarberForm({
                                                                 updateField('display_order', value)
                                                             }
                                                             placeholder="0"
-                                                            disabled={loading}
+                                                            disabled={loading || uploadingImage}
                                                         />
 
                                                         <p className="mt-1 text-xs font-bold text-slate-400">
@@ -411,8 +541,9 @@ export function AdminBarberForm({
                                                         onChange={(event) =>
                                                             updateField('bio', event.target.value)
                                                         }
-                                                        disabled={loading}
+                                                        disabled={loading || uploadingImage}
                                                         rows={4}
+                                                        maxLength={1000}
                                                         placeholder="Describe al barbero"
                                                         className="min-h-[115px] w-full rounded-2xl border border-black/10 bg-white px-4 py-3.5 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#C8942E] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
                                                     />
@@ -420,7 +551,7 @@ export function AdminBarberForm({
 
                                                 <button
                                                     type="button"
-                                                    disabled={loading}
+                                                    disabled={loading || uploadingImage}
                                                     onClick={() =>
                                                         updateField('is_active', !form.is_active)
                                                     }
@@ -469,9 +600,13 @@ export function AdminBarberForm({
                                                     <div className="min-w-0 flex-1">
                                                         <input
                                                             type="file"
-                                                            accept="image/*"
+                                                            accept="image/jpeg,image/png,image/webp,image/avif"
                                                             onChange={handleImageChange}
-                                                            disabled={loading || uploadingImage}
+                                                            disabled={
+                                                                loading ||
+                                                                uploadingImage ||
+                                                                !canCreate
+                                                            }
                                                             className="w-full rounded-2xl border border-black/10 bg-white text-sm font-bold text-slate-600 file:mr-4 file:h-11 file:border-0 file:bg-[#C8942E] file:px-4 file:text-sm file:font-black file:text-white disabled:cursor-not-allowed disabled:opacity-60"
                                                         />
 
@@ -497,7 +632,7 @@ export function AdminBarberForm({
                                                     </div>
 
                                                     <span className="rounded-full bg-[#C8942E]/10 px-3 py-1 text-xs font-black text-[#8A5D16]">
-                                                        {selectedServices.length} seleccionado
+                                                        {selectedServices.length} servicio
                                                         {selectedServices.length === 1 ? '' : 's'}
                                                     </span>
                                                 </div>
@@ -523,7 +658,7 @@ export function AdminBarberForm({
                                                                     key={service.id}
                                                                     type="button"
                                                                     onClick={() => toggleService(service.id)}
-                                                                    disabled={loading}
+                                                                    disabled={loading || uploadingImage}
                                                                     className={`flex w-full items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${selected
                                                                         ? 'border-[#C8942E]/50 bg-[#C8942E]/10'
                                                                         : 'border-black/10 bg-white hover:bg-[#FFFCF4]'
@@ -562,8 +697,8 @@ export function AdminBarberForm({
                                     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                                         <button
                                             type="button"
-                                            onClick={() => setOpen(false)}
-                                            disabled={loading}
+                                            onClick={handleClose}
+                                            disabled={loading || uploadingImage}
                                             className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                                         >
                                             Cancelar
@@ -571,10 +706,18 @@ export function AdminBarberForm({
 
                                         <button
                                             type="submit"
-                                            disabled={loading || !canCreate}
+                                            disabled={
+                                                loading ||
+                                                uploadingImage ||
+                                                !canCreate
+                                            }
                                             className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                                         >
-                                            {loading ? 'Creando...' : 'Crear barbero'}
+                                            {uploadingImage
+                                                ? 'Subiendo foto...'
+                                                : loading
+                                                    ? 'Creando...'
+                                                    : 'Crear barbero'}
                                         </button>
                                     </div>
                                 </div>

@@ -5,10 +5,15 @@ import {
     getWorkingHoursByBarber,
     type WorkingHourItem,
 } from '@/src/features/working-hours/api/get-working-hours-by-barberos'
-import { upsertWorkingHourServer } from '@/src/features/working-hours/api/upsert-working-hour-server'
+import { upsertWorkingHoursServer } from '@/src/features/working-hours/api/upsert-working-hours-server'
 import { AdminInput } from '@/src/features/admin/components/admin-input'
 import { AdminSelect } from '@/src/features/admin/components/admin-select'
 import { AdminAlert } from '../../admin/components/admin-alert'
+import {
+    usePathname,
+    useRouter,
+    useSearchParams,
+} from 'next/navigation'
 
 type Barber = {
     id: string
@@ -123,9 +128,27 @@ function getInitials(name: string) {
 export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReason }: Props) {
     const isSingleBarber = barbers.length === 1
 
-    const [selectedBarberId, setSelectedBarberId] = useState(
-        isSingleBarber ? barbers[0]?.id ?? '' : ''
-    )
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
+
+    const barberIdFromUrl = searchParams.get('barber')
+
+    const validBarberIdFromUrl =
+        barberIdFromUrl &&
+            barbers.some(
+                (barber) => barber.id === barberIdFromUrl
+            )
+            ? barberIdFromUrl
+            : ''
+
+    const [selectedBarberId, setSelectedBarberId] =
+        useState(
+            validBarberIdFromUrl ||
+            (isSingleBarber
+                ? barbers[0]?.id ?? ''
+                : '')
+        )
 
     const [rows, setRows] = useState<WorkingHourFormRow[]>(getDefaultRows)
     const [loading, setLoading] = useState(false)
@@ -142,10 +165,31 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
     const activeDaysCount = rows.filter((row) => row.is_active).length
 
     useEffect(() => {
-        if (isSingleBarber && barbers[0] && selectedBarberId !== barbers[0].id) {
-            setSelectedBarberId(barbers[0].id)
+        const barberIdFromSearchParams =
+            searchParams.get('barber')
+
+        const existsInCurrentBusiness =
+            barberIdFromSearchParams &&
+            barbers.some(
+                (barber) =>
+                    barber.id ===
+                    barberIdFromSearchParams
+            )
+
+        if (existsInCurrentBusiness) {
+            setSelectedBarberId(
+                barberIdFromSearchParams
+            )
+            return
         }
-    }, [isSingleBarber, barbers, selectedBarberId])
+
+        if (isSingleBarber && barbers[0]) {
+            setSelectedBarberId(barbers[0].id)
+            return
+        }
+
+        setSelectedBarberId('')
+    }, [searchParams, barbers, isSingleBarber])
 
     useEffect(() => {
         async function loadWorkingHours() {
@@ -183,10 +227,7 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
                             existing?.end_time?.slice(0, 5) ??
                             defaultRow?.end_time ??
                             '20:00',
-                        is_active:
-                            existing?.is_active ??
-                            defaultRow?.is_active ??
-                            false,
+                        is_active: existing?.is_active ?? false,
                     }
                 })
 
@@ -218,6 +259,42 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
             window.removeEventListener('beforeunload', handleBeforeUnload)
         }
     }, [hasUnsavedChanges])
+
+    function handleBarberChange(nextBarberId: string) {
+        if (
+            hasUnsavedChanges &&
+            nextBarberId !== selectedBarberId
+        ) {
+            const confirmed = window.confirm(
+                'Tienes cambios de horario sin guardar. ¿Deseas cambiar de barbero y descartarlos?'
+            )
+
+            if (!confirmed) {
+                return
+            }
+        }
+
+        setSelectedBarberId(nextBarberId)
+
+        const params = new URLSearchParams(
+            searchParams.toString()
+        )
+
+        if (nextBarberId) {
+            params.set('barber', nextBarberId)
+        } else {
+            params.delete('barber')
+        }
+
+        const query = params.toString()
+
+        router.replace(
+            query ? `${pathname}?${query}` : pathname,
+            {
+                scroll: false,
+            }
+        )
+    }
 
     function updateRow(
         dayOfWeek: number,
@@ -262,22 +339,29 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
 
         try {
             for (const row of rows) {
-                if (row.is_active && row.start_time >= row.end_time) {
-                    const dayMeta = getDayMeta(row.day_of_week)
+                if (
+                    row.is_active &&
+                    row.start_time >= row.end_time
+                ) {
+                    const dayMeta = getDayMeta(
+                        row.day_of_week
+                    )
 
                     throw new Error(
                         `El horario de ${dayMeta.label} no es válido`
                     )
                 }
+            }
 
-                await upsertWorkingHourServer({
-                    barber_id: selectedBarber.id,
+            await upsertWorkingHoursServer({
+                barber_id: selectedBarber.id,
+                hours: rows.map((row) => ({
                     day_of_week: row.day_of_week,
                     start_time: row.start_time,
                     end_time: row.end_time,
                     is_active: row.is_active,
-                })
-            }
+                })),
+            })
 
             setHasUnsavedChanges(false)
             setMessage(
@@ -391,7 +475,7 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
                             id="working-hours-barber"
                             label="Cambiar barbero"
                             value={selectedBarberId}
-                            onChange={setSelectedBarberId}
+                            onChange={handleBarberChange}
                             options={[
                                 { value: '', label: 'Selecciona un barbero' },
                                 ...barbers.map((barber) => ({

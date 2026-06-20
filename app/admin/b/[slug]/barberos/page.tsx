@@ -61,9 +61,10 @@ export default async function AdminBarberosPage({
 
     const {
         data: { user },
+        error: userError,
     } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (userError || !user) {
         redirect('/admin/login')
     }
 
@@ -87,7 +88,7 @@ export default async function AdminBarberosPage({
     )
 
     const [barbers, services] = await Promise.all([
-        getBarbersAdmin(business.id),
+        getBarbersAdmin(),
         getServicesAdmin(business.id),
     ])
 
@@ -99,11 +100,19 @@ export default async function AdminBarberosPage({
     }))
 
     const activeBarbers = barbers.filter((barber) => barber.is_active).length
-    const inactiveBarbers = barbers.length - activeBarbers
     const withPhoto = barbers.filter((barber) => !!barber.photo_url).length
 
-    const canCreate = canCreateWithSubscription(subscriptionStatus)
-    const canEdit = canEditWithSubscription(subscriptionStatus)
+    const canCreate =
+        canCreateWithSubscription(subscriptionStatus)
+
+    const canEdit =
+        canEditWithSubscription(subscriptionStatus)
+
+    const subscriptionBlockReason =
+        getSubscriptionBlockReason(subscriptionStatus)
+
+    const isSubscriptionReadOnly =
+        !canCreate || !canEdit
 
     const maxBarbers = business.max_barbers
     const hasUnlimitedBarbers = maxBarbers === null
@@ -117,9 +126,11 @@ export default async function AdminBarberosPage({
         : `${activeBarbers}/${maxBarbers} activos`
 
     const createDisabledReason = !canCreate
-        ? getSubscriptionBlockReason(subscriptionStatus)
+        ? subscriptionBlockReason
         : reachedBarberLimit
-            ? `Este plan permite ${maxBarbers} barbero${maxBarbers === 1 ? '' : 's'} activo${maxBarbers === 1 ? '' : 's'}. Puedes ocultar uno existente o cambiar de plan para agregar más.`
+            ? `Este plan permite ${maxBarbers} barbero${maxBarbers === 1 ? '' : 's'
+            } activo${maxBarbers === 1 ? '' : 's'
+            }. Puedes ocultar uno existente o cambiar de plan para agregar más.`
             : ''
 
     return (
@@ -170,14 +181,13 @@ export default async function AdminBarberosPage({
                     </div>
                 </header>
 
-                {!canCreate && (
+                {isSubscriptionReadOnly && (
                     <SubscriptionRestrictedBanner
-                        message={getSubscriptionBlockReason(subscriptionStatus)}
+                        message={subscriptionBlockReason}
                     />
                 )}
 
                 <AdminBarberForm
-                    businessId={business.id}
                     services={serviceOptions}
                     canCreate={canCreateBarber}
                     disabledReason={createDisabledReason}

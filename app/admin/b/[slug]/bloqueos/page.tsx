@@ -56,7 +56,7 @@ export default async function AdminBloqueosPage({
     }
 
     const barbers = isFullAdminRole(profile.role)
-        ? await getBarbersAdmin(business.id)
+        ? await getBarbersAdmin()
         : [
             {
                 id: ownBarber!.id,
@@ -100,8 +100,8 @@ export default async function AdminBloqueosPage({
 
                     <div
                         className={`flex w-fit items-center gap-2 rounded-full px-4 py-2 text-xs font-black ${canEdit
-                                ? 'bg-[#C8942E]/10 text-[#8A5D16]'
-                                : 'border border-slate-200 bg-slate-100 text-slate-500'
+                            ? 'bg-[#C8942E]/10 text-[#8A5D16]'
+                            : 'border border-slate-200 bg-slate-100 text-slate-500'
                             }`}
                     >
                         <span>{isBarber ? 'Mis bloqueos' : 'Equipo'}</span>

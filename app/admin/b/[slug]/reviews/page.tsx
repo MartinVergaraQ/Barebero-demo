@@ -83,7 +83,26 @@ export default async function AdminReviewsPage({
         redirect('/admin')
     }
 
-    const reviews = await getReviewsAdmin(business.id)
+    const canModerate =
+        business.subscription_status === 'trialing' ||
+        business.subscription_status === 'active'
+
+    const subscriptionBlockReason = canModerate
+        ? undefined
+        : business.subscription_status === 'past_due'
+            ? 'Existe un pago pendiente. Regulariza tu plan para volver a moderar reseñas.'
+            : business.subscription_status === 'canceled'
+                ? 'La suscripción está cancelada. Reactívala para volver a moderar reseñas.'
+                : 'La suscripción actual no permite moderar reseñas.'
+
+    const subscriptionStatusLabel =
+        business.subscription_status === 'past_due'
+            ? 'Pago pendiente'
+            : business.subscription_status === 'canceled'
+                ? 'Suscripción cancelada'
+                : 'Solo lectura'
+
+    const reviews = await getReviewsAdmin()
 
     const publishedReviews = reviews.filter((review) => review.is_published).length
     const hiddenReviews = reviews.length - publishedReviews
@@ -138,60 +157,82 @@ export default async function AdminReviewsPage({
                     </div>
                 </header>
 
-                <section className="overflow-hidden rounded-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
-                    <div className="flex flex-col gap-2 border-b border-black/10 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-6">
+                {!canModerate && (
+                    <div className="flex items-start gap-3 rounded-[22px] border border-amber-200 bg-amber-50/70 px-4 py-4 shadow-sm">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-lg text-amber-800">
+                            🔒
+                        </div>
+
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-black text-slate-900">
+                                    Reseñas en modo lectura
+                                </p>
+
+                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-800">
+                                    {subscriptionStatusLabel}
+                                </span>
+                            </div>
+
+                            <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
+                                {subscriptionBlockReason ||
+                                    'Puedes consultar las reseñas recibidas, pero no publicar, ocultar ni rechazar opiniones.'}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                <section className="overflow-hidden rounded-[28px] border border-black/10 bg-white/75 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+                    <div className="flex flex-col gap-3 border-b border-black/10 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-6">
                         <div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
                                 Opiniones
                             </p>
 
-                            <h2 className="mt-1 text-2xl font-black text-slate-950">
-                                Opiniones recibidas
+                            <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+                                Reseñas recibidas
                             </h2>
 
                             <p className="mt-1 text-sm leading-6 text-slate-500">
-                                Revisa calificaciones, comentarios y decide cuáles aparecen públicamente.
+                                Revisa las opiniones y decide cuáles aparecen en el sitio público.
                             </p>
                         </div>
 
-                        <span className="w-fit rounded-full bg-[#C8942E]/10 px-4 py-2 text-xs font-black text-[#8A5D16]">
-                            {reviews.length} registro{reviews.length === 1 ? '' : 's'}
+                        <span className="w-fit rounded-full border border-[#C8942E]/15 bg-[#C8942E]/10 px-3.5 py-2 text-xs font-black text-[#8A5D16]">
+                            {reviews.length} reseña{reviews.length === 1 ? '' : 's'}
                         </span>
                     </div>
 
                     {reviews.length === 0 ? (
                         <div className="px-5 py-14 text-center">
-                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#C8942E]/10 text-2xl">
                                 ⭐
                             </div>
 
                             <h3 className="mt-4 text-xl font-black text-slate-950">
-                                No hay reviews todavía
+                                Aún no hay reseñas
                             </h3>
 
                             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
-                                Cuando los clientes dejen reseñas, aparecerán aquí para que puedas administrarlas.
+                                Las opiniones enviadas por tus clientes aparecerán aquí para ser revisadas.
                             </p>
                         </div>
                     ) : (
-                        <div className="grid gap-3 p-4 md:p-5">
+                        <div className="divide-y divide-black/5">
                             {reviews.map((review) => {
                                 const initials = getInitials(review.client_name)
 
                                 return (
                                     <article
                                         key={review.id}
-                                        className={`overflow-hidden rounded-[22px] border shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)] ${review.is_published
-                                            ? 'border-emerald-200 bg-[#FCFFFD]'
-                                            : 'border-amber-200 bg-[#FFFDF8]'
-                                            }`}
+                                        className="px-5 py-5 transition hover:bg-[#FBF8F0]/70 md:px-6"
                                     >
-                                        <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
-                                            <div className="min-w-0 flex flex-1 gap-4">
+                                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                                            <div className="flex min-w-0 gap-4">
                                                 <div
-                                                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-black ring-1 ${review.is_published
-                                                        ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
-                                                        : 'bg-amber-100 text-amber-800 ring-amber-200'
+                                                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black ring-1 ${review.is_published
+                                                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                                        : 'bg-slate-100 text-slate-600 ring-slate-200'
                                                         }`}
                                                 >
                                                     {initials || 'RV'}
@@ -199,61 +240,57 @@ export default async function AdminReviewsPage({
 
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <h3 className="line-clamp-1 text-lg font-black text-slate-950">
+                                                        <h3 className="truncate text-base font-black text-slate-950 md:text-lg">
                                                             {review.client_name}
                                                         </h3>
 
                                                         <span
-                                                            className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${review.is_published
-                                                                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                                                : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
+                                                            className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] ring-1 ${review.is_published
+                                                                ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                                                : 'bg-slate-100 text-slate-600 ring-slate-200'
                                                                 }`}
                                                         >
-                                                            {review.is_published ? 'Publicada' : 'Oculta'}
+                                                            {review.is_published
+                                                                ? 'Publicada'
+                                                                : 'Pendiente'}
                                                         </span>
 
-                                                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-                                                            {formatReviewDate(review.created_at)}
+                                                        <span className="text-xs font-bold text-slate-400">
+                                                            {formatReviewDate(
+                                                                review.created_at
+                                                            )}
                                                         </span>
                                                     </div>
 
-                                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
                                                         <span className="text-base font-black tracking-wide text-[#D39A2F]">
-                                                            {formatRatingStars(review.rating)}
+                                                            {formatRatingStars(
+                                                                review.rating
+                                                            )}
                                                         </span>
 
-                                                        <span className="text-sm font-bold text-slate-600">
-                                                            {review.rating}/5 · {getRatingLabel(review.rating)}
+                                                        <span className="text-xs font-bold text-slate-500">
+                                                            {review.rating}/5 ·{' '}
+                                                            {getRatingLabel(
+                                                                review.rating
+                                                            )}
                                                         </span>
                                                     </div>
 
-                                                    <div className="mt-3 rounded-2xl bg-white/70 px-3 py-2 ring-1 ring-black/5">
-                                                        <p className="text-sm leading-6 text-slate-700">
-                                                            “{review.comment || 'Sin comentario.'}”
-                                                        </p>
-                                                    </div>
+                                                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                                                        {review.comment
+                                                            ? `“${review.comment}”`
+                                                            : 'Sin comentario escrito.'}
+                                                    </p>
                                                 </div>
                                             </div>
 
-                                            <div className="flex w-full shrink-0 flex-col gap-2 lg:w-[170px]">
-                                                <div
-                                                    className={`rounded-2xl px-4 py-3 text-center ring-1 ${review.is_published
-                                                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                                                        : 'bg-amber-50 text-amber-800 ring-amber-200'
-                                                        }`}
-                                                >
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">
-                                                        Estado
-                                                    </p>
-
-                                                    <p className="mt-1 text-sm font-black">
-                                                        {review.is_published ? 'Visible' : 'Oculta'}
-                                                    </p>
-                                                </div>
-
+                                            <div className="flex items-center lg:min-w-[145px] lg:justify-end">
                                                 <AdminReviewActions
                                                     reviewId={review.id}
                                                     isPublished={review.is_published}
+                                                    canModerate={canModerate}
+                                                    subscriptionBlockReason={subscriptionBlockReason}
                                                 />
                                             </div>
                                         </div>

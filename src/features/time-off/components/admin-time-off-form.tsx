@@ -1,6 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react'
+
+import {
+    usePathname,
+    useRouter,
+    useSearchParams,
+} from 'next/navigation'
 import { createTimeOffServer } from '@/src/features/time-off/api/create-time-off-server'
 import {
     getTimeOffByBarber,
@@ -25,17 +36,6 @@ type Props = {
     subscriptionBlockReason?: string
 }
 
-function formatDateTimeLocal(date: Date) {
-    const pad = (n: number) => String(n).padStart(2, '0')
-
-    const year = date.getFullYear()
-    const month = pad(date.getMonth() + 1)
-    const day = pad(date.getDate())
-    const hours = pad(date.getHours())
-    const minutes = pad(date.getMinutes())
-
-    return `${year}-${month}-${day}T${hours}:${minutes}`
-}
 function getInitials(name: string) {
     return name
         .split(' ')
@@ -80,10 +80,27 @@ function getDurationLabel(startAt: string, endAt: string) {
 
 export function AdminTimeOffForm({ barbers, canEdit, subscriptionBlockReason }: Props) {
     const isSingleBarber = barbers.length === 1
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
 
-    const [selectedBarberId, setSelectedBarberId] = useState(
-        isSingleBarber ? barbers[0]?.id ?? '' : ''
-    )
+    const barberIdFromUrl = searchParams.get('barber')
+
+    const validBarberIdFromUrl =
+        barberIdFromUrl &&
+            barbers.some(
+                (barber) => barber.id === barberIdFromUrl
+            )
+            ? barberIdFromUrl
+            : ''
+
+    const [selectedBarberId, setSelectedBarberId] =
+        useState(
+            validBarberIdFromUrl ||
+            (isSingleBarber
+                ? barbers[0]?.id ?? ''
+                : '')
+        )
 
     const [items, setItems] = useState<TimeOffItem[]>([])
 
@@ -103,35 +120,156 @@ export function AdminTimeOffForm({ barbers, canEdit, subscriptionBlockReason }: 
     )
 
     useEffect(() => {
-        if (isSingleBarber && barbers[0] && selectedBarberId !== barbers[0].id) {
-            setSelectedBarberId(barbers[0].id)
-        }
-    }, [isSingleBarber, barbers, selectedBarberId])
+        const requestedBarberId =
+            searchParams.get('barber')
 
-    async function loadItems(barberId: string) {
-        setLoadingList(true)
-        setErrorMessage('')
-
-        try {
-            const data = await getTimeOffByBarber(barberId)
-            setItems(data)
-        } catch (error) {
-            setErrorMessage(
-                error instanceof Error ? error.message : 'Error cargando bloqueos'
+        const requestedBarberExists =
+            requestedBarberId &&
+            barbers.some(
+                (barber) =>
+                    barber.id === requestedBarberId
             )
-        } finally {
-            setLoadingList(false)
-        }
-    }
 
-    useEffect(() => {
-        if (!selectedBarberId) {
-            setItems([])
+        if (requestedBarberExists) {
+            setSelectedBarberId(requestedBarberId)
             return
         }
 
-        loadItems(selectedBarberId)
-    }, [selectedBarberId])
+        if (isSingleBarber && barbers[0]) {
+            setSelectedBarberId(barbers[0].id)
+            return
+        }
+
+        setSelectedBarberId('')
+    }, [searchParams, barbers, isSingleBarber])
+
+    const loadRequestIdRef = useRef(0)
+
+    const loadItems = useCallback(
+        async (barberId: string) => {
+            const normalizedBarberId =
+                typeof barberId === 'string'
+                    ? barberId.trim()
+                    : ''
+
+            if (!normalizedBarberId) {
+                setItems([])
+                return
+            }
+
+            const requestId =
+                loadRequestIdRef.current + 1
+
+            loadRequestIdRef.current = requestId
+
+            setLoadingList(true)
+            setErrorMessage('')
+
+            try {
+                const data =
+                    await getTimeOffByBarber(
+                        normalizedBarberId
+                    )
+
+                if (
+                    requestId !==
+                    loadRequestIdRef.current
+                ) {
+                    return
+                }
+
+                setItems(data)
+            } catch (error) {
+                if (
+                    requestId !==
+                    loadRequestIdRef.current
+                ) {
+                    return
+                }
+
+                setErrorMessage(
+                    error instanceof Error
+                        ? error.message
+                        : 'Error cargando bloqueos'
+                )
+
+                setItems([])
+            } finally {
+                if (
+                    requestId ===
+                    loadRequestIdRef.current
+                ) {
+                    setLoadingList(false)
+                }
+            }
+        },
+        []
+    )
+
+    useEffect(() => {
+        if (!selectedBarberId) {
+            loadRequestIdRef.current += 1
+            setItems([])
+            setLoadingList(false)
+            return
+        }
+
+        setItems([])
+        void loadItems(selectedBarberId)
+    }, [selectedBarberId, loadItems])
+
+    function handleBarberChange(nextBarberId: string) {
+        if (nextBarberId === selectedBarberId) {
+            return
+        }
+
+        const hasDraft =
+            Boolean(form.start_at) ||
+            Boolean(form.end_at) ||
+            Boolean(form.reason.trim())
+
+        if (hasDraft) {
+            const confirmed = window.confirm(
+                'Tienes un bloqueo sin guardar. ¿Deseas cambiar de barbero y descartar esos datos?'
+            )
+
+            if (!confirmed) {
+                return
+            }
+        }
+
+        setForm({
+            start_at: '',
+            end_at: '',
+            reason: '',
+        })
+
+        setMessage('')
+        setErrorMessage('')
+        setItems([])
+        setSelectedBarberId(nextBarberId)
+
+        const params = new URLSearchParams(
+            searchParams.toString()
+        )
+
+        if (nextBarberId) {
+            params.set('barber', nextBarberId)
+        } else {
+            params.delete('barber')
+        }
+
+        const queryString = params.toString()
+
+        router.replace(
+            queryString
+                ? `${pathname}?${queryString}`
+                : pathname,
+            {
+                scroll: false,
+            }
+        )
+    }
 
     function updateField(field: keyof typeof form, value: string) {
         if (!canEdit) return
@@ -295,7 +433,7 @@ export function AdminTimeOffForm({ barbers, canEdit, subscriptionBlockReason }: 
                             id="time-off-barber"
                             label="Cambiar barbero"
                             value={selectedBarberId}
-                            onChange={setSelectedBarberId}
+                            onChange={handleBarberChange}
                             options={[
                                 { value: '', label: 'Selecciona un barbero' },
                                 ...barbers.map((barber) => ({
@@ -389,13 +527,20 @@ export function AdminTimeOffForm({ barbers, canEdit, subscriptionBlockReason }: 
                                     id="time-off-reason"
                                     value={form.reason}
                                     onChange={(event) =>
-                                        updateField('reason', event.target.value)
+                                        updateField(
+                                            'reason',
+                                            event.target.value
+                                        )
                                     }
                                     disabled={!canEdit || saving}
                                     rows={4}
+                                    maxLength={500}
                                     placeholder="Vacaciones, permiso, cierre parcial..."
                                     className="min-h-[120px] w-full rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3.5 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#C8942E] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
                                 />
+                                <p className="mt-1 text-right text-xs font-semibold text-slate-400">
+                                    {form.reason.length}/500
+                                </p>
                             </div>
 
                             {canEdit ? (

@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { createClient } from '@/src/lib/supabase/server'
 
 export async function getCurrentBarber() {
@@ -5,11 +7,37 @@ export async function getCurrentBarber() {
 
     const {
         data: { user },
+        error: userError,
     } = await supabase.auth.getUser()
 
-    if (!user) return null
+    if (userError || !user) {
+        return null
+    }
 
-    const { data: barber, error } = await supabase
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, business_id, role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+    if (profileError || !profile?.business_id) {
+        console.error(
+            'Error obteniendo perfil del barbero actual:',
+            profileError
+        )
+
+        return null
+    }
+
+    if (
+        profile.role !== 'barber' &&
+        profile.role !== 'owner' &&
+        profile.role !== 'admin'
+    ) {
+        return null
+    }
+
+    const { data: barber, error: barberError } = await supabase
         .from('barbers')
         .select(`
             id,
@@ -26,9 +54,17 @@ export async function getCurrentBarber() {
             rating_avg
         `)
         .eq('profile_id', user.id)
-        .single()
+        .eq('business_id', profile.business_id)
+        .maybeSingle()
 
-    if (error || !barber) return null
+    if (barberError) {
+        console.error(
+            'Error obteniendo barbero actual:',
+            barberError
+        )
 
-    return barber
+        return null
+    }
+
+    return barber ?? null
 }

@@ -25,6 +25,8 @@ export function DeleteTimeOffButton({ id, canEdit, subscriptionBlockReason, onDe
             return
         }
 
+        if (loading) return
+
         setLoading(true)
 
         try {
@@ -35,9 +37,21 @@ export function DeleteTimeOffButton({ id, canEdit, subscriptionBlockReason, onDe
                 return
             }
 
-            await onDeleted()
             setOpen(false)
             toast.success('Bloqueo eliminado correctamente')
+
+            try {
+                await onDeleted()
+            } catch (refreshError) {
+                console.error(
+                    'El bloqueo se eliminó, pero no se pudo actualizar la lista:',
+                    refreshError
+                )
+
+                toast.error(
+                    'El bloqueo fue eliminado, pero no se pudo actualizar la lista.'
+                )
+            }
         } catch (error) {
             toast.error(
                 error instanceof Error
@@ -70,7 +84,11 @@ export function DeleteTimeOffButton({ id, canEdit, subscriptionBlockReason, onDe
 
             <ConfirmDialog
                 open={open}
-                onOpenChange={setOpen}
+                onOpenChange={(nextOpen) => {
+                    if (!loading) {
+                        setOpen(nextOpen)
+                    }
+                }}
                 title="Eliminar bloqueo"
                 description="Esta acción no se puede deshacer. El tramo volverá a quedar disponible para reservas si coincide con el horario de atención."
                 confirmText="Sí, eliminar"

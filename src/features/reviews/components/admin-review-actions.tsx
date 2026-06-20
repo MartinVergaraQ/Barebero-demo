@@ -139,7 +139,7 @@ export function AdminReviewActions({
                                 ? subscriptionBlockReason
                                 : 'Publicar reseña'
                         }
-                        className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-black text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        className="inline-flex h-10 min-w-[120px] items-center justify-center rounded-xl border border-[#B17D22] bg-[#C8942E] px-4 text-sm font-black text-white shadow-[0_8px_18px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:bg-[#AD7920] hover:shadow-[0_12px_24px_rgba(200,148,46,0.30)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                     >
                         {isPending ? 'Procesando...' : 'Publicar'}
                     </button>
@@ -155,7 +155,7 @@ export function AdminReviewActions({
                                 ? subscriptionBlockReason
                                 : 'Ocultar reseña'
                         }
-                        className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-black text-amber-700 transition hover:-translate-y-0.5 hover:bg-amber-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        className="inline-flex h-10 min-w-[120px] items-center justify-center rounded-xl border border-[#B17D22] bg-[#C8942E] px-4 text-sm font-black text-white shadow-[0_8px_18px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:bg-[#AD7920] hover:shadow-[0_12px_24px_rgba(200,148,46,0.30)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                     >
                         {isPending ? 'Procesando...' : 'Ocultar'}
                     </button>
@@ -171,7 +171,7 @@ export function AdminReviewActions({
                                 ? subscriptionBlockReason
                                 : 'Rechazar reseña'
                         }
-                        className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        className="inline-flex h-10 min-w-[120px] items-center justify-center rounded-xl border border-[#B17D22] bg-[#C8942E] px-4 text-sm font-black text-white shadow-[0_8px_18px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:bg-[#AD7920] hover:shadow-[0_12px_24px_rgba(200,148,46,0.30)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                     >
                         {isPending ? 'Procesando...' : 'Rechazar'}
                     </button>

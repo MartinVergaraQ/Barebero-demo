@@ -72,7 +72,7 @@ export default async function AdminGaleriaPage({
     const [items, barbers, services] = await Promise.all([
         getGalleryItemsAdmin(),
         isFullAdmin
-            ? getBarbersAdmin(business.id)
+            ? getBarbersAdmin()
             : Promise.resolve([]),
         getActiveServices(business.id),
     ])

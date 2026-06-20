@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { createClient } from '@/src/lib/supabase/server'
 
 export type AdminBarberItem = {
@@ -10,19 +12,45 @@ export type AdminBarberItem = {
     photo_url: string | null
     specialty: string | null
     whatsapp_phone: string | null
-    rating_avg: number
+    rating_avg: number | null
     is_active: boolean
     display_order: number
 }
 
-export async function getBarbersAdmin(
-    businessId: string
-): Promise<AdminBarberItem[]> {
-    if (!businessId) {
-        throw new Error('businessId es requerido para cargar barberos')
+export async function getBarbersAdmin(): Promise<
+    AdminBarberItem[]
+> {
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+        throw new Error('No autorizado')
     }
 
-    const supabase = await createClient()
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, business_id, role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+    if (profileError || !profile?.business_id) {
+        throw new Error(
+            'No se pudo cargar el perfil del usuario'
+        )
+    }
+
+    if (
+        profile.role !== 'owner' &&
+        profile.role !== 'admin'
+    ) {
+        throw new Error(
+            'No tienes permisos para consultar los barberos'
+        )
+    }
 
     const { data, error } = await supabase
         .from('barbers')
@@ -40,12 +68,23 @@ export async function getBarbersAdmin(
             is_active,
             display_order
         `)
-        .eq('business_id', businessId)
-        .order('display_order', { ascending: true })
-        .order('name', { ascending: true })
+        .eq('business_id', profile.business_id)
+        .order('display_order', {
+            ascending: true,
+        })
+        .order('name', {
+            ascending: true,
+        })
 
     if (error) {
-        throw new Error(error.message)
+        console.error(
+            'Error cargando barberos administrativos:',
+            error
+        )
+
+        throw new Error(
+            'No se pudieron cargar los barberos'
+        )
     }
 
     return (data ?? []) as AdminBarberItem[]

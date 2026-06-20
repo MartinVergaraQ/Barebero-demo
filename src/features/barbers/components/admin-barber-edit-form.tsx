@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -9,6 +9,7 @@ import { uploadBarberPhoto } from '@/src/features/barbers/api/upload-barber-phot
 import { upsertBarberServices } from '@/src/features/barbers/api/upsert-barber-services'
 import { getBarberServices } from '@/src/features/barbers/api/get-barber-services'
 import { AdminInput } from '@/src/features/admin/components/admin-input'
+import { deleteTemporaryBarberPhoto } from '@/src/features/barbers/api/delete-temporary-barber-photo'
 
 type ServiceOption = {
     id: string
@@ -82,9 +83,14 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
     const [loading, setLoading] = useState(false)
     const [uploadingImage, setUploadingImage] = useState(false)
     const [loadingServices, setLoadingServices] = useState(false)
+    const [closing, setClosing] = useState(false)
 
     const [form, setForm] = useState(getInitialForm(barber))
     const [selectedServices, setSelectedServices] = useState<SelectedServiceItem[]>([])
+    const [
+        temporaryPhotoPublicId,
+        setTemporaryPhotoPublicId,
+    ] = useState<string | null>(null)
 
     useEffect(() => {
         if (!open || !canEdit) return
@@ -130,12 +136,64 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
         }
     }, [open, canEdit, barber.id])
 
+    const handleCancel = useCallback(async () => {
+        if (
+            loading ||
+            uploadingImage ||
+            loadingServices ||
+            closing
+        ) {
+            return
+        }
+
+        setClosing(true)
+
+        /*
+         * Guardamos el ID antes de limpiar el estado para impedir
+         * que dos cierres intenten borrar la misma imagen.
+         */
+        const publicIdToDelete = temporaryPhotoPublicId
+        setTemporaryPhotoPublicId(null)
+
+        try {
+            /*
+             * Al cancelar solo limpiamos la fotografía temporal.
+             * Nunca actualizamos el barbero ni sus servicios.
+             */
+            if (publicIdToDelete) {
+                try {
+                    await deleteTemporaryBarberPhoto(
+                        publicIdToDelete
+                    )
+                } catch (error) {
+                    console.error(
+                        'No se pudo limpiar la fotografía temporal:',
+                        error
+                    )
+                }
+            }
+
+            setForm(getInitialForm(barber))
+            setSelectedServices([])
+            setOpen(false)
+        } finally {
+            setClosing(false)
+        }
+    }, [
+        barber,
+        closing,
+        loading,
+        loadingServices,
+        temporaryPhotoPublicId,
+        uploadingImage,
+    ])
+
     useEffect(() => {
         if (!open) return
 
         function handleEscape(event: KeyboardEvent) {
             if (event.key === 'Escape') {
-                setOpen(false)
+                void handleCancel()
             }
         }
 
@@ -146,7 +204,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
             document.removeEventListener('keydown', handleEscape)
             document.body.style.overflow = ''
         }
-    }, [open])
+    }, [open, handleCancel])
 
     function handleOpen() {
         if (!canEdit) {
@@ -156,7 +214,9 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
             return
         }
 
+        setTemporaryPhotoPublicId(null)
         setForm(getInitialForm(barber))
+        setSelectedServices([])
         setOpen(true)
     }
 
@@ -175,29 +235,104 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
         })
     }
 
-    async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-        if (!canEdit) return
+    async function handleImageChange(
+        event: React.ChangeEvent<HTMLInputElement>
+    ) {
+        if (
+            !canEdit ||
+            loading ||
+            uploadingImage ||
+            loadingServices ||
+            closing
+        ) {
+            event.target.value = ''
+            return
+        }
 
-        const file = e.target.files?.[0]
-        if (!file) return
+        const file = event.target.files?.[0]
+
+        if (!file) {
+            event.target.value = ''
+            return
+        }
+
+        const allowedTypes = new Set([
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/avif',
+        ])
+
+        if (!allowedTypes.has(file.type)) {
+            toast.error(
+                'Usa una imagen JPG, PNG, WEBP o AVIF'
+            )
+            event.target.value = ''
+            return
+        }
+
+        if (file.size <= 0) {
+            toast.error('El archivo está vacío')
+            event.target.value = ''
+            return
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error(
+                'La imagen no puede superar los 5 MB'
+            )
+            event.target.value = ''
+            return
+        }
 
         setUploadingImage(true)
 
         try {
+            /*
+             * Primero subimos la fotografía nueva. Si la subida falla,
+             * la fotografía temporal anterior continúa disponible.
+             */
+            const previousTemporaryPhotoPublicId =
+                temporaryPhotoPublicId
+
             const result = await uploadBarberPhoto(file)
 
-            setForm((prev) => ({
-                ...prev,
+            setForm((previous) => ({
+                ...previous,
                 photo_url: result.secure_url,
             }))
 
-            toast.success('Foto actualizada correctamente')
+            setTemporaryPhotoPublicId(result.public_id)
+
+            /*
+             * Solo después de una subida exitosa limpiamos
+             * la fotografía temporal anterior.
+             */
+            if (previousTemporaryPhotoPublicId) {
+                try {
+                    await deleteTemporaryBarberPhoto(
+                        previousTemporaryPhotoPublicId
+                    )
+                } catch (error) {
+                    console.error(
+                        'No se pudo limpiar la fotografía temporal anterior:',
+                        error
+                    )
+                }
+            }
+
+            toast.success(
+                'Foto cargada. Guarda los cambios para aplicarla.'
+            )
         } catch (error) {
             toast.error(
-                error instanceof Error ? error.message : 'Error subiendo imagen'
+                error instanceof Error
+                    ? error.message
+                    : 'Error subiendo imagen'
             )
         } finally {
             setUploadingImage(false)
+            event.target.value = ''
         }
     }
 
@@ -257,7 +392,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
         try {
             validateForm()
 
-            await updateBarberServer({
+            const updateResult = await updateBarberServer({
                 id: barber.id,
                 name: form.name.trim(),
                 slug: slugify(form.slug),
@@ -269,7 +404,18 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                 display_order: Number(form.display_order || 0),
             })
 
-            await upsertBarberServices(
+            if (!updateResult.ok) {
+                throw new Error(updateResult.message)
+            }
+
+            /*
+             * La fotografía ya quedó asociada al barbero.
+             * Desde este momento no debe eliminarse como temporal,
+             * incluso si luego falla la actualización de servicios.
+             */
+            setTemporaryPhotoPublicId(null)
+
+            const servicesResult = await upsertBarberServices(
                 barber.id,
                 selectedServices.map((item) => ({
                     service_id: item.service_id,
@@ -282,7 +428,12 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                 }))
             )
 
+            if (!servicesResult.ok) {
+                throw new Error(servicesResult.message)
+            }
+
             toast.success('Barbero actualizado correctamente')
+            setSelectedServices([])
             setOpen(false)
             router.refresh()
         } catch (error) {
@@ -310,7 +461,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                     <button
                         type="button"
                         className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
-                        onClick={() => setOpen(false)}
+                        onClick={() => void handleCancel()}
                         aria-label="Cerrar edición de barbero"
                     />
 
@@ -333,7 +484,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
 
                                 <button
                                     type="button"
-                                    onClick={() => setOpen(false)}
+                                    onClick={() => void handleCancel()}
                                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-white text-slate-700 shadow-sm transition hover:bg-[#FBF7EE] active:scale-95"
                                     aria-label="Cerrar"
                                 >
@@ -361,7 +512,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                         onChange={(value) =>
                                                             updateField('name', value)
                                                         }
-                                                        disabled={loading}
+                                                        disabled={loading || closing}
                                                     />
 
                                                     <AdminInput
@@ -371,7 +522,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                         onChange={(value) =>
                                                             updateField('slug', slugify(value))
                                                         }
-                                                        disabled={loading}
+                                                        disabled={loading || closing}
                                                     />
                                                 </div>
 
@@ -383,7 +534,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                         updateField('specialty', value)
                                                     }
                                                     placeholder="Cortes degradados"
-                                                    disabled={loading}
+                                                    disabled={loading || closing}
                                                 />
 
                                                 <div className="grid gap-4 md:grid-cols-2">
@@ -395,7 +546,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                             updateField('whatsapp_phone', value)
                                                         }
                                                         placeholder="+56 9 1234 5678"
-                                                        disabled={loading}
+                                                        disabled={loading || closing}
                                                     />
 
                                                     <div>
@@ -407,7 +558,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                             onChange={(value) =>
                                                                 updateField('display_order', value)
                                                             }
-                                                            disabled={loading}
+                                                            disabled={loading || closing}
                                                         />
 
                                                         <p className="mt-1 text-xs font-bold text-slate-400">
@@ -430,7 +581,7 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                         onChange={(event) =>
                                                             updateField('bio', event.target.value)
                                                         }
-                                                        disabled={loading}
+                                                        disabled={loading || closing}
                                                         rows={4}
                                                         placeholder="Describe al barbero"
                                                         className="min-h-[115px] w-full rounded-2xl border border-black/10 bg-white px-4 py-3.5 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#C8942E] focus:bg-white focus:shadow-[0_0_0_4px_rgba(200,148,46,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
@@ -439,13 +590,13 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
 
                                                 <button
                                                     type="button"
-                                                    disabled={loading}
+                                                    disabled={loading || closing}
                                                     onClick={() =>
                                                         updateField('is_active', !form.is_active)
                                                     }
                                                     className={`flex h-12 w-full items-center justify-between rounded-2xl border px-4 text-sm font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${form.is_active
-                                                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                                                            : 'border-black/10 bg-white text-slate-600 hover:bg-[#FFFCF4]'
+                                                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                                        : 'border-black/10 bg-white text-slate-600 hover:bg-[#FFFCF4]'
                                                         }`}
                                                 >
                                                     <span>Visible para reservas</span>
@@ -488,9 +639,14 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                     <div className="min-w-0 flex-1">
                                                         <input
                                                             type="file"
-                                                            accept="image/*"
+                                                            accept="image/jpeg,image/png,image/webp,image/avif"
                                                             onChange={handleImageChange}
-                                                            disabled={loading || uploadingImage}
+                                                            disabled={
+                                                                loading ||
+                                                                uploadingImage ||
+                                                                loadingServices ||
+                                                                !canEdit
+                                                            }
                                                             className="w-full rounded-2xl border border-black/10 bg-white text-sm font-bold text-slate-600 file:mr-4 file:h-11 file:border-0 file:bg-[#C8942E] file:px-4 file:text-sm file:font-black file:text-white disabled:cursor-not-allowed disabled:opacity-60"
                                                         />
 
@@ -546,10 +702,10 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                                                     key={service.id}
                                                                     type="button"
                                                                     onClick={() => toggleService(service.id)}
-                                                                    disabled={loading}
+                                                                    disabled={loading || closing}
                                                                     className={`flex w-full items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-left transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${selected
-                                                                            ? 'border-[#C8942E]/50 bg-[#C8942E]/10'
-                                                                            : 'border-black/10 bg-white hover:bg-[#FFFCF4]'
+                                                                        ? 'border-[#C8942E]/50 bg-[#C8942E]/10'
+                                                                        : 'border-black/10 bg-white hover:bg-[#FFFCF4]'
                                                                         }`}
                                                                 >
                                                                     <div className="min-w-0">
@@ -565,8 +721,8 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
 
                                                                     <span
                                                                         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-black ${selected
-                                                                                ? 'border-[#C8942E] bg-[#C8942E] text-white'
-                                                                                : 'border-black/10 bg-[#FBF7EE] text-transparent'
+                                                                            ? 'border-[#C8942E] bg-[#C8942E] text-white'
+                                                                            : 'border-black/10 bg-[#FBF7EE] text-transparent'
                                                                             }`}
                                                                     >
                                                                         ✓
@@ -585,8 +741,8 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
                                     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                                         <button
                                             type="button"
-                                            onClick={() => setOpen(false)}
-                                            disabled={loading}
+                                            onClick={() => void handleCancel()}
+                                            disabled={loading || closing}
                                             className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                                         >
                                             Cancelar
@@ -594,10 +750,10 @@ export function AdminBarberEditForm({ barber, services, canEdit }: Props) {
 
                                         <button
                                             type="submit"
-                                            disabled={loading || !canEdit}
+                                            disabled={loading || closing || !canEdit}
                                             className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                                         >
-                                            {loading ? 'Guardando...' : 'Guardar cambios'}
+                                            {loading ? 'Guardando...' : closing ? 'Cerrando...' : 'Guardar cambios'}
                                         </button>
                                     </div>
                                 </div>
