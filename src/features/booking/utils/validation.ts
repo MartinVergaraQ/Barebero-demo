@@ -57,60 +57,104 @@ export function validateClientEmail(value: string) {
 
     return null
 }
+function getChileanMobileSubscriber(
+    value: string
+): string | null {
+    const digits = sanitizePhone(value)
 
-export function validateClientPhone(value: string) {
-    const normalized = sanitizePhone(value)
+    /*
+     * Formato del AdminPhoneInput:
+     * 26293006
+     */
+    if (/^[2-9]\d{7}$/.test(digits)) {
+        return digits
+    }
 
-    if (!normalized) {
+    /*
+     * Formato nacional:
+     * 926293006
+     */
+    if (/^9[2-9]\d{7}$/.test(digits)) {
+        return digits.slice(1)
+    }
+
+    /*
+     * Formato internacional:
+     * 56926293006
+     */
+    if (/^569[2-9]\d{7}$/.test(digits)) {
+        return digits.slice(3)
+    }
+
+    return null
+}
+
+export function validateClientPhone(
+    value: string
+) {
+    const digits = sanitizePhone(value)
+
+    if (!digits) {
         return 'Ingresa tu teléfono'
     }
 
-    const validChileanMobile =
-        /^(569\d{8}|9\d{8})$/
+    const subscriber =
+        getChileanMobileSubscriber(value)
 
-    if (!validChileanMobile.test(normalized)) {
+    if (!subscriber) {
         return 'Ingresa un celular válido de Chile'
     }
 
     return null
 }
 
-export function formatPhoneForStorage(value: string) {
-    const normalized = sanitizePhone(value)
+export function formatPhoneForStorage(
+    value: string
+) {
+    const subscriber =
+        getChileanMobileSubscriber(value)
 
-    if (normalized.startsWith('56')) {
-        return normalized
+    if (!subscriber) {
+        return sanitizePhone(value)
     }
 
-    if (normalized.startsWith('9') && normalized.length === 9) {
-        return `56${normalized}`
-    }
-
-    return normalized
+    return `569${subscriber}`
 }
 
-export function formatChileanPhoneInput(value: string) {
+export function formatChileanPhoneInput(
+    value: string
+) {
     const digits = sanitizePhone(value)
 
-    let normalized = digits
+    let subscriber = digits
 
-    if (normalized.startsWith('56')) {
-        normalized = normalized.slice(2)
+    if (subscriber.startsWith('569')) {
+        subscriber = subscriber.slice(3)
+    } else if (subscriber.startsWith('56')) {
+        subscriber = subscriber.slice(2)
+
+        if (subscriber.startsWith('9')) {
+            subscriber = subscriber.slice(1)
+        }
+    } else if (
+        subscriber.startsWith('9') &&
+        subscriber.length > 8
+    ) {
+        subscriber = subscriber.slice(1)
     }
 
-    if (normalized.length > 9) {
-        normalized = normalized.slice(0, 9)
+    subscriber = subscriber.slice(0, 8)
+
+    if (!subscriber) {
+        return ''
     }
 
-    if (!normalized) return ''
-
-    if (normalized.length <= 1) {
-        return `+56 ${normalized}`
+    if (subscriber.length <= 4) {
+        return `+56 9 ${subscriber}`
     }
 
-    if (normalized.length <= 5) {
-        return `+56 ${normalized.slice(0, 1)} ${normalized.slice(1)}`
-    }
-
-    return `+56 ${normalized.slice(0, 1)} ${normalized.slice(1, 5)} ${normalized.slice(5)}`
+    return (
+        `+56 9 ${subscriber.slice(0, 4)} ` +
+        subscriber.slice(4)
+    )
 }

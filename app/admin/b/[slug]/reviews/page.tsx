@@ -91,14 +91,14 @@ export default async function AdminReviewsPage({
         ? undefined
         : business.subscription_status === 'past_due'
             ? 'Existe un pago pendiente. Regulariza tu plan para volver a moderar reseñas.'
-            : business.subscription_status === 'canceled'
+            : business.subscription_status === 'cancelled'
                 ? 'La suscripción está cancelada. Reactívala para volver a moderar reseñas.'
                 : 'La suscripción actual no permite moderar reseñas.'
 
     const subscriptionStatusLabel =
         business.subscription_status === 'past_due'
             ? 'Pago pendiente'
-            : business.subscription_status === 'canceled'
+            : business.subscription_status === 'cancelled'
                 ? 'Suscripción cancelada'
                 : 'Solo lectura'
 

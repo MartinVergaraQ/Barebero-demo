@@ -131,7 +131,7 @@ export async function updateCurrentBarberProfile({
         return failure(
             business.subscription_status === 'past_due'
                 ? 'Tu negocio está en modo lectura porque existe un pago pendiente.'
-                : business.subscription_status === 'canceled'
+                : business.subscription_status === 'cancelled'
                     ? 'La suscripción está cancelada. No puedes modificar tu perfil.'
                     : 'La suscripción actual no permite modificar tu perfil.'
         )

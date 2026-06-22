@@ -1,6 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import {
+    useEffect,
+    useState,
+} from 'react'
 import { toast } from 'sonner'
 import { updateAppointmentStatus } from '@/src/features/booking/api/update-appointment-status'
 import { AdminSelect } from '@/src/features/admin/components/admin-select'
@@ -11,31 +14,79 @@ type Props = {
     currentStatus: AppointmentStatus
 }
 
-const statusOptions: Array<{ value: string; label: string }> = [
-    { value: 'pending', label: 'Pendiente' },
-    { value: 'confirmed', label: 'Confirmada' },
-    { value: 'completed', label: 'Completada' },
-    { value: 'canceled', label: 'Cancelada' },
-    { value: 'no_show', label: 'No asistió' },
-]
+const statusOptions: Array<{
+    value: AppointmentStatus
+    label: string
+}> = [
+        {
+            value: 'pending',
+            label: 'Pendiente',
+        },
+        {
+            value: 'confirmed',
+            label: 'Confirmada',
+        },
+        {
+            value: 'completed',
+            label: 'Completada',
+        },
+        {
+            value: 'cancelled',
+            label: 'Cancelada',
+        },
+        {
+            value: 'no_show',
+            label: 'No asistió',
+        },
+    ]
+
+const allowedStatuses = new Set<AppointmentStatus>(
+    statusOptions.map((option) => option.value)
+)
 
 export function AppointmentStatusSelect({
     appointmentId,
     currentStatus,
 }: Props) {
-    const [status, setStatus] = useState<AppointmentStatus>(currentStatus)
-    const [loading, setLoading] = useState(false)
+    const [status, setStatus] =
+        useState<AppointmentStatus>(
+            currentStatus
+        )
+
+    const [loading, setLoading] =
+        useState(false)
+
+    useEffect(() => {
+        setStatus(currentStatus)
+    }, [currentStatus])
 
     async function handleChange(value: string) {
+        if (loading) return
+
+        const nextStatus =
+            value as AppointmentStatus
+
+        if (
+            !allowedStatuses.has(nextStatus) ||
+            nextStatus === status
+        ) {
+            return
+        }
+
         const previousStatus = status
-        const nextStatus = value as AppointmentStatus
 
         setStatus(nextStatus)
         setLoading(true)
 
         try {
-            await updateAppointmentStatus(appointmentId, nextStatus)
-            toast.success('Estado actualizado')
+            await updateAppointmentStatus(
+                appointmentId,
+                nextStatus
+            )
+
+            toast.success(
+                'Estado actualizado'
+            )
         } catch (error) {
             setStatus(previousStatus)
 

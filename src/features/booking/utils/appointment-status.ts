@@ -8,7 +8,7 @@ export function normalizeAppointmentStatus(
     if (['pending', 'pendiente'].includes(normalized)) return 'pending'
     if (['confirmed', 'confirmada', 'confirmado'].includes(normalized)) return 'confirmed'
     if (['completed', 'completada', 'completado'].includes(normalized)) return 'completed'
-    if (['canceled', 'cancelada', 'cancelado'].includes(normalized)) return 'canceled'
+    if (['cancelled', 'cancelada', 'cancelado'].includes(normalized)) return 'cancelled'
     if (['no_show', 'noshow', 'no-show'].includes(normalized)) return 'no_show'
 
     return ''
@@ -26,7 +26,7 @@ export function formatAppointmentStatus(
             return 'Confirmada'
         case 'completed':
             return 'Completada'
-        case 'canceled':
+        case 'cancelled':
             return 'Cancelada'
         case 'no_show':
             return 'No asistió'
@@ -47,7 +47,7 @@ export function getAppointmentStatusClasses(
             return 'bg-blue-100 text-blue-800'
         case 'completed':
             return 'bg-green-100 text-green-800'
-        case 'canceled':
+        case 'cancelled':
             return 'bg-red-100 text-red-800'
         case 'no_show':
             return 'bg-slate-200 text-slate-800'
@@ -77,7 +77,7 @@ export function getAppointmentStatusStyle(
                 backgroundColor: '#e7e3d6',
                 color: '#6c6657',
             }
-        case 'canceled':
+        case 'cancelled':
             return {
                 backgroundColor: '#f1c8c5',
                 color: '#b73a32',

@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { ConfirmDialog } from '@/src/components/ui/confirm-dialog'
 import { updateBusinessSubscriptionStatusServer } from '@/src/features/business/api/update-business-subscription-status-server'
 
-type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled'
+type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'cancelled'
 
 type Props = {
     businessId: string
@@ -41,7 +41,7 @@ const ACTIONS: ActionConfig[] = [
         confirmText: 'Marcar pago pendiente',
     },
     {
-        status: 'canceled',
+        status: 'cancelled',
         label: 'Cancelar',
         title: 'Cancelar suscripción',
         description:
@@ -60,7 +60,7 @@ function getButtonClass(status: SubscriptionStatus) {
         return 'border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
     }
 
-    if (status === 'canceled') {
+    if (status === 'cancelled') {
         return 'border border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
     }
 

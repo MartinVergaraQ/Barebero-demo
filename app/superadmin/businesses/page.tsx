@@ -40,7 +40,7 @@ function getStatusClasses(status?: SubscriptionStatus) {
         return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200'
     }
 
-    if (status === 'canceled') {
+    if (status === 'cancelled') {
         return 'bg-red-50 text-red-700 ring-1 ring-red-200'
     }
 

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/src/lib/supabase/admin'
 import { getPlatformAdmin } from '@/src/features/auth/api/get-platform-admin'
 
-type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled'
+type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'cancelled'
 
 type Result =
     | {
@@ -19,7 +19,7 @@ const ALLOWED_STATUSES: SubscriptionStatus[] = [
     'trialing',
     'active',
     'past_due',
-    'canceled',
+    'cancelled',
 ]
 
 function addOneMonth(date: Date) {
@@ -101,7 +101,7 @@ export async function updateBusinessSubscriptionStatusServer({
         subscriptionPayload.cancel_at_period_end = false
     }
 
-    if (status === 'canceled') {
+    if (status === 'cancelled') {
         subscriptionPayload.cancel_at_period_end = true
     }
 

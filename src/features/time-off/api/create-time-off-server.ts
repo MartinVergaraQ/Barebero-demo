@@ -155,7 +155,7 @@ export async function createTimeOffServer(
         return failure(
             business.subscription_status === 'past_due'
                 ? 'Tu negocio está en modo solo lectura porque existe un pago pendiente.'
-                : business.subscription_status === 'canceled'
+                : business.subscription_status === 'cancelled'
                     ? 'La suscripción está cancelada. Reactívala para crear bloqueos.'
                     : 'La suscripción actual no permite crear bloqueos.'
         )
@@ -213,7 +213,7 @@ export async function createTimeOffServer(
         .select('id')
         .eq('business_id', profile.business_id)
         .eq('barber_id', barber.id)
-        .neq('status', 'canceled')
+        .neq('status', 'cancelled')
         .lt('start_at', end.toISOString())
         .gt('end_at', start.toISOString())
         .limit(1)

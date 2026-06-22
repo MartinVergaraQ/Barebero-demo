@@ -89,7 +89,7 @@ export default async function AdminGaleriaPage({
         ? undefined
         : business.subscription_status === 'past_due'
             ? 'Tu negocio está en modo solo lectura porque existe un pago pendiente.'
-            : business.subscription_status === 'canceled'
+            : business.subscription_status === 'cancelled'
                 ? 'La suscripción está cancelada. Reactívala para modificar la galería.'
                 : 'La suscripción actual no permite modificar la galería.'
 

@@ -5,9 +5,18 @@ import { AdminCreateAppointmentSheet } from '@/src/features/booking/api/componen
 import { AdminAppointmentEditSheet } from '@/src/features/booking/api/components/admin-appointment-edit-sheet'
 import { DeleteAppointmentButton } from '@/src/features/booking/api/components/delete-appointment-button'
 import { AppointmentStatusSelect } from '@/src/features/booking/api/components/appointment-status-select'
-import { canManageAppointments, } from '@/src/features/auth/utils/admin-access'
+import {
+    canManageAppointments,
+    canManageBusiness,
+} from '@/src/features/auth/utils/admin-access'
+import {
+    canEditWithSubscription,
+    getSubscriptionBlockReason,
+    normalizeSubscriptionStatus,
+} from '@/src/features/business/utils/subscription-rules'
 import { isBarberRole } from '@/src/features/auth/utils/admin-scope'
 import { ExportAppointmentsButton } from '@/src/features/booking/components/export-appointments-button'
+import { getBarberByProfile } from '@/src/features/barbers/api/get-barber-by-profile'
 
 type AdminReservasPageProps = {
     params: Promise<{
@@ -24,6 +33,12 @@ type BusinessRow = {
     id: string
     name: string
     slug: string
+    subscription_status:
+    | 'trialing'
+    | 'active'
+    | 'past_due'
+    | 'cancelled'
+    | null
 }
 
 type ProfileRow = {
@@ -122,8 +137,8 @@ function normalizeAppointmentStatus(status?: string | null) {
         return 'confirmed'
     }
 
-    if (value === 'canceled' || value === 'cancelada' || value === 'cancelado') {
-        return 'canceled'
+    if (value === 'cancelled' || value === 'cancelada' || value === 'cancelado') {
+        return 'cancelled'
     }
 
     if (value === 'completed' || value === 'completada' || value === 'completado') {
@@ -137,7 +152,7 @@ function formatAppointmentStatus(status?: string | null) {
     const normalized = normalizeAppointmentStatus(status)
 
     if (normalized === 'confirmed') return 'Confirmada'
-    if (normalized === 'canceled') return 'Cancelada'
+    if (normalized === 'cancelled') return 'Cancelada'
     if (normalized === 'completed') return 'Completada'
 
     return 'Pendiente'
@@ -150,7 +165,7 @@ function getAppointmentStatusClasses(status?: string | null) {
         return 'inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200'
     }
 
-    if (normalized === 'canceled') {
+    if (normalized === 'cancelled') {
         return 'inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-black text-red-700 ring-1 ring-red-200'
     }
 
@@ -258,10 +273,14 @@ export default async function AdminReservasPage({
 
     const { data: business, error: businessError } = await supabase
         .from('businesses')
-        .select('id, name, slug')
+        .select(`
+        id,
+        name,
+        slug,
+        subscription_status
+    `)
         .eq('slug', slug)
         .single()
-
     if (businessError || !business) {
         notFound()
     }
@@ -271,6 +290,26 @@ export default async function AdminReservasPage({
     if (typedBusiness.id !== typedProfile.business_id) {
         redirect('/admin/login')
     }
+
+    const subscriptionStatus =
+        normalizeSubscriptionStatus(
+            typedBusiness.subscription_status
+        )
+
+    const canEdit =
+        canEditWithSubscription(
+            subscriptionStatus
+        )
+
+    const subscriptionBlockReason =
+        getSubscriptionBlockReason(
+            subscriptionStatus
+        ) ||
+        'La suscripción actual no permite modificar reservas.'
+
+    const canDelete =
+        canEdit &&
+        canManageBusiness(typedProfile.role)
 
     const [{ data: barbersData }, { data: servicesData }] = await Promise.all([
         supabase
@@ -291,10 +330,39 @@ export default async function AdminReservasPage({
     const barbers = (barbersData ?? []) as BarberRow[]
     const services = (servicesData ?? []) as ServiceRow[]
 
-    const effectiveBarberId =
+    const isBarber =
         isBarberRole(typedProfile.role)
-            ? barbers.find((barber) => barber.id === typedProfile.id)?.id || selectedBarberId
-            : selectedBarberId
+
+    const ownBarber = isBarber
+        ? await getBarberByProfile(
+            typedProfile.id
+        )
+        : null
+
+    if (
+        isBarber &&
+        (
+            !ownBarber ||
+            ownBarber.business_id !==
+            typedBusiness.id
+        )
+    ) {
+        redirect('/admin')
+    }
+
+    const effectiveBarberId = isBarber
+        ? ownBarber!.id
+        : selectedBarberId
+
+    const visibleBarbers: BarberRow[] =
+        isBarber
+            ? [
+                {
+                    id: ownBarber!.id,
+                    name: ownBarber!.name,
+                },
+            ]
+            : barbers
 
     let appointmentsQuery = supabase
         .from('appointments')
@@ -345,8 +413,8 @@ export default async function AdminReservasPage({
         (appointment) => normalizeAppointmentStatus(appointment.status) === 'confirmed'
     ).length
 
-    const canceledCount = items.filter(
-        (appointment) => normalizeAppointmentStatus(appointment.status) === 'canceled'
+    const cancelledCount = items.filter(
+        (appointment) => normalizeAppointmentStatus(appointment.status) === 'cancelled'
     ).length
 
     return (
@@ -388,11 +456,12 @@ export default async function AdminReservasPage({
                         />
 
                         <AdminCreateAppointmentSheet
-                            businessId={typedBusiness.id}
-                            barbers={barbers.map((barber) => ({
-                                id: barber.id,
-                                name: barber.name,
-                            }))}
+                            barbers={visibleBarbers.map(
+                                (barber) => ({
+                                    id: barber.id,
+                                    name: barber.name,
+                                })
+                            )}
                             services={services.map((service) => ({
                                 id: service.id,
                                 name: service.name,
@@ -429,7 +498,7 @@ export default async function AdminReservasPage({
 
                     <MetricCard
                         title="Canceladas"
-                        value={canceledCount}
+                        value={cancelledCount}
                         subtitle="Registradas hoy"
                         icon="×"
                         iconBg="#FEE2E2"
@@ -448,14 +517,16 @@ export default async function AdminReservasPage({
                     </div>
 
                     <AdminAppointmentsFilter
-                        barbers={barbers.map((barber) => ({
-                            id: barber.id,
-                            name: barber.name,
-                        }))}
+                        barbers={visibleBarbers.map(
+                            (barber) => ({
+                                id: barber.id,
+                                name: barber.name,
+                            })
+                        )}
                         selectedDate={selectedDate}
                         selectedStatus={selectedStatus}
                         selectedBarberId={effectiveBarberId}
-                        isBarber={isBarberRole(typedProfile.role)}
+                        isBarber={isBarber}
                     />
                 </section>
 
@@ -555,10 +626,12 @@ export default async function AdminReservasPage({
                                                     client_name: appointment.client_name || 'Cliente sin nombre',
                                                     client_phone: appointment.client_phone || '',
                                                 }}
-                                                barbers={barbers.map((barber) => ({
-                                                    id: barber.id,
-                                                    name: barber.name,
-                                                }))}
+                                                barbers={visibleBarbers.map(
+                                                    (barber) => ({
+                                                        id: barber.id,
+                                                        name: barber.name,
+                                                    })
+                                                )}
                                                 services={services.map((service) => ({
                                                     id: service.id,
                                                     name: service.name,
@@ -566,7 +639,11 @@ export default async function AdminReservasPage({
                                                 }))}
                                             />
 
-                                            <DeleteAppointmentButton id={appointment.id} />
+                                            <DeleteAppointmentButton
+                                                id={appointment.id}
+                                                canDelete={canDelete}
+                                                blockReason={subscriptionBlockReason}
+                                            />
                                         </div>
                                     </article>
                                 )

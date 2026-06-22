@@ -7,7 +7,7 @@ export type SubscriptionStatus =
     | 'trialing'
     | 'active'
     | 'past_due'
-    | 'canceled'
+    | 'cancelled'
 
 export type WhatsAppRouting =
     | 'business'
@@ -117,7 +117,7 @@ export async function getBusinessAdmin(
 
     /*
      * La lectura no se bloquea por suscripción.
-     * past_due y canceled siguen pudiendo consultar.
+     * past_due y cancelled siguen pudiendo consultar.
      */
     const { data, error } = await supabase
         .from('businesses')

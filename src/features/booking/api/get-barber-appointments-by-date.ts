@@ -18,7 +18,7 @@ export async function getBarberAppointmentsByDate(
         .select('id, barber_id, appointment_date, start_at, end_at, status')
         .eq('barber_id', barberId)
         .eq('appointment_date', appointmentDate)
-        .neq('status', 'canceled')
+        .neq('status', 'cancelled')
         .order('start_at', { ascending: true })
 
     if (error) {

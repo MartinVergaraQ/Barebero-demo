@@ -66,7 +66,7 @@ export default async function AdminNegocioPage({
         await getBusinessAdmin(business.id)
 
     /*
-     * past_due y canceled pueden leer,
+     * past_due y cancelled pueden leer,
      * pero no modificar.
      */
     const canEdit =
@@ -76,7 +76,7 @@ export default async function AdminNegocioPage({
     const subscriptionBlockReason =
         businessData.subscription_status === 'past_due'
             ? 'Tu negocio está en modo solo lectura porque existe un pago pendiente.'
-            : businessData.subscription_status === 'canceled'
+            : businessData.subscription_status === 'cancelled'
                 ? 'Tu negocio está en modo solo lectura porque la suscripción está cancelada.'
                 : ''
 

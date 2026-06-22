@@ -18,7 +18,7 @@ export function getSubscriptionUi(
         }
     }
 
-    if (status === 'canceled') {
+    if (status === 'cancelled') {
         return {
             tone: 'red',
             title: 'Suscripción cancelada',

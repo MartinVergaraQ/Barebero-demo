@@ -17,6 +17,8 @@ import {
     formatChileanPhoneInput,
 } from '@/src/features/booking/utils/validation'
 import { createAppointmentServer } from '@/src/features/booking/api/create-appointment-server'
+import { AdminAlert } from '@/src/features/admin/components/admin-alert'
+import { getPublicBarberWorkingDaysServer } from '@/src/features/booking/api/get-public-barber-working-days-server'
 
 type Service = {
     id: string
@@ -55,12 +57,19 @@ type ReservarClientProps = {
     initialBarberId?: string
 }
 
+type PublicSubscriptionStatus =
+    | 'trialing'
+    | 'active'
+    | 'past_due'
+    | 'cancelled'
+
 type Business = {
     id: string
     name: string
     whatsapp_phone: string | null
     slug: string
     whatsapp_routing?: 'business' | 'barber' | 'fallback' | null
+    subscription_status: PublicSubscriptionStatus | null
 }
 
 type SuccessfulReservation = {
@@ -94,7 +103,7 @@ type DateOption = {
     shortLabel: string
     isToday: boolean
     isTomorrow: boolean
-    isSunday: boolean
+    dayOfWeek: number
 }
 
 function formatDateValue(date: Date) {
@@ -123,7 +132,6 @@ function getDateOptions(daysToShow = 10): DateOption[] {
         const isToday = value === todayValue
         const isTomorrow = value === tomorrowValue
         const dayOfWeek = date.getDay()
-        const isSunday = dayOfWeek === 0
 
         const weekday = date.toLocaleDateString('es-CL', { weekday: 'short' })
         const day = date.toLocaleDateString('es-CL', { day: '2-digit' })
@@ -138,7 +146,7 @@ function getDateOptions(daysToShow = 10): DateOption[] {
                     : `${weekday.replace('.', '')} ${day}`,
             isToday,
             isTomorrow,
-            isSunday,
+            dayOfWeek,
         })
     }
 
@@ -174,6 +182,15 @@ export default function ReservarClient({
     const [services, setServices] = useState<Service[]>([])
     const [barbers, setBarbers] = useState<Barber[]>([])
 
+    const [workingDays, setWorkingDays] =
+        useState<number[]>([])
+
+    const [workingDaysLoaded, setWorkingDaysLoaded] =
+        useState(false)
+
+    const [loadingWorkingDays, setLoadingWorkingDays] =
+        useState(false)
+
     const [loadingData, setLoadingData] = useState(true)
     const [loadingSlots, setLoadingSlots] = useState(false)
     const [submitting, setSubmitting] = useState(false)
@@ -185,6 +202,30 @@ export default function ReservarClient({
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
     const [business, setBusiness] = useState<Business | null>(null)
+    const canAcceptBookings =
+        business?.subscription_status === 'trialing' ||
+        business?.subscription_status === 'active'
+
+    const publicBookingBlockMessage =
+        'Esta barbería no está recibiendo reservas en línea en este momento. Intenta nuevamente más tarde o contacta directamente al negocio.'
+
+    const businessWhatsAppUrl = useMemo(() => {
+        const phone =
+            business?.whatsapp_phone?.replace(
+                /\D/g,
+                ''
+            ) ?? ''
+
+        if (!phone) {
+            return null
+        }
+
+        const message = encodeURIComponent(
+            `Hola, quisiera consultar por la disponibilidad de ${business?.name ?? 'la barbería'}.`
+        )
+
+        return `https://wa.me/${phone}?text=${message}`
+    }, [business])
     const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
     const [availabilityMessage, setAvailabilityMessage] = useState('')
@@ -356,6 +397,58 @@ export default function ReservarClient({
     }, [services, form.service_id])
 
     useEffect(() => {
+        let cancelled = false
+
+        setWorkingDays([])
+        setWorkingDaysLoaded(false)
+        setSelectedSlot(null)
+        setAvailableSlots([])
+
+        if (!form.barber_id) {
+            setLoadingWorkingDays(false)
+            return
+        }
+
+        async function loadWorkingDays() {
+            setLoadingWorkingDays(true)
+
+            try {
+                const days =
+                    await getPublicBarberWorkingDaysServer({
+                        businessId,
+                        barberId: form.barber_id,
+                    })
+
+                if (cancelled) return
+
+                setWorkingDays(days)
+                setWorkingDaysLoaded(true)
+            } catch (error) {
+                if (cancelled) return
+
+                setWorkingDays([])
+                setWorkingDaysLoaded(true)
+
+                setErrorMessage(
+                    error instanceof Error
+                        ? error.message
+                        : 'No se pudieron cargar los días de atención'
+                )
+            } finally {
+                if (!cancelled) {
+                    setLoadingWorkingDays(false)
+                }
+            }
+        }
+
+        void loadWorkingDays()
+
+        return () => {
+            cancelled = true
+        }
+    }, [businessId, form.barber_id])
+
+    useEffect(() => {
         setForm((prev) => {
             const nextServiceId = initialServiceId || ''
             const nextBarberId = initialBarberId || ''
@@ -517,7 +610,14 @@ export default function ReservarClient({
 
                 supabase
                     .from('businesses')
-                    .select('id, name, slug, whatsapp_phone, whatsapp_routing')
+                    .select(`
+        id,
+        name,
+        slug,
+        whatsapp_phone,
+        whatsapp_routing,
+        subscription_status
+    `)
                     .eq('id', businessId)
                     .single(),
 
@@ -715,6 +815,7 @@ export default function ReservarClient({
     }, [form.barber_id, form.appointment_date, selectedService])
 
     const canContinueToStepTwo =
+        canAcceptBookings &&
         !!form.service_id &&
         !!form.barber_id &&
         !!form.appointment_date &&
@@ -722,6 +823,12 @@ export default function ReservarClient({
         !loadingSlots
 
     function handleContinueToStepTwo() {
+        if (!canAcceptBookings) {
+            setErrorMessage(
+                publicBookingBlockMessage
+            )
+            return
+        }
         setErrorMessage('')
         setMessage('')
 
@@ -748,8 +855,16 @@ export default function ReservarClient({
         setStep(2)
     }
 
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(
+        e: React.FormEvent<HTMLFormElement>
+    ) {
         e.preventDefault()
+        if (!canAcceptBookings) {
+            setErrorMessage(
+                publicBookingBlockMessage
+            )
+            return
+        }
         setHasTriedSubmit(true)
         setSubmitting(true)
         setMessage('')
@@ -1034,6 +1149,103 @@ export default function ReservarClient({
         )
     }
 
+    if (business && !canAcceptBookings) {
+        return (
+            <main className="min-h-screen bg-background text-foreground">
+                <AdminAlert
+                    variant="error"
+                    title="No pudimos completar la reserva"
+                    message={errorMessage}
+                    floating
+                    onClose={() => setErrorMessage('')}
+                    autoClose
+                    duration={5000}
+                />
+
+                <AdminAlert
+                    variant="success"
+                    title="Operación completada"
+                    message={message}
+                    floating
+                    onClose={() => setMessage('')}
+                    autoClose
+                    duration={3500}
+                />
+                <header className="sticky top-0 z-20 border-b border-border-soft bg-background/92 backdrop-blur">
+                    <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 md:px-6">
+                        <Link
+                            href={`/b/${businessSlug}`}
+                            className="flex h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-white/5 active:scale-95"
+                            aria-label="Volver al negocio"
+                        >
+                            ←
+                        </Link>
+
+                        <h1 className="font-display text-3xl leading-none tracking-wide text-foreground">
+                            Reservas
+                        </h1>
+
+                        <div className="w-10" />
+                    </div>
+                </header>
+
+                <section className="mx-auto flex min-h-[calc(100vh-73px)] max-w-xl items-center px-4 py-10 md:px-6">
+                    <div className="w-full overflow-hidden rounded-[30px] border border-border-soft bg-surface shadow-[0_28px_80px_rgba(0,0,0,0.38)]">
+                        <div
+                            className="px-6 py-8 text-center md:px-8 md:py-10"
+                            style={{
+                                background:
+                                    'radial-gradient(circle at top, rgba(200,148,46,0.16), transparent 42%), linear-gradient(145deg, rgba(23,26,33,0.99), rgba(15,17,21,0.98))',
+                            }}
+                        >
+                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(200,148,46,0.12)] text-2xl ring-1 ring-[rgba(200,148,46,0.3)]">
+                                📅
+                            </div>
+
+                            <p
+                                className="mt-5 text-[10px] font-black uppercase tracking-[0.26em]"
+                                style={{ color: PRIMARY }}
+                            >
+                                Reservas temporalmente cerradas
+                            </p>
+
+                            <h2 className="mt-2 font-display text-4xl leading-none tracking-wide text-foreground md:text-5xl">
+                                Vuelve pronto
+                            </h2>
+
+                            <p className="mx-auto mt-4 max-w-sm text-sm font-medium leading-6 text-slate-400">
+                                {publicBookingBlockMessage}
+                            </p>
+                        </div>
+
+                        <div className="grid gap-3 border-t border-border-soft p-5 md:p-6">
+                            {businessWhatsAppUrl && (
+                                <a
+                                    href={businessWhatsAppUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex h-12 items-center justify-center rounded-2xl px-5 text-sm font-black text-white shadow-[0_12px_28px_rgba(200,148,46,0.24)] transition hover:brightness-105 active:scale-[0.98]"
+                                    style={{
+                                        backgroundColor: PRIMARY,
+                                    }}
+                                >
+                                    Consultar por WhatsApp
+                                </a>
+                            )}
+
+                            <Link
+                                href={`/b/${businessSlug}`}
+                                className="inline-flex h-11 items-center justify-center rounded-2xl border border-border-soft bg-white/[0.03] px-5 text-sm font-bold text-slate-300 transition hover:bg-white/[0.06] active:scale-[0.98]"
+                            >
+                                Volver al negocio
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        )
+    }
+
     return (
         <main
             className={`min-h-screen overflow-x-hidden bg-background text-foreground ${step === 2
@@ -1043,6 +1255,25 @@ export default function ReservarClient({
                     : 'pb-36 md:pb-28'
                 }`}
         >
+            <AdminAlert
+                variant="error"
+                title="No pudimos continuar"
+                message={errorMessage}
+                floating
+                onClose={() => setErrorMessage('')}
+                autoClose
+                duration={5000}
+            />
+
+            <AdminAlert
+                variant="success"
+                title="Operación completada"
+                message={message}
+                floating
+                onClose={() => setMessage('')}
+                autoClose
+                duration={3500}
+            />
             <div className="mx-auto w-full max-w-7xl overflow-x-hidden">
                 <header className="sticky top-0 z-20 border-b border-border-soft bg-background/92 backdrop-blur">
                     <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6 lg:px-8">
@@ -1082,22 +1313,6 @@ export default function ReservarClient({
                         <div className="w-10" />
                     </div>
                 </header>
-
-                {errorMessage && (
-                    <div className="mx-auto max-w-6xl px-4 pt-4 md:px-6 lg:px-8">
-                        <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
-                            {errorMessage}
-                        </div>
-                    </div>
-                )}
-
-                {message && (
-                    <div className="mx-auto max-w-6xl px-4 pt-4 md:px-6 lg:px-8">
-                        <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-sm text-green-700">
-                            {message}
-                        </div>
-                    </div>
-                )}
 
                 {step === 1 && (
                     <>
@@ -1327,15 +1542,18 @@ export default function ReservarClient({
                                             </div>
 
                                             {form.barber_id && (
-                                                <span className="shrink-0 rounded-full bg-surface-soft px-4 py-2 text-xs font-black text-slate-400">
-                                                    {availableServiceCount} disponible
-                                                    {availableServiceCount === 1 ? '' : 's'}
+                                                <span className="shrink-0 rounded-full bg-white/5 px-3 py-1.5 text-[10px] font-black text-slate-400 ring-1 ring-white/10">
+                                                    {availableServiceCount}{' '}
+                                                    servicio
+                                                    {availableServiceCount === 1
+                                                        ? ''
+                                                        : 's'}
                                                 </span>
                                             )}
                                         </div>
 
                                         {!form.barber_id ? (
-                                            < div className="rounded-[22px] border border-dashed border-white/15 bg-white/5 px-5 py-8 text-center">
+                                            <div className="rounded-[22px] border border-dashed border-white/15 bg-white/5 px-5 py-8 text-center">
                                                 <p className="text-lg font-black text-foreground">
                                                     Elige tu barbero primero
                                                 </p>
@@ -1355,14 +1573,16 @@ export default function ReservarClient({
                                                 </p>
                                             </div>
                                         ) : (
-                                            <div className="max-h-[430px] space-y-3 overflow-y-auto pr-1 md:max-h-[430px]">
+                                            <div className="grid max-h-[410px] gap-2.5 overflow-y-auto pr-1 md:grid-cols-2">
                                                 {filteredServices.map((service) => {
-                                                    const isSelected = form.service_id === service.id
+                                                    const isSelected =
+                                                        form.service_id === service.id
 
                                                     return (
                                                         <button
                                                             key={service.id}
                                                             type="button"
+                                                            aria-pressed={isSelected}
                                                             onClick={() => {
                                                                 setForm((prev) => ({
                                                                     ...prev,
@@ -1375,84 +1595,69 @@ export default function ReservarClient({
                                                                 setAvailabilityMessage('')
                                                                 setServiceHint('')
                                                             }}
-                                                            className={`group w-full rounded-[22px] border p-3 text-left transition duration-300 md:rounded-[26px] md:p-6 ${isSelected
-                                                                ? 'border-[rgba(200,148,46,0.8)] bg-[rgba(200,148,46,0.12)] shadow-[0_16px_36px_rgba(200,148,46,0.14)]'
-                                                                : 'border-border-soft bg-surface-soft hover:-translate-y-0.5 hover:border-[rgba(200,148,46,0.45)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.22)]'
+                                                            className={`group min-w-0 rounded-2xl border p-3.5 text-left transition duration-300 active:scale-[0.99] ${isSelected
+                                                                ? 'border-[#C8942E] bg-[rgba(200,148,46,0.12)] shadow-[0_12px_28px_rgba(200,148,46,0.12)]'
+                                                                : 'border-border-soft bg-surface-soft hover:-translate-y-0.5 hover:border-[rgba(200,148,46,0.45)] hover:bg-white/[0.035]'
                                                                 }`}
-                                                            style={
-                                                                isSelected
-                                                                    ? {
-                                                                        borderColor: PRIMARY,
-                                                                    }
-                                                                    : undefined
-                                                            }
                                                         >
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="min-w-0 flex-1">
-                                                                    <div className="mb-2 flex items-center gap-2">
+                                                                    <div className="flex items-center gap-2">
                                                                         <span
-                                                                            className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-black ${isSelected
-                                                                                ? 'border-transparent text-white'
-                                                                                : 'border-slate-300 text-transparent'
+                                                                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[8px] font-black transition ${isSelected
+                                                                                ? 'border-[#C8942E] bg-[#C8942E] text-white'
+                                                                                : 'border-slate-600 bg-transparent text-transparent'
                                                                                 }`}
-                                                                            style={
-                                                                                isSelected
-                                                                                    ? { backgroundColor: PRIMARY }
-                                                                                    : undefined
-                                                                            }
                                                                         >
                                                                             ✓
                                                                         </span>
 
-                                                                        <span
-                                                                            className="text-[10px] font-black uppercase tracking-[0.2em]"
-                                                                            style={{ color: PRIMARY }}
-                                                                        >
+                                                                        <span className="text-[8px] font-black uppercase tracking-[0.18em] text-[#C8942E]">
                                                                             Servicio
                                                                         </span>
                                                                     </div>
 
-                                                                    <h4 className="text-base font-black leading-tight text-foreground md:text-3xl">
+                                                                    <h4 className="mt-2 line-clamp-2 text-sm font-black leading-tight text-foreground md:text-base">
                                                                         {service.name}
                                                                     </h4>
 
-                                                                    <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-400 md:mt-2 md:text-lg md:leading-8">
-                                                                        {service.description || 'Servicio profesional de barbería.'}
+                                                                    <p className="mt-1 line-clamp-2 min-h-[32px] text-[11px] leading-4 text-slate-400">
+                                                                        {service.description ||
+                                                                            'Servicio profesional de barbería.'}
                                                                     </p>
                                                                 </div>
 
                                                                 <div className="shrink-0 text-right">
-                                                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-xs">
+                                                                    <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
                                                                         Precio
                                                                     </p>
 
-                                                                    <p
-                                                                        className="mt-1 text-xl font-black leading-none md:text-4xl"
-                                                                        style={{ color: PRIMARY }}
-                                                                    >
+                                                                    <p className="mt-1 whitespace-nowrap text-base font-black leading-none text-[#C8942E]">
                                                                         {formatPrice(service.price)}
                                                                     </p>
                                                                 </div>
                                                             </div>
 
-                                                            <div className="mt-3 flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2.5 ring-1 ring-white/10 md:mt-6 md:px-5 md:py-4">
+                                                            <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
                                                                 <div>
-                                                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-xs">
+                                                                    <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
                                                                         Duración
                                                                     </p>
 
-                                                                    <p className="mt-0.5 text-sm font-black text-foreground md:mt-1 md:text-xl">
+                                                                    <p className="mt-0.5 text-xs font-black text-slate-300">
                                                                         {service.duration_minutes} min
                                                                     </p>
                                                                 </div>
 
                                                                 <span
-                                                                    className={`rounded-full px-4 py-2 text-xs font-black transition md:px-5 md:py-2.5 md:text-sm ${isSelected
+                                                                    className={`rounded-full px-3 py-1.5 text-[10px] font-black transition ${isSelected
                                                                         ? 'bg-[rgba(200,148,46,0.18)] text-[#C8942E] ring-1 ring-[rgba(200,148,46,0.28)]'
-                                                                        : 'bg-white/5 text-slate-300 ring-1 ring-white/10 group-hover:text-white'
+                                                                        : 'bg-white/5 text-slate-400 ring-1 ring-white/10 group-hover:text-slate-200'
                                                                         }`}
                                                                 >
-                                                                    {isSelected ? 'Seleccionado' : 'Elegir'}
+                                                                    {isSelected
+                                                                        ? 'Seleccionado'
+                                                                        : 'Elegir'}
                                                                 </span>
                                                             </div>
                                                         </button>
@@ -1499,29 +1704,50 @@ export default function ReservarClient({
 
                                         <div className="flex w-full max-w-full snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden pb-2 [-webkit-overflow-scrolling:touch]">
                                             {dateOptions.map((option) => {
-                                                const isSelected = form.appointment_date === option.value
-                                                const disabled = !form.service_id || !form.barber_id
+                                                const isSelected =
+                                                    form.appointment_date === option.value
+
+                                                const isClosed =
+                                                    workingDaysLoaded &&
+                                                    !workingDays.includes(
+                                                        option.dayOfWeek
+                                                    )
+
+                                                const disabled =
+                                                    !form.service_id ||
+                                                    !form.barber_id ||
+                                                    loadingWorkingDays ||
+                                                    isClosed
 
                                                 return (
                                                     <button
                                                         key={option.value}
                                                         type="button"
                                                         disabled={disabled}
-                                                        onClick={() => handleDateSelect(option.value)}
-                                                        className={`min-w-[88px] shrink-0 snap-start rounded-2xl border px-3 py-3 text-center transition disabled:cursor-not-allowed disabled:opacity-35 ${isSelected
+                                                        onClick={() =>
+                                                            handleDateSelect(option.value)
+                                                        }
+                                                        className={`relative min-w-[86px] shrink-0 snap-start overflow-hidden rounded-2xl border px-3 py-3 text-center transition ${isSelected
                                                             ? 'border-[rgba(200,148,46,0.75)] bg-[rgba(200,148,46,0.14)] text-[#C8942E] shadow-[0_12px_26px_rgba(200,148,46,0.12)]'
-                                                            : option.isSunday
-                                                                ? 'border-border-soft bg-white/10 text-slate-300 hover:border-[rgba(200,148,46,0.45)]'
+                                                            : isClosed
+                                                                ? 'cursor-not-allowed border-white/5 bg-white/[0.025] text-slate-600 opacity-65'
                                                                 : 'border-border-soft bg-surface-soft text-slate-300 hover:border-[rgba(200,148,46,0.45)]'
                                                             }`}
                                                     >
-                                                        <div className="text-sm font-black md:text-base">
+                                                        <div className="text-sm font-black">
                                                             {option.shortLabel}
                                                         </div>
 
-                                                        {!option.isToday && !option.isTomorrow && (
-                                                            <div className="mt-1 text-xs text-slate-400">
-                                                                {option.label}
+                                                        {!option.isToday &&
+                                                            !option.isTomorrow && (
+                                                                <div className="mt-1 text-xs text-slate-400">
+                                                                    {option.label}
+                                                                </div>
+                                                            )}
+
+                                                        {isClosed && (
+                                                            <div className="mt-2 rounded-full bg-white/5 px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                                                Cerrado
                                                             </div>
                                                         )}
                                                     </button>
@@ -1675,9 +1901,25 @@ export default function ReservarClient({
                                             </p>
                                         </div>
                                     ) : availabilityMessage ? (
-                                        <div className="rounded-[24px] border border-amber-200 bg-[rgba(200,148,46,0.10)] p-5 text-sm text-amber-800">
-                                            <p className="font-black">Sin horarios disponibles</p>
-                                            <p className="mt-1">{availabilityMessage}</p>
+                                        <div className="overflow-hidden rounded-[24px] border border-[rgba(200,148,46,0.28)] bg-[linear-gradient(145deg,rgba(200,148,46,0.13),rgba(255,255,255,0.025))]">
+                                            <div className="p-5 text-center">
+                                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(200,148,46,0.14)] text-xl ring-1 ring-[rgba(200,148,46,0.26)]">
+                                                    🕒
+                                                </div>
+
+                                                <p className="mt-4 text-base font-black text-foreground">
+                                                    No quedan horas para este día
+                                                </p>
+
+                                                <p className="mx-auto mt-2 max-w-[260px] text-xs font-medium leading-5 text-slate-400">
+                                                    {availabilityMessage ||
+                                                        'La agenda está completa. Selecciona otra fecha para continuar.'}
+                                                </p>
+                                            </div>
+
+                                            <div className="border-t border-white/5 bg-white/[0.025] px-4 py-3 text-center text-[10px] font-bold text-slate-500">
+                                                Prueba con una de las siguientes fechas disponibles
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-6 text-center">

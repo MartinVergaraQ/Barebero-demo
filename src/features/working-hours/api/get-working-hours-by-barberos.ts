@@ -106,7 +106,7 @@ export async function getWorkingHoursByBarber(
 
     /*
      * No validamos subscription_status en lecturas.
-     * past_due y canceled pueden seguir consultando.
+     * past_due y cancelled pueden seguir consultando.
      */
     const { data, error } = await supabase
         .from('working_hours')

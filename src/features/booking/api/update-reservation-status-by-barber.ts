@@ -6,7 +6,7 @@ import type { AppointmentStatus } from '@/src/features/booking/api/components/sc
 
 type AllowedStatus = Extract<
     AppointmentStatus,
-    'pending' | 'confirmed' | 'completed' | 'canceled'
+    'pending' | 'confirmed' | 'completed' | 'cancelled'
 >
 
 type Input = {
@@ -28,17 +28,17 @@ const ALLOWED_STATUSES = new Set<AllowedStatus>([
     'pending',
     'confirmed',
     'completed',
-    'canceled',
+    'cancelled',
 ])
 
 const ALLOWED_TRANSITIONS: Record<
     AllowedStatus,
     AllowedStatus[]
 > = {
-    pending: ['confirmed', 'canceled'],
-    confirmed: ['completed', 'canceled'],
+    pending: ['confirmed', 'cancelled'],
+    confirmed: ['completed', 'cancelled'],
     completed: [],
-    canceled: [],
+    cancelled: [],
 }
 
 function failure(message: string): Result {
@@ -122,7 +122,7 @@ export async function updateReservationStatusByBarber({
         return failure(
             business.subscription_status === 'past_due'
                 ? 'Tu negocio está en modo lectura porque existe un pago pendiente.'
-                : business.subscription_status === 'canceled'
+                : business.subscription_status === 'cancelled'
                     ? 'La suscripción está cancelada. Reactívala para gestionar reservas.'
                     : 'La suscripción actual no permite modificar reservas.'
         )

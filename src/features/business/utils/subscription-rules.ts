@@ -2,7 +2,7 @@ export type SubscriptionStatus =
     | 'trialing'
     | 'active'
     | 'past_due'
-    | 'canceled'
+    | 'cancelled'
     | null
     | undefined
 
@@ -13,7 +13,7 @@ export function normalizeSubscriptionStatus(
         status === 'trialing' ||
         status === 'active' ||
         status === 'past_due' ||
-        status === 'canceled'
+        status === 'cancelled'
     ) {
         return status
     }
@@ -22,7 +22,7 @@ export function normalizeSubscriptionStatus(
 }
 
 export function isSubscriptionBlocked(status?: SubscriptionStatus) {
-    return status === 'past_due' || status === 'canceled'
+    return status === 'past_due' || status === 'cancelled'
 }
 
 export function canCreateWithSubscription(status?: SubscriptionStatus) {
@@ -42,7 +42,7 @@ export function getSubscriptionBlockReason(status?: SubscriptionStatus) {
         return 'Hay un pago pendiente. Regulariza la suscripción para volver a crear o editar contenido.'
     }
 
-    if (status === 'canceled') {
+    if (status === 'cancelled') {
         return 'La suscripción está cancelada. Reactívala para recuperar la gestión completa del negocio.'
     }
 
@@ -67,7 +67,7 @@ export function formatSubscriptionStatus(status?: SubscriptionStatus) {
             return 'Activa'
         case 'past_due':
             return 'Pago pendiente'
-        case 'canceled':
+        case 'cancelled':
             return 'Cancelada'
         case 'trialing':
         default:
@@ -101,7 +101,7 @@ export function getSubscriptionAction(
         }
     }
 
-    if (status === 'canceled') {
+    if (status === 'cancelled') {
         return {
             title: 'Suscripción cancelada',
             description:

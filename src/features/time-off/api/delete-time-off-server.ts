@@ -88,7 +88,7 @@ export async function deleteTimeOffServer(
         return failure(
             business.subscription_status === 'past_due'
                 ? 'Tu negocio está en modo solo lectura porque existe un pago pendiente.'
-                : business.subscription_status === 'canceled'
+                : business.subscription_status === 'cancelled'
                     ? 'La suscripción está cancelada. Reactívala para eliminar bloqueos.'
                     : 'La suscripción actual no permite eliminar bloqueos.'
         )

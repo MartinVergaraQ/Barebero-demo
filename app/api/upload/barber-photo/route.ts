@@ -117,7 +117,7 @@ export async function POST(request: Request) {
             const message =
                 business.subscription_status === 'past_due'
                     ? 'Existe un pago pendiente. Regulariza tu plan para subir fotografías.'
-                    : business.subscription_status === 'canceled'
+                    : business.subscription_status === 'cancelled'
                         ? 'La suscripción está cancelada. Reactívala para subir fotografías.'
                         : 'La suscripción actual no permite subir fotografías.'
 

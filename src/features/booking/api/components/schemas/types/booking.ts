@@ -2,7 +2,7 @@ export type AppointmentStatus =
     | 'pending'
     | 'confirmed'
     | 'completed'
-    | 'canceled'
+    | 'cancelled'
     | 'no_show'
 
 export type AppointmentSource =

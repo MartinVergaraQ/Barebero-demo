@@ -197,7 +197,7 @@ export async function updateBarberServer(
         return failure(
             business.subscription_status === 'past_due'
                 ? 'Tu negocio está en modo lectura porque existe un pago pendiente.'
-                : business.subscription_status === 'canceled'
+                : business.subscription_status === 'cancelled'
                     ? 'La suscripción está cancelada. Reactívala para modificar barberos.'
                     : 'La suscripción actual no permite modificar barberos.'
         )

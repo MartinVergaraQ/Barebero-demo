@@ -7,7 +7,7 @@ export type SubscriptionStatus =
     | 'trialing'
     | 'active'
     | 'past_due'
-    | 'canceled'
+    | 'cancelled'
 
 export type BusinessBySlug = {
     id: string

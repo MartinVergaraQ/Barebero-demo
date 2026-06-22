@@ -8,7 +8,7 @@ type ReservationStatus =
     | 'pending'
     | 'confirmed'
     | 'completed'
-    | 'canceled'
+    | 'cancelled'
 
 type Props = {
     reservationId: string
@@ -49,7 +49,7 @@ export function BarberReservationStatusActions({
                 {
                     label: 'Cancelar',
                     loadingLabel: 'Cancelando...',
-                    status: 'canceled',
+                    status: 'cancelled',
                     className:
                         'border-red-300 bg-red-50 text-red-700 hover:bg-red-100',
                 },
@@ -66,7 +66,7 @@ export function BarberReservationStatusActions({
                     {
                         label: 'Cancelar',
                         loadingLabel: 'Cancelando...',
-                        status: 'canceled',
+                        status: 'cancelled',
                         className:
                             'border-red-300 bg-red-50 text-red-700 hover:bg-red-100',
                     },

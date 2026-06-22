@@ -76,7 +76,7 @@ export default async function AdminBloqueosPage({
     const subscriptionBlockReason =
         business.subscription_status === 'past_due'
             ? 'Tu negocio está en modo solo lectura porque existe un pago pendiente.'
-            : business.subscription_status === 'canceled'
+            : business.subscription_status === 'cancelled'
                 ? 'Tu negocio está en modo solo lectura porque la suscripción está cancelada.'
                 : ''
 
