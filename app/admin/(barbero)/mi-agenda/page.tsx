@@ -48,7 +48,7 @@ export default async function MiAgendaPage() {
     const subscriptionStatusLabel =
         business.subscription_status === 'past_due'
             ? 'Pago pendiente'
-            : business.subscription_status === 'canceled'
+            : business.subscription_status === 'cancelled'
                 ? 'Suscripción cancelada'
                 : 'Solo lectura'
 
@@ -57,7 +57,7 @@ export default async function MiAgendaPage() {
             ? undefined
             : business.subscription_status === 'past_due'
                 ? 'Existe un pago pendiente. Regulariza tu plan para volver a gestionar reservas.'
-                : business.subscription_status === 'canceled'
+                : business.subscription_status === 'cancelled'
                     ? 'La suscripción está cancelada. Reactívala para volver a gestionar reservas.'
                     : 'La suscripción actual no permite modificar reservas.'
 

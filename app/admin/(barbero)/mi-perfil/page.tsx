@@ -56,7 +56,7 @@ export default async function MiPerfilPage() {
     const subscriptionStatusLabel =
         business.subscription_status === 'past_due'
             ? 'Pago pendiente'
-            : business.subscription_status === 'canceled'
+            : business.subscription_status === 'cancelled'
                 ? 'Suscripción cancelada'
                 : 'Solo lectura'
 
@@ -64,7 +64,7 @@ export default async function MiPerfilPage() {
         ? undefined
         : business.subscription_status === 'past_due'
             ? 'Existe un pago pendiente. Regulariza tu plan para volver a editar tu perfil.'
-            : business.subscription_status === 'canceled'
+            : business.subscription_status === 'cancelled'
                 ? 'La suscripción está cancelada. Reactívala para volver a editar tu perfil.'
                 : 'La suscripción actual no permite modificar el perfil.'
 
