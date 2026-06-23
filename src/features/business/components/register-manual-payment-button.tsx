@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/src/components/ui/confirm-dialog'
 import { registerManualPaymentServer } from '@/src/features/business/api/register-manual-payment-server'
+import { PLAN_PRICES, } from '@/src/features/business/utils/plan-config'
 
 type Props = {
     businessId: string
@@ -91,7 +92,7 @@ export function RegisterManualPaymentButton({
                         value={amountInput}
                         onChange={(event) => setAmountInput(event.target.value)}
                         inputMode="numeric"
-                        placeholder="19990"
+                        placeholder={String(PLAN_PRICES.studio)}
                         className="h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-black text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#C8942E] focus:ring-4 focus:ring-[#C8942E]/10"
                     />
 

@@ -27,12 +27,27 @@ export function getSubscriptionUi(
     }
 
     if (status === 'trialing') {
+        const trialEnd =
+            trialEndsAt
+                ? new Date(trialEndsAt)
+                : null
+
+        const formattedTrialEnd =
+            trialEnd &&
+                !Number.isNaN(
+                    trialEnd.getTime()
+                )
+                ? trialEnd.toLocaleDateString(
+                    'es-CL'
+                )
+                : null
+
         return {
             tone: 'blue',
-            title: 'Período de prueba',
-            message: trialEndsAt
-                ? `Tu prueba está activa hasta ${new Date(trialEndsAt).toLocaleDateString('es-CL')}.`
-                : 'Tu negocio está en período de prueba.',
+            title: 'Tu prueba está activa',
+            message: formattedTrialEnd
+                ? `Tienes acceso al plan hasta el ${formattedTrialEnd}.`
+                : 'Estás utilizando el período de prueba.',
         }
     }
 

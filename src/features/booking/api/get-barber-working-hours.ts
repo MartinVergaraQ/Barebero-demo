@@ -1,4 +1,4 @@
-import { supabase } from '@/src/lib/supabase/client'
+import { createClient } from '@/src/lib/supabase/browser'
 
 export type WorkingHour = {
     id: string
@@ -13,6 +13,7 @@ export async function getBarberWorkingHours(
     barberId: string,
     dayOfWeek: number
 ): Promise<WorkingHour[]> {
+    const supabase = createClient()
     const { data, error } = await supabase
         .from('working_hours')
         .select('id, barber_id, day_of_week, start_time, end_time, is_active')

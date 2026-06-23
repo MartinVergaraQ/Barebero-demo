@@ -1,4 +1,4 @@
-import { supabase } from '@/src/lib/supabase/client'
+import { createClient } from '@/src/lib/supabase/browser'
 
 export type SiteContentItem = {
     id: string
@@ -8,6 +8,7 @@ export type SiteContentItem = {
 }
 
 export async function getSiteContent(businessId: string) {
+    const supabase = createClient()
     const { data, error } = await supabase
         .from('site_content')
         .select('id, business_id, key, value_json')

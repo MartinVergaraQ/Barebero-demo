@@ -1,4 +1,4 @@
-import { supabase } from '@/src/lib/supabase/client'
+import { createClient } from '@/src/lib/supabase/browser'
 import type { CreateAppointmentInput } from './components/schemas/types/booking'
 import {
     normalizeWhitespace,
@@ -12,7 +12,7 @@ export async function createAppointment(input: CreateAppointmentInput) {
     const clientName = normalizeWhitespace(input.client_name)
     const clientEmail = normalizeWhitespace(input.client_email ?? '')
     const clientPhone = formatPhoneForStorage(input.client_phone)
-
+    const supabase = createClient()
     if (!input.business_id) {
         throw new Error('business_id es requerido')
     }

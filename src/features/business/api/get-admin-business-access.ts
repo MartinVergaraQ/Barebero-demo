@@ -1,53 +1,84 @@
-import { redirect, notFound } from 'next/navigation'
+import {
+    notFound,
+    redirect,
+} from 'next/navigation'
+
 import { createClient } from '@/src/lib/supabase/server'
+import { canManageSubscription } from '@/src/features/auth/utils/admin-access'
 
 export type AdminBusinessAccess = {
     userId: string
     businessId: string
     businessName: string
     businessSlug: string
-    role: 'owner' | 'admin' | 'barber'
+    role: 'owner' | 'admin'
 }
 
 export async function getAdminBusinessAccess(
     slug: string
 ): Promise<AdminBusinessAccess> {
+    const normalizedSlug =
+        typeof slug === 'string'
+            ? slug.trim()
+            : ''
+
+    if (!normalizedSlug) {
+        notFound()
+    }
+
     const supabase = await createClient()
 
     const {
         data: { user },
+        error: userError,
     } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (userError || !user) {
         redirect('/admin/login')
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const {
+        data: profile,
+        error: profileError,
+    } = await supabase
         .from('profiles')
         .select('id, business_id, role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
-    if (profileError || !profile) {
+    if (
+        profileError ||
+        !profile?.business_id
+    ) {
         redirect('/admin/login')
     }
 
-    if (!['owner', 'admin'].includes(profile.role)) {
-        redirect('/admin/login')
+    if (
+        !canManageSubscription(
+            profile.role
+        )
+    ) {
+        redirect('/admin')
     }
 
-    const { data: business, error: businessError } = await supabase
+    const {
+        data: business,
+        error: businessError,
+    } = await supabase
         .from('businesses')
         .select('id, name, slug')
-        .eq('slug', slug)
-        .single()
+        .eq('slug', normalizedSlug)
+        .maybeSingle()
 
     if (businessError || !business) {
         notFound()
     }
 
-    if (profile.business_id !== business.id) {
-        redirect('/admin/login')
+    if (
+        profile.business_id !==
+        business.id
+    ) {
+        redirect('/admin')
     }
 
     return {
@@ -55,6 +86,8 @@ export async function getAdminBusinessAccess(
         businessId: business.id,
         businessName: business.name,
         businessSlug: business.slug,
-        role: profile.role,
+        role: profile.role as
+            | 'owner'
+            | 'admin',
     }
 }

@@ -139,12 +139,21 @@ export default async function SuperadminBusinessesPage() {
                             </h2>
                         </div>
 
-                        <Link
-                            href="/superadmin/plan-requests"
-                            className="inline-flex h-9 items-center justify-center rounded-xl border border-black/10 bg-white px-3 text-xs font-black text-slate-700 shadow-sm transition hover:bg-[#FFFCF4]"
-                        >
-                            Solicitudes
-                        </Link>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Link
+                                href="/superadmin/businesses/new"
+                                className="inline-flex h-9 items-center justify-center rounded-xl bg-[#C8942E] px-4 text-xs font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                            >
+                                + Crear negocio
+                            </Link>
+
+                            <Link
+                                href="/superadmin/plan-requests"
+                                className="inline-flex h-9 items-center justify-center rounded-xl border border-black/10 bg-white px-3 text-xs font-black text-slate-700 shadow-sm transition hover:bg-[#FFFCF4]"
+                            >
+                                Solicitudes
+                            </Link>
+                        </div>
                     </div>
 
                     {businesses.length === 0 ? (

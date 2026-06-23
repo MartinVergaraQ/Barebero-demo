@@ -1,5 +1,4 @@
-import { supabase } from '@/src/lib/supabase/client'
-
+import { createClient } from '@/src/lib/supabase/browser'
 export type BarberAppointment = {
     id: string
     barber_id: string
@@ -13,6 +12,7 @@ export async function getBarberAppointmentsByDate(
     barberId: string,
     appointmentDate: string
 ): Promise<BarberAppointment[]> {
+    const supabase = createClient()
     const { data, error } = await supabase
         .from('appointments')
         .select('id, barber_id, appointment_date, start_at, end_at, status')

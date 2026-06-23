@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/src/lib/supabase/server'
-import { canManageBusiness } from '@/src/features/auth/utils/admin-access'
+import { canManageSubscription } from '@/src/features/auth/utils/admin-access'
 import {
     PLAN_LIMITS,
     type AllowedPlanSlug,
@@ -23,10 +23,39 @@ type Result =
         message: string
     }
 
+function isAllowedPlanSlug(
+    value: unknown
+): value is AllowedPlanSlug {
+    return (
+        value === 'starter' ||
+        value === 'pro' ||
+        value === 'studio'
+    )
+}
+
 export async function createPlanChangeRequestServer({
     businessId,
     requestedPlanSlug,
 }: Input): Promise<Result> {
+    const normalizedBusinessId =
+        typeof businessId === 'string'
+            ? businessId.trim()
+            : ''
+
+    if (!normalizedBusinessId) {
+        return {
+            ok: false,
+            message: 'Negocio no válido',
+        }
+    }
+
+    if (!isAllowedPlanSlug(requestedPlanSlug)) {
+        return {
+            ok: false,
+            message: 'Plan solicitado no válido',
+        }
+    }
+
     const supabase = await createClient()
 
     const {
@@ -41,38 +70,57 @@ export async function createPlanChangeRequestServer({
         }
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const {
+        data: profile,
+        error: profileError,
+    } = await supabase
         .from('profiles')
         .select('id, business_id, role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
-    if (profileError || !profile) {
+    if (
+        profileError ||
+        !profile?.business_id
+    ) {
         return {
             ok: false,
-            message: 'No se pudo cargar el perfil del usuario',
+            message:
+                'No se pudo cargar el perfil del usuario',
         }
     }
 
-    if (!canManageBusiness(profile.role)) {
+    if (
+        !canManageSubscription(
+            profile.role
+        )
+    ) {
         return {
             ok: false,
-            message: 'No tienes permisos para solicitar cambios de plan',
+            message:
+                'No tienes permisos para solicitar cambios de plan',
         }
     }
 
-    if (profile.business_id !== businessId) {
+    if (
+        profile.business_id !==
+        normalizedBusinessId
+    ) {
         return {
             ok: false,
-            message: 'No autorizado para este negocio',
+            message:
+                'No autorizado para este negocio',
         }
     }
 
-    const { data: business, error: businessError } = await supabase
+    const {
+        data: business,
+        error: businessError,
+    } = await supabase
         .from('businesses')
         .select('id, plan_slug')
-        .eq('id', businessId)
-        .single()
+        .eq('id', normalizedBusinessId)
+        .maybeSingle()
 
     if (businessError || !business) {
         return {
@@ -81,33 +129,57 @@ export async function createPlanChangeRequestServer({
         }
     }
 
-    if (business.plan_slug === requestedPlanSlug) {
+    if (
+        business.plan_slug ===
+        requestedPlanSlug
+    ) {
         return {
             ok: false,
-            message: 'Ese ya es tu plan actual',
+            message:
+                'Ese ya es tu plan actual',
         }
     }
 
-    const requestedLimits = PLAN_LIMITS[requestedPlanSlug]
+    /*
+     * La lectura también actúa como validación
+     * defensiva de que el plan existe.
+     */
+    const requestedLimits =
+        PLAN_LIMITS[requestedPlanSlug]
 
     if (!requestedLimits) {
         return {
             ok: false,
-            message: 'Plan solicitado no válido',
+            message:
+                'Plan solicitado no válido',
         }
     }
 
-    const { data: pendingRequest, error: pendingError } = await supabase
+    const {
+        data: pendingRequest,
+        error: pendingError,
+    } = await supabase
         .from('plan_change_requests')
-        .select('id, requested_plan_slug, status')
-        .eq('business_id', businessId)
+        .select(
+            'id, requested_plan_slug, status'
+        )
+        .eq(
+            'business_id',
+            normalizedBusinessId
+        )
         .eq('status', 'pending')
         .maybeSingle()
 
     if (pendingError) {
+        console.error(
+            'Error consultando solicitudes pendientes:',
+            pendingError
+        )
+
         return {
             ok: false,
-            message: pendingError.message,
+            message:
+                'No se pudo comprobar si existe una solicitud pendiente',
         }
     }
 
@@ -119,26 +191,51 @@ export async function createPlanChangeRequestServer({
         }
     }
 
-    const { error: insertError } = await supabase
-        .from('plan_change_requests')
-        .insert({
-            business_id: businessId,
-            requested_by: profile.id,
-            current_plan_slug: business.plan_slug,
-            requested_plan_slug: requestedPlanSlug,
-            status: 'pending',
-        })
+    const { error: insertError } =
+        await supabase
+            .from('plan_change_requests')
+            .insert({
+                business_id:
+                    normalizedBusinessId,
+                requested_by:
+                    profile.id,
+                current_plan_slug:
+                    business.plan_slug,
+                requested_plan_slug:
+                    requestedPlanSlug,
+                status: 'pending',
+            })
 
     if (insertError) {
+        console.error(
+            'Error creando solicitud de plan:',
+            insertError
+        )
+
+        /*
+         * Requiere el índice único parcial para una
+         * solicitud pending por negocio.
+         */
+        if (insertError.code === '23505') {
+            return {
+                ok: false,
+                message:
+                    'Ya existe una solicitud de cambio de plan pendiente para este negocio',
+            }
+        }
+
         return {
             ok: false,
-            message: insertError.message,
+            message:
+                'No se pudo enviar la solicitud de cambio de plan',
         }
     }
 
     return {
         ok: true,
-        currentPlanSlug: business.plan_slug,
+        currentPlanSlug:
+            business.plan_slug,
         requestedPlanSlug,
     }
 }
+

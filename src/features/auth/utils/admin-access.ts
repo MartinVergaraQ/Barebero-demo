@@ -13,6 +13,15 @@ export function canAccessAdmin(
     )
 }
 
+export function canManageSubscription(
+    role?: string | null
+): boolean {
+    return (
+        role === 'owner' ||
+        role === 'admin'
+    )
+}
+
 export function canManageBusiness(
     role?: string | null
 ): boolean {

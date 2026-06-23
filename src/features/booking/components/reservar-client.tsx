@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { supabase } from '@/src/lib/supabase/client'
+import { createClient } from '@/src/lib/supabase/browser'
 import { getBarberWorkingHours } from '@/src/features/booking/api/get-barber-working-hours'
 import { getBarberAppointmentsByDate } from '@/src/features/booking/api/get-barber-appointments-by-date'
 import { generateTimeSlots } from '@/src/features/booking/utils/generate-time-slots'
@@ -179,6 +179,8 @@ export default function ReservarClient({
     initialServiceId = '',
     initialBarberId = '',
 }: ReservarClientProps) {
+
+    const supabase = useMemo(() => createClient(), [])
     const [services, setServices] = useState<Service[]>([])
     const [barbers, setBarbers] = useState<Barber[]>([])
 
@@ -649,16 +651,49 @@ export default function ReservarClient({
                 setLoadingData(false)
                 return
             }
-            const activeBarberIds = (barbersData ?? []).map((barber) => barber.id)
 
-            const barberServicesFiltered = (barberServicesData ?? []).filter((item) =>
-                activeBarberIds.includes(item.barber_id)
+            const typedServices =
+                (servicesData ?? []) as Service[]
+
+            const typedBarbers =
+                (barbersData ?? []) as Barber[]
+
+            const typedBarberServices =
+                (barberServicesData ??
+                    []) as BarberService[]
+
+            const activeBarberIds =
+                typedBarbers.map(
+                    (barber) => barber.id
+                )
+
+            const barberServicesFiltered =
+                typedBarberServices.filter(
+                    (item) =>
+                        activeBarberIds.includes(
+                            item.barber_id
+                        )
+                )
+
+            setBarberServices(
+                barberServicesFiltered
             )
 
-            setBarberServices(barberServicesFiltered as BarberService[])
-            setServices((servicesData ?? []) as Service[])
-            setBarbers((barbersData ?? []) as Barber[])
-            setBusiness(businessData as Business)
+            setServices(
+                typedServices
+            )
+
+            setBarbers(
+                typedBarbers
+            )
+
+            setBusiness(
+                businessData as Business
+            )
+
+            setLoadingData(false)
+
+
             setLoadingData(false)
         }
 

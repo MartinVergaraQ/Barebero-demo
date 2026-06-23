@@ -1,12 +1,9 @@
+
 'use server'
 
 import { revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/src/lib/supabase/admin'
 import { getPlatformAdmin } from '@/src/features/auth/api/get-platform-admin'
-import {
-    PLAN_LIMITS,
-    type AllowedPlanSlug,
-} from '@/src/features/business/utils/plan-config'
 
 type Result =
     | {
@@ -17,267 +14,333 @@ type Result =
         message: string
     }
 
-function getSingleRelation<T>(value: T | T[] | null): T | null {
-    if (Array.isArray(value)) return value[0] ?? null
+type ApprovePlanRpcRow = {
+    request_id: string
+    business_id: string
+    business_slug: string
+    previous_plan_slug: string
+    next_plan_slug: string
+}
+
+function normalizeRequestId(
+    value: unknown
+) {
+    return typeof value === 'string'
+        ? value.trim()
+        : ''
+}
+
+function getSingleRelation<T>(
+    value: T | T[] | null
+): T | null {
+    if (Array.isArray(value)) {
+        return value[0] ?? null
+    }
+
     return value
 }
 
-function addOneMonth(date: Date) {
-    const next = new Date(date)
-    next.setMonth(next.getMonth() + 1)
-    return next
+function getApproveErrorMessage(
+    message?: string | null
+) {
+    if (
+        message?.includes(
+            'REQUEST_NOT_FOUND'
+        )
+    ) {
+        return 'Solicitud no encontrada'
+    }
+
+    if (
+        message?.includes(
+            'REQUEST_ALREADY_RESOLVED'
+        )
+    ) {
+        return 'Esta solicitud ya fue resuelta'
+    }
+
+    if (
+        message?.includes(
+            'STALE_PLAN_REQUEST'
+        )
+    ) {
+        return 'El plan del negocio cambió mientras la solicitud estaba pendiente. Debe crear una nueva solicitud.'
+    }
+
+    if (
+        message?.includes(
+            'PLAN_ALREADY_ACTIVE'
+        )
+    ) {
+        return 'El negocio ya utiliza el plan solicitado'
+    }
+
+    if (
+        message?.includes(
+            'BARBER_LIMIT_EXCEEDED'
+        )
+    ) {
+        return 'No se puede aprobar el cambio porque el negocio supera el límite de barberos del plan solicitado.'
+    }
+
+    if (
+        message?.includes(
+            'SERVICE_LIMIT_EXCEEDED'
+        )
+    ) {
+        return 'No se puede aprobar el cambio porque el negocio supera el límite de servicios del plan solicitado.'
+    }
+
+    if (
+        message?.includes(
+            'INVALID_REQUESTED_PLAN'
+        ) ||
+        message?.includes(
+            'INVALID_CURRENT_PLAN'
+        )
+    ) {
+        return 'El plan asociado a la solicitud no es válido'
+    }
+
+    return 'No se pudo aprobar la solicitud de cambio de plan'
+}
+export async function rejectPlanChangeRequestServer(
+    requestId: string,
+    adminNote?: string
+): Promise<Result> {
+    const normalizedRequestId =
+        normalizeRequestId(requestId)
+
+    if (!normalizedRequestId) {
+        return {
+            ok: false,
+            message: 'Solicitud no válida',
+        }
+    }
+
+    const platformAdmin =
+        await getPlatformAdmin()
+
+    if (!platformAdmin) {
+        return {
+            ok: false,
+            message:
+                'No autorizado como administrador de plataforma',
+        }
+    }
+
+    const {
+        data: request,
+        error: requestError,
+    } = await supabaseAdmin
+        .from('plan_change_requests')
+        .select(`
+    id,
+        status,
+        businesses: business_id(
+            slug
+        )
+            `)
+        .eq('id', normalizedRequestId)
+        .maybeSingle()
+
+    if (requestError || !request) {
+        return {
+            ok: false,
+            message:
+                'Solicitud no encontrada',
+        }
+    }
+
+    if (request.status !== 'pending') {
+        return {
+            ok: false,
+            message:
+                'Esta solicitud ya fue resuelta',
+        }
+    }
+
+    const business =
+        getSingleRelation(
+            request.businesses
+        )
+
+    if (!business?.slug) {
+        return {
+            ok: false,
+            message:
+                'No se encontró el negocio asociado',
+        }
+    }
+
+    const normalizedAdminNote =
+        typeof adminNote === 'string'
+            ? adminNote
+                .trim()
+                .slice(0, 500)
+            : ''
+
+    const {
+        data: rejectedRequest,
+        error: rejectError,
+    } = await supabaseAdmin
+        .from('plan_change_requests')
+        .update({
+            status: 'rejected',
+            admin_note:
+                normalizedAdminNote ||
+                null,
+            resolved_at:
+                new Date().toISOString(),
+
+            /*
+             * resolved_by referencia profiles.id.
+             * El superadministrador se registra en
+             * resolved_by_platform_admin.
+             */
+            resolved_by: null,
+            resolved_by_platform_admin:
+                platformAdmin.id,
+        })
+        .eq('id', request.id)
+        .eq('status', 'pending')
+        .select('id')
+        .maybeSingle()
+
+    if (rejectError) {
+        console.error(
+            'Error rechazando solicitud de plan:',
+            rejectError
+        )
+
+        return {
+            ok: false,
+            message:
+                'No se pudo rechazar la solicitud',
+        }
+    }
+
+    /*
+     * Evita que dos administradores resuelvan
+     * simultáneamente la misma solicitud.
+     */
+    if (!rejectedRequest) {
+        return {
+            ok: false,
+            message:
+                'La solicitud ya fue resuelta por otro administrador',
+        }
+    }
+
+    revalidatePath(
+        '/superadmin/plan-requests'
+    )
+
+    revalidatePath(
+        `/ admin / b / ${business.slug}/plan`
+    )
+
+    return {
+        ok: true,
+    }
 }
 
 export async function approvePlanChangeRequestServer(
     requestId: string
 ): Promise<Result> {
-    const platformAdmin = await getPlatformAdmin()
+    const normalizedRequestId =
+        normalizeRequestId(requestId)
+
+    if (!normalizedRequestId) {
+        return {
+            ok: false,
+            message: 'Solicitud no válida',
+        }
+    }
+
+    const platformAdmin =
+        await getPlatformAdmin()
 
     if (!platformAdmin) {
         return {
             ok: false,
-            message: 'No autorizado como administrador de plataforma',
-        }
-    }
-
-    const { data: request, error: requestError } = await supabaseAdmin
-        .from('plan_change_requests')
-        .select(
-            `
-            id,
-            business_id,
-            current_plan_slug,
-            requested_plan_slug,
-            status,
-            businesses:business_id (
-                id,
-                slug,
-                plan_slug
-            )
-        `
-        )
-        .eq('id', requestId)
-        .single()
-
-    if (requestError || !request) {
-        return {
-            ok: false,
-            message: 'Solicitud no encontrada',
-        }
-    }
-
-    if (request.status !== 'pending') {
-        return {
-            ok: false,
-            message: 'Esta solicitud ya fue resuelta',
-        }
-    }
-
-    const nextPlanSlug = request.requested_plan_slug as AllowedPlanSlug
-    const limits = PLAN_LIMITS[nextPlanSlug]
-
-    if (!limits) {
-        return {
-            ok: false,
-            message: 'Plan solicitado no válido',
-        }
-    }
-
-    const [barbersCountRes, servicesCountRes] = await Promise.all([
-        supabaseAdmin
-            .from('barbers')
-            .select('*', { count: 'exact', head: true })
-            .eq('business_id', request.business_id)
-            .eq('is_active', true),
-
-        supabaseAdmin
-            .from('services')
-            .select('*', { count: 'exact', head: true })
-            .eq('business_id', request.business_id)
-            .eq('is_active', true),
-    ])
-
-    const activeBarbers = barbersCountRes.count ?? 0
-    const activeServices = servicesCountRes.count ?? 0
-
-    if (limits.maxBarbers !== null && activeBarbers > limits.maxBarbers) {
-        return {
-            ok: false,
-            message: `No se puede aprobar. El negocio tiene ${activeBarbers} barberos activos y el plan permite ${limits.maxBarbers}.`,
-        }
-    }
-
-    if (limits.maxServices !== null && activeServices > limits.maxServices) {
-        return {
-            ok: false,
-            message: `No se puede aprobar. El negocio tiene ${activeServices} servicios activos y el plan permite ${limits.maxServices}.`,
-        }
-    }
-
-    const previousPlanSlug = request.current_plan_slug
-    const now = new Date()
-    const currentPeriodEnd = addOneMonth(now)
-
-    const { error: updateBusinessError } = await supabaseAdmin
-        .from('businesses')
-        .update({
-            plan_slug: nextPlanSlug,
-            max_barbers: limits.maxBarbers,
-            max_services: limits.maxServices,
-            subscription_status: 'active',
-        })
-        .eq('id', request.business_id)
-
-    if (updateBusinessError) {
-        return {
-            ok: false,
-            message: updateBusinessError.message,
-        }
-    }
-
-    const { error: subscriptionError } = await supabaseAdmin
-        .from('business_subscriptions')
-        .upsert(
-            {
-                business_id: request.business_id,
-                plan_slug: nextPlanSlug,
-                status: 'active',
-                provider: 'manual',
-                price_monthly: 0,
-                currency: 'CLP',
-                current_period_start: now.toISOString(),
-                current_period_end: currentPeriodEnd.toISOString(),
-                cancel_at_period_end: false,
-                updated_at: now.toISOString(),
-            },
-            {
-                onConflict: 'business_id',
-            }
-        )
-
-    if (subscriptionError) {
-        return {
-            ok: false,
             message:
-                'El plan cambió, pero no se pudo sincronizar la suscripción',
+                'No autorizado como administrador de plataforma',
         }
     }
 
-    const { error: historyError } = await supabaseAdmin
-        .from('business_plan_history')
-        .insert({
-            business_id: request.business_id,
-            previous_plan_slug: previousPlanSlug,
-            next_plan_slug: nextPlanSlug,
-            changed_by: null,
-        })
+    const {
+        data,
+        error,
+    } = await supabaseAdmin.rpc(
+        'approve_plan_change_request',
+        {
+            p_request_id:
+                normalizedRequestId,
 
-    if (historyError) {
-        return {
-            ok: false,
-            message: 'El plan cambió, pero no se pudo registrar el historial',
+            /*
+             * Debe ser platform_admins.id,
+             * no auth.users.id.
+             */
+            p_platform_admin_id:
+                platformAdmin.id,
         }
-    }
-
-    const { error: resolveError } = await supabaseAdmin
-        .from('plan_change_requests')
-        .update({
-            status: 'approved',
-            resolved_at: now.toISOString(),
-            resolved_by: platformAdmin.user_id,
-        })
-        .eq('id', request.id)
-
-    if (resolveError) {
-        return {
-            ok: false,
-            message:
-                'El plan cambió, pero no se pudo marcar la solicitud como aprobada',
-        }
-    }
-
-    const business = getSingleRelation(request.businesses)
-
-    revalidatePath('/superadmin/plan-requests')
-
-    if (business?.slug) {
-        revalidatePath(`/admin/b/${business.slug}/plan`)
-    }
-
-    return {
-        ok: true,
-    }
-}
-
-export async function rejectPlanChangeRequestServer(
-    requestId: string,
-    adminNote?: string
-): Promise<Result> {
-    const platformAdmin = await getPlatformAdmin()
-
-    if (!platformAdmin) {
-        return {
-            ok: false,
-            message: 'No autorizado como administrador de plataforma',
-        }
-    }
-
-    const { data: request, error: requestError } = await supabaseAdmin
-        .from('plan_change_requests')
-        .select(
-            `
-            id,
-            status,
-            businesses:business_id (
-                slug
-            )
-        `
-        )
-        .eq('id', requestId)
-        .single()
-
-    if (requestError || !request) {
-        return {
-            ok: false,
-            message: 'Solicitud no encontrada',
-        }
-    }
-
-    if (request.status !== 'pending') {
-        return {
-            ok: false,
-            message: 'Esta solicitud ya fue resuelta',
-        }
-    }
-
-    const now = new Date()
-
-    const { error } = await supabaseAdmin
-        .from('plan_change_requests')
-        .update({
-            status: 'rejected',
-            admin_note: adminNote?.trim() || null,
-            resolved_at: now.toISOString(),
-            resolved_by: platformAdmin.user_id,
-        })
-        .eq('id', requestId)
+    )
 
     if (error) {
+        console.error(
+            'Error aprobando cambio de plan:',
+            error
+        )
+
         return {
             ok: false,
-            message: error.message,
+            message:
+                getApproveErrorMessage(
+                    error.message
+                ),
         }
     }
 
-    const business = getSingleRelation(request.businesses)
+    const result =
+        Array.isArray(data) &&
+            data.length > 0
+            ? (data[0] as ApprovePlanRpcRow)
+            : null
 
-    revalidatePath('/superadmin/plan-requests')
+    if (
+        !result?.request_id ||
+        !result.business_id ||
+        !result.business_slug
+    ) {
+        console.error(
+            'El RPC de aprobación no devolvió un resultado válido:',
+            data
+        )
 
-    if (business?.slug) {
-        revalidatePath(`/admin/b/${business.slug}/plan`)
+        return {
+            ok: false,
+            message:
+                'La solicitud se procesó sin una respuesta válida',
+        }
     }
+
+    revalidatePath(
+        '/superadmin/plan-requests'
+    )
+
+    revalidatePath(
+        `/ superadmin / businesses / ${result.business_id} `
+    )
+
+    revalidatePath(
+        `/ admin / b / ${result.business_slug}/plan`
+    )
 
     return {
         ok: true,
     }
+
+
 }
+
