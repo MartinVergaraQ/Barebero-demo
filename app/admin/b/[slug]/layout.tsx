@@ -14,6 +14,7 @@ import {
 import {
     normalizeSubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
+import { supabaseAdmin } from '@/src/lib/supabase/admin'
 
 export default async function AdminBusinessLayout({
     children,
@@ -70,6 +71,19 @@ export default async function AdminBusinessLayout({
     if (!canAccessAdmin(profile.role)) {
         redirect('/admin')
     }
+
+    const {
+        data: platformOwner,
+    } = await supabaseAdmin
+        .from('platform_admins')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('role', 'owner')
+        .eq('is_active', true)
+        .maybeSingle()
+
+    const showPlatformPayments =
+        !!platformOwner
 
     const {
         data: business,
@@ -177,6 +191,9 @@ export default async function AdminBusinessLayout({
                     business.name
                 }
                 role={profile.role}
+                showPlatformPayments={
+                    showPlatformPayments
+                }
             />
 
             <section className="min-w-0 md:ml-[254px]">

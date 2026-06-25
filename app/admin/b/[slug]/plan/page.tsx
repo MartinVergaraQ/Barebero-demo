@@ -13,6 +13,7 @@ import {
     CheckCircle2,
     CreditCard,
     Crown,
+    ReceiptText,
     Scissors,
     ShieldCheck,
     UsersRound,
@@ -596,9 +597,10 @@ export default async function AdminPlanPage({
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col items-stretch gap-3 sm:items-end">
+
+                                <div className="flex flex-col items-stretch gap-3 sm:min-w-[190px] sm:items-end">
                                     {hasPendingRequest && (
-                                        <div className="rounded-2xl border border-[#E7B957]/60 bg-[#FFF7E8] px-4 py-3">
+                                        <div className="w-full rounded-2xl border border-[#E7B957]/60 bg-[#FFF7E8] px-4 py-3">
                                             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8A5D16]">
                                                 Cambio pendiente
                                             </p>
@@ -617,22 +619,35 @@ export default async function AdminPlanPage({
                                         </div>
                                     )}
 
+                                    <Link
+                                        href={`/admin/b/${business.slug}/plan/pagos`}
+                                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-5 text-xs font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8942E]/50 hover:bg-[#FFF7E8] active:scale-[0.98]"
+                                    >
+                                        <ReceiptText className="h-4 w-4 text-[#C8942E]" />
+                                        Historial de pagos
+                                    </Link>
+
                                     {isBlocked ? (
                                         <Link
                                             href={`/admin/b/${business.slug}/plan/regularizar`}
-                                            className="inline-flex h-11 min-w-[190px] items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 text-xs font-black text-white shadow-[0_12px_25px_rgba(220,38,38,0.2)] transition hover:-translate-y-0.5 hover:bg-red-700 active:scale-[0.98]"
+                                            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 text-xs font-black text-white shadow-[0_12px_25px_rgba(220,38,38,0.2)] transition hover:-translate-y-0.5 hover:bg-red-700 active:scale-[0.98]"
                                         >
                                             {regularizationLabel}
-                                            <span aria-hidden="true">→</span>
+                                            <span aria-hidden="true">
+                                                →
+                                            </span>
                                         </Link>
                                     ) : !hasPendingRequest &&
                                         canRequestPlanChange ? (
                                         <Link
                                             href={`/admin/b/${business.slug}/plan/cambiar`}
-                                            className="inline-flex h-11 min-w-[170px] items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-5 text-xs font-black text-[#8A5D16] shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8942E]/50 hover:bg-[#FFF7E8] active:scale-[0.98]"
+                                            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-5 text-xs font-black text-[#8A5D16] shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8942E]/50 hover:bg-[#FFF7E8] active:scale-[0.98]"
                                         >
                                             Solicitar cambio
-                                            <span aria-hidden="true">→</span>
+
+                                            <span aria-hidden="true">
+                                                →
+                                            </span>
                                         </Link>
                                     ) : null}
                                 </div>

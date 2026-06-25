@@ -54,7 +54,8 @@ function isActiveRoute(
 
 function buildLinks(
     slug: string,
-    role: string
+    role: string,
+    showPlatformPayments = false
 ): NavItem[] {
     if (role === 'barber') {
         return [
@@ -155,6 +156,14 @@ function buildLinks(
         })
     }
 
+    if (showPlatformPayments) {
+        links.push({
+            href: `/admin/b/${slug}/plataforma/pagos`,
+            label: 'Pagos plataforma',
+            icon: CreditCard,
+        })
+    }
+
     if (canManageBusiness(role)) {
         links.push({
             href: `/admin/b/${slug}/negocio`,
@@ -201,17 +210,20 @@ function NavLinks({
     pathname,
     businessSlug,
     role,
+    showPlatformPayments,
     onNavigate,
 }: {
     pathname: string
     businessSlug: string
     role: string
+    showPlatformPayments?: boolean
     onNavigate?: () => void
 }) {
     const links =
         buildLinks(
             businessSlug,
-            role
+            role,
+            showPlatformPayments
         )
 
     return (
@@ -532,10 +544,12 @@ export function AdminNav({
     businessSlug,
     businessName,
     role,
+    showPlatformPayments = false,
 }: {
     businessSlug: string
     businessName?: string
     role: string
+    showPlatformPayments?: boolean
 }) {
     const pathname =
         usePathname()
@@ -651,17 +665,14 @@ export function AdminNav({
 
                         <div className="min-h-0 flex-1 overflow-y-auto py-4">
                             <NavLinks
-                                pathname={
-                                    pathname
-                                }
-                                businessSlug={
-                                    businessSlug
-                                }
+                                pathname={pathname}
+                                businessSlug={businessSlug}
                                 role={role}
+                                showPlatformPayments={
+                                    showPlatformPayments
+                                }
                                 onNavigate={() =>
-                                    setOpen(
-                                        false
-                                    )
+                                    setOpen(false)
                                 }
                             />
                         </div>
@@ -709,6 +720,9 @@ export function AdminNav({
                             businessSlug
                         }
                         role={role}
+                        showPlatformPayments={
+                            showPlatformPayments
+                        }
                     />
                 </div>
 
