@@ -8,6 +8,15 @@ import {
     formatSubscriptionStatus,
     formatTrialEndDate
 } from '@/src/features/business/utils/subscription-rules'
+import {
+    CalendarDays,
+    CheckCircle2,
+    CreditCard,
+    Crown,
+    Scissors,
+    ShieldCheck,
+    UsersRound,
+} from 'lucide-react'
 
 type AdminPlanPageProps = {
     params: Promise<{
@@ -124,6 +133,47 @@ function formatCurrency(
             maximumFractionDigits: 0,
         }
     ).format(amount)
+}
+
+function formatSubscriptionDate(
+    value?: string | null
+) {
+    if (!value) {
+        return 'Sin fecha registrada'
+    }
+
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) {
+        return 'Sin fecha registrada'
+    }
+
+    return new Intl.DateTimeFormat(
+        'es-CL',
+        {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+        }
+    ).format(date)
+}
+
+function formatPaymentProvider(
+    provider?: string | null
+) {
+    if (provider === 'webpay') {
+        return 'Webpay Plus'
+    }
+
+    if (provider === 'manual') {
+        return 'Pago manual'
+    }
+
+    if (!provider) {
+        return 'No registrado'
+    }
+
+    return provider
 }
 
 function getSingleSearchParam(
@@ -348,6 +398,33 @@ export default async function AdminPlanPage({
             ? 'Reactivar suscripción'
             : 'Regularizar pago'
 
+    const renewalLabel =
+        subscriptionStatus === 'trialing'
+            ? 'Fin del período de prueba'
+            : 'Próxima renovación'
+
+    const renewalValue =
+        subscriptionStatus === 'trialing'
+            ? formatTrialEndDate(
+                businessPlan.trial_ends_at
+            )
+            : formatSubscriptionDate(
+                subscription?.current_period_end
+            )
+
+    const priceValue =
+        subscription?.price_monthly !== null &&
+            subscription?.price_monthly !== undefined
+            ? formatCurrency(
+                subscription.price_monthly,
+                subscription.currency ?? 'CLP'
+            )
+            : 'No disponible'
+
+    const paymentProvider =
+        formatPaymentProvider(
+            subscription?.provider
+        )
     return (
         <main className="min-h-screen px-4 py-6 text-slate-950 md:px-8 md:py-8">
             <div className="mx-auto max-w-7xl space-y-6">
@@ -495,40 +572,35 @@ export default async function AdminPlanPage({
                     </section>
                 )}
 
-                <section className="overflow-hidden rounded-[32px] border border-black/10 bg-[#FFFCF4] shadow-[0_22px_55px_rgba(15,23,42,0.08)]">
-                    <div className="grid lg:grid-cols-[0.92fr_1.08fr]">
-                        <div className="border-b border-black/10 p-5 md:p-6 lg:border-b-0 lg:border-r">
+                <section className="overflow-hidden rounded-[32px] border border-black/10 bg-[#FFFCF4] shadow-[0_24px_70px_rgba(15,23,42,0.09)]">
+                    <div className="grid xl:grid-cols-[1.08fr_0.92fr]">
+                        <div className="border-b border-black/10 p-5 md:p-7 xl:border-b-0 xl:border-r">
                             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
-                                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
-                                        Plan actual
-                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <Crown className="h-4 w-4 text-[#C8942E]" />
+
+                                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                            Plan actual
+                                        </p>
+                                    </div>
 
                                     <h2 className="mt-3 text-5xl font-black tracking-tight text-slate-950">
-                                        {formatPlanLabel(businessPlan.plan_slug)}
+                                        {formatPlanLabel(
+                                            businessPlan.plan_slug
+                                        )}
                                     </h2>
 
-                                    <div className="mt-4 flex flex-wrap gap-2">
-                                        <span className="rounded-full border border-[#E7B957] bg-[#FFF7E8] px-3 py-1.5 text-xs font-black text-[#8A5D16]">
-                                            {statusLabel}
-                                        </span>
-
-                                        <span
-                                            className={`rounded-full px-3 py-1.5 text-xs font-black ${canManageCatalog
-                                                ? 'bg-emerald-600 text-white'
-                                                : 'bg-red-600 text-white'
-                                                }`}
-                                        >
-                                            {canManageCatalog ? 'Catálogo activo' : 'Catálogo bloqueado'}
-                                        </span>
-                                    </div>
+                                    <p className="mt-2 max-w-md text-sm font-semibold leading-6 text-slate-500">
+                                        Administra tu suscripción, renovación y capacidad disponible.
+                                    </p>
                                 </div>
 
                                 <div className="flex flex-col items-stretch gap-3 sm:items-end">
                                     {hasPendingRequest && (
-                                        <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-sm">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                                Solicitud
+                                        <div className="rounded-2xl border border-[#E7B957]/60 bg-[#FFF7E8] px-4 py-3">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8A5D16]">
+                                                Cambio pendiente
                                             </p>
 
                                             <p className="mt-1 text-sm font-black text-slate-950">
@@ -542,125 +614,153 @@ export default async function AdminPlanPage({
                                                     pendingPlanRequest.requested_plan_slug
                                                 )}
                                             </p>
-
-                                            <p className="mt-1 text-xs font-bold text-slate-500">
-                                                Pendiente de revisión
-                                            </p>
                                         </div>
                                     )}
 
                                     {isBlocked ? (
                                         <Link
                                             href={`/admin/b/${business.slug}/plan/regularizar`}
-                                            className="inline-flex h-10 min-w-[190px] items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 text-xs font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-red-700 active:scale-[0.98]"
+                                            className="inline-flex h-11 min-w-[190px] items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 text-xs font-black text-white shadow-[0_12px_25px_rgba(220,38,38,0.2)] transition hover:-translate-y-0.5 hover:bg-red-700 active:scale-[0.98]"
                                         >
                                             {regularizationLabel}
-
-                                            <span aria-hidden="true">
-                                                →
-                                            </span>
+                                            <span aria-hidden="true">→</span>
                                         </Link>
                                     ) : !hasPendingRequest &&
                                         canRequestPlanChange ? (
                                         <Link
                                             href={`/admin/b/${business.slug}/plan/cambiar`}
-                                            className="inline-flex h-10 min-w-[170px] items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-4 text-xs font-black text-[#8A5D16] shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8942E]/50 hover:bg-[#FFF7E8] active:scale-[0.98]"
+                                            className="inline-flex h-11 min-w-[170px] items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-5 text-xs font-black text-[#8A5D16] shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8942E]/50 hover:bg-[#FFF7E8] active:scale-[0.98]"
                                         >
                                             Solicitar cambio
-
-                                            <span aria-hidden="true">
-                                                →
-                                            </span>
+                                            <span aria-hidden="true">→</span>
                                         </Link>
                                     ) : null}
                                 </div>
                             </div>
 
-                            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                                <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                        Estado
-                                    </p>
+                            <div className="mt-6 overflow-hidden rounded-[28px] bg-[#11141A] text-white shadow-[0_22px_50px_rgba(15,17,26,0.22)]">
+                                <div className="relative overflow-hidden p-5 md:p-6">
+                                    <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#C8942E]/20 blur-3xl" />
 
-                                    <p className="mt-1 text-sm font-black text-slate-950">
-                                        {statusLabel}
-                                    </p>
-                                </div>
+                                    <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div
+                                                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${canManageCatalog
+                                                    ? 'bg-emerald-500 text-white'
+                                                    : 'bg-red-500 text-white'
+                                                    }`}
+                                            >
+                                                <CheckCircle2 className="h-7 w-7" />
+                                            </div>
 
-                                <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
-                                    <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                            {subscriptionStatus === 'trialing'
-                                                ? 'Fin de prueba'
-                                                : 'Próxima renovación'}
-                                        </p>
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                                                    Estado de suscripción
+                                                </p>
 
-                                        <p className="mt-1 text-sm font-black text-slate-950">
-                                            {subscriptionStatus === 'trialing'
-                                                ? formatTrialEndDate(
-                                                    businessPlan.trial_ends_at
-                                                )
-                                                : subscription?.current_period_end
-                                                    ? formatShortDateTime(
-                                                        subscription.current_period_end
-                                                    )
-                                                    : '-'}
-                                        </p>
+                                                <p className="mt-1 text-2xl font-black text-white">
+                                                    {statusLabel}
+                                                </p>
+
+                                                <p className="mt-1 text-sm font-semibold text-slate-400">
+                                                    {canManageCatalog
+                                                        ? 'Tu negocio tiene acceso completo.'
+                                                        : 'El negocio está operando en modo lectura.'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            className={`inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-xs font-black ${canManageCatalog
+                                                ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
+                                                : 'border-red-400/30 bg-red-400/10 text-red-300'
+                                                }`}
+                                        >
+                                            <ShieldCheck className="h-4 w-4" />
+
+                                            {canManageCatalog
+                                                ? 'Catálogo habilitado'
+                                                : 'Catálogo bloqueado'}
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                        Catálogo
-                                    </p>
+                                <div className="grid gap-px bg-white/10 sm:grid-cols-3">
+                                    <article className="bg-[#171A21] p-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C8942E]/15 text-[#E7B957]">
+                                                <CalendarDays className="h-5 w-5" />
+                                            </div>
 
-                                    <p
-                                        className={`mt-1 text-sm font-black ${canManageCatalog ? 'text-slate-950' : 'text-red-700'
-                                            }`}
-                                    >
-                                        {canManageCatalog ? 'Habilitado' : 'Bloqueado'}
-                                    </p>
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                                    {renewalLabel}
+                                                </p>
+
+                                                <p className="mt-1 text-base font-black text-white">
+                                                    {renewalValue}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </article>
+
+                                    <article className="bg-[#171A21] p-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C8942E]/15 text-[#E7B957]">
+                                                <CreditCard className="h-5 w-5" />
+                                            </div>
+
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                                    Precio mensual
+                                                </p>
+
+                                                <p className="mt-1 text-lg font-black text-white">
+                                                    {priceValue}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </article>
+
+                                    <article className="bg-[#171A21] p-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C8942E]/15 text-[#E7B957]">
+                                                <CreditCard className="h-5 w-5" />
+                                            </div>
+
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                                    Medio de pago
+                                                </p>
+
+                                                <p className="mt-1 text-base font-black text-white">
+                                                    {paymentProvider}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </article>
                                 </div>
-                                <div className="col-span-full grid gap-3 sm:grid-cols-2">
-                                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-sm">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                            Precio mensual
-                                        </p>
+                            </div>
 
-                                        <p className="mt-1 text-lg font-black text-slate-950">
-                                            {formatCurrency(
-                                                subscription?.price_monthly ?? 0,
-                                                subscription?.currency ?? 'CLP'
-                                            )}
-                                        </p>
-                                    </div>
-
-                                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-sm">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                            Medio de pago
-                                        </p>
-
-                                        <p className="mt-1 text-lg font-black capitalize text-slate-950">
-                                            {subscription?.provider === 'manual'
-                                                ? 'Manual'
-                                                : subscription?.provider ?? '-'}
-                                        </p>
-                                    </div>
+                            <div className="mt-4 flex items-start gap-3 rounded-[22px] border border-black/10 bg-[#FBF7EE] px-5 py-4">
+                                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#C8942E] shadow-sm">
+                                    <ShieldCheck className="h-4 w-4" />
                                 </div>
-                                <div className="col-span-full mt-5 rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                        Gestión comercial
+
+                                <div>
+                                    <p className="text-xs font-black text-slate-800">
+                                        Gestión protegida
                                     </p>
 
-                                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
+                                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
                                         Los cambios de plan son revisados por administración antes de aplicarse.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-5 md:p-6">
-                            <div className="flex items-center justify-between gap-4">
+                        <aside className="bg-[#FBF8F0] p-5 md:p-7">
+                            <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
                                         Uso del plan
@@ -669,115 +769,179 @@ export default async function AdminPlanPage({
                                     <h3 className="mt-1 text-2xl font-black text-slate-950">
                                         Capacidad actual
                                     </h3>
+
+                                    <p className="mt-2 text-sm font-semibold text-slate-500">
+                                        Consumo disponible dentro de tu plan.
+                                    </p>
                                 </div>
 
-                                {isUnlimited(businessPlan.max_barbers) &&
-                                    isUnlimited(businessPlan.max_services) && (
-                                        <span className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-black text-slate-700 shadow-sm">
-                                            Uso ilimitado
-                                        </span>
+                                <span className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-black text-slate-700 shadow-sm">
+                                    {formatPlanLabel(
+                                        businessPlan.plan_slug
                                     )}
+                                </span>
                             </div>
 
-                            <div className="mt-5 space-y-3">
-                                <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] p-4">
+                            <div className="mt-6 space-y-4">
+                                <article className="rounded-[24px] border border-black/10 bg-white p-5 shadow-sm">
                                     <div className="flex items-center justify-between gap-4">
-                                        <span className="text-sm font-bold text-slate-600">
-                                            Barberos activos
-                                        </span>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#11141A] text-[#E7B957]">
+                                                <UsersRound className="h-5 w-5" />
+                                            </div>
 
-                                        <span className="text-lg font-black text-slate-950">
-                                            {isUnlimited(businessPlan.max_barbers)
-                                                ? `${usedBarbers} barbero${usedBarbers === 1 ? '' : 's'}`
-                                                : getUsageDisplay(usedBarbers, businessPlan.max_barbers)}
+                                            <div>
+                                                <p className="text-sm font-black text-slate-950">
+                                                    Barberos activos
+                                                </p>
+
+                                                <p className="text-xs font-semibold text-slate-500">
+                                                    Equipo disponible
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <span className="text-xl font-black text-slate-950">
+                                            {getUsageDisplay(
+                                                usedBarbers,
+                                                businessPlan.max_barbers
+                                            )}
                                         </span>
                                     </div>
 
-                                    {isUnlimited(businessPlan.max_barbers) ? (
-                                        <div className="mt-3 inline-flex w-fit rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">
-                                            Sin límite
+                                    {!isUnlimited(
+                                        businessPlan.max_barbers
+                                    ) && (
+                                            <>
+                                                <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+                                                    <div
+                                                        className="h-full rounded-full bg-[#C8942E] transition-all"
+                                                        style={{
+                                                            width: `${barbersPercentage}%`,
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                <p className="mt-2 text-right text-[10px] font-black text-slate-400">
+                                                    {barbersPercentage}% utilizado
+                                                </p>
+                                            </>
+                                        )}
+                                </article>
+
+                                <article className="rounded-[24px] border border-black/10 bg-white p-5 shadow-sm">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#11141A] text-[#E7B957]">
+                                                <Scissors className="h-5 w-5" />
+                                            </div>
+
+                                            <div>
+                                                <p className="text-sm font-black text-slate-950">
+                                                    Servicios activos
+                                                </p>
+
+                                                <p className="text-xs font-semibold text-slate-500">
+                                                    Catálogo publicado
+                                                </p>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200">
-                                            <div
-                                                className="h-full rounded-full bg-[#C8942E]"
-                                                style={{ width: `${barbersPercentage}%` }}
-                                            />
-                                        </div>
-                                    )}
+
+                                        <span className="text-xl font-black text-slate-950">
+                                            {getUsageDisplay(
+                                                usedServices,
+                                                businessPlan.max_services
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    {!isUnlimited(
+                                        businessPlan.max_services
+                                    ) && (
+                                            <>
+                                                <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+                                                    <div
+                                                        className="h-full rounded-full bg-[#C8942E] transition-all"
+                                                        style={{
+                                                            width: `${servicesPercentage}%`,
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                <p className="mt-2 text-right text-[10px] font-black text-slate-400">
+                                                    {servicesPercentage}% utilizado
+                                                </p>
+                                            </>
+                                        )}
+                                </article>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-[22px] border border-black/10 bg-white px-5 py-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                        Barberos incluidos
+                                    </p>
+
+                                    <p className="mt-2 text-2xl font-black text-slate-950">
+                                        {getUsageLabel(
+                                            businessPlan.max_barbers
+                                        )}
+                                    </p>
                                 </div>
 
-                                <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] p-4">
-                                    <div className="flex items-center justify-between gap-4">
-                                        <span className="text-sm font-bold text-slate-600">
-                                            Servicios activos
-                                        </span>
+                                <div className="rounded-[22px] border border-black/10 bg-white px-5 py-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                        Servicios incluidos
+                                    </p>
 
-                                        <span className="text-lg font-black text-slate-950">
-                                            {isUnlimited(businessPlan.max_services)
-                                                ? `${usedServices} servicio${usedServices === 1 ? '' : 's'}`
-                                                : getUsageDisplay(usedServices, businessPlan.max_services)}
-                                        </span>
-                                    </div>
-
-                                    {isUnlimited(businessPlan.max_services) ? (
-                                        <div className="mt-3 inline-flex w-fit rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">
-                                            Sin límite
-                                        </div>
-                                    ) : (
-                                        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200">
-                                            <div
-                                                className="h-full rounded-full bg-[#C8942E]"
-                                                style={{ width: `${servicesPercentage}%` }}
-                                            />
-                                        </div>
-                                    )}
+                                    <p className="mt-2 text-2xl font-black text-slate-950">
+                                        {getUsageLabel(
+                                            businessPlan.max_services
+                                        )}
+                                    </p>
                                 </div>
                             </div>
 
-                            {isUnlimited(businessPlan.max_barbers) &&
-                                isUnlimited(businessPlan.max_services) ? (
-                                <div className="mt-4 rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-sm">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                                Plan Studio
-                                            </p>
+                            <div
+                                className={`mt-4 rounded-[24px] border px-5 py-4 ${canManageCatalog
+                                    ? 'border-emerald-200 bg-emerald-50'
+                                    : 'border-red-200 bg-red-50'
+                                    }`}
+                            >
+                                <div className="flex items-start gap-3">
+                                    <ShieldCheck
+                                        className={`mt-0.5 h-5 w-5 shrink-0 ${canManageCatalog
+                                            ? 'text-emerald-700'
+                                            : 'text-red-700'
+                                            }`}
+                                    />
 
-                                            <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
-                                                Sin límite de barberos ni servicios activos.
-                                            </p>
-                                        </div>
-
-                                        <span className="rounded-full border border-black/10 bg-[#FBF7EE] px-3 py-1 text-xs font-black text-slate-700">
-                                            Ilimitado
-                                        </span>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                            Barberos máx.
+                                    <div>
+                                        <p
+                                            className={`text-sm font-black ${canManageCatalog
+                                                ? 'text-emerald-950'
+                                                : 'text-red-950'
+                                                }`}
+                                        >
+                                            {canManageCatalog
+                                                ? 'Todo está funcionando correctamente'
+                                                : 'Acceso administrativo limitado'}
                                         </p>
 
-                                        <p className="mt-1 text-lg font-black text-slate-950">
-                                            {getUsageLabel(businessPlan.max_barbers)}
-                                        </p>
-                                    </div>
-
-                                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                            Servicios máx.
-                                        </p>
-
-                                        <p className="mt-1 text-lg font-black text-slate-950">
-                                            {getUsageLabel(businessPlan.max_services)}
+                                        <p
+                                            className={`mt-1 text-xs font-semibold leading-5 ${canManageCatalog
+                                                ? 'text-emerald-700'
+                                                : 'text-red-700'
+                                                }`}
+                                        >
+                                            {canManageCatalog
+                                                ? 'Puedes administrar tu equipo, servicios y reservas normalmente.'
+                                                : 'Regulariza la suscripción para recuperar todas las funciones.'}
                                         </p>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        </aside>
                     </div>
                 </section>
 

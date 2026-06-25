@@ -146,10 +146,26 @@ export default async function AdminBusinessLayout({
         }
     }
 
-    const actionHref =
-        actionLabel
-            ? `/admin/b/${business.slug}/plan`
-            : undefined
+    let actionHref:
+        | string
+        | undefined
+
+    if (
+        canManageCurrentSubscription &&
+        (
+            subscriptionStatus === 'past_due' ||
+            subscriptionStatus === 'cancelled'
+        )
+    ) {
+        actionHref =
+            `/admin/b/${business.slug}/plan/regularizar`
+    } else if (
+        canManageCurrentSubscription &&
+        subscriptionStatus === 'trialing'
+    ) {
+        actionHref =
+            `/admin/b/${business.slug}/plan`
+    }
 
     return (
         <div className="min-h-screen bg-[#f6f3e8] text-[#1f1f1f]">
