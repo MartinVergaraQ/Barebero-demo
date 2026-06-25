@@ -110,12 +110,6 @@ export function SubscriptionBanner({
     const Icon =
         toneIcons[tone]
 
-    const showAction =
-        Boolean(
-            actionLabel &&
-            actionHref
-        )
-
     const role =
         tone === 'amber' ||
             tone === 'red'
@@ -152,9 +146,9 @@ export function SubscriptionBanner({
                 </div>
             </div>
 
-            {showAction && (
+            {actionLabel && actionHref && (
                 <Link
-                    href={actionHref!}
+                    href={actionHref}
                     className={`inline-flex h-9 shrink-0 items-center justify-center gap-2 self-start rounded-xl border px-3.5 text-xs font-black shadow-sm transition hover:-translate-y-0.5 active:scale-[0.98] sm:self-auto ${styles.action}`}
                 >
                     {actionLabel}

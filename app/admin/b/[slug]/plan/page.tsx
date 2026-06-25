@@ -6,8 +6,7 @@ import {
     canManageCatalogWithSubscription,
     formatPlanLabel,
     formatSubscriptionStatus,
-    formatTrialEndDate,
-    getPlanChangeType,
+    formatTrialEndDate
 } from '@/src/features/business/utils/subscription-rules'
 
 type AdminPlanPageProps = {
@@ -16,15 +15,15 @@ type AdminPlanPageProps = {
     }>
 }
 
-type PlanHistoryItem = {
+type SubscriptionHistoryItem = {
     id: string
-    previous_plan_slug: string
+    previous_plan_slug: string | null
     next_plan_slug: string
+    previous_status: string | null
+    next_status: string
+    change_source: string
+    reason: string | null
     created_at: string
-    changed_by: string | null
-    profiles: {
-        full_name: string | null
-    }[] | null
 }
 
 function getUsagePercentage(used: number, max?: number | null) {
@@ -34,9 +33,6 @@ function getUsagePercentage(used: number, max?: number | null) {
 
 function getUsageLabel(max?: number | null) {
     return max ?? '∞'
-}
-function formatActiveCount(count: number, label: string) {
-    return `${count} ${label}${count === 1 ? '' : 's'}`
 }
 
 function isUnlimited(max?: number | null) {
@@ -60,6 +56,70 @@ function formatShortDateTime(value: string) {
     const minute = String(date.getMinutes()).padStart(2, '0')
 
     return `${day}-${month}-${year}, ${hour}:${minute}`
+}
+
+function formatHistoryStatus(
+    status?: string | null
+) {
+    if (!status) return 'Sin estado'
+
+    if (status === 'trialing') {
+        return 'Período de prueba'
+    }
+
+    if (status === 'active') {
+        return 'Activa'
+    }
+
+    if (status === 'past_due') {
+        return 'Pago pendiente'
+    }
+
+    if (status === 'cancelled') {
+        return 'Cancelada'
+    }
+
+    return status
+}
+
+function formatHistorySource(
+    source?: string | null
+) {
+    if (source === 'platform_admin') {
+        return 'Administración'
+    }
+
+    if (source === 'payment') {
+        return 'Pago'
+    }
+
+    if (source === 'cron') {
+        return 'Automático'
+    }
+
+    if (source === 'business') {
+        return 'Negocio'
+    }
+
+    if (source === 'creation') {
+        return 'Creación'
+    }
+
+    return 'Sistema'
+}
+
+function formatCurrency(
+    amount: number,
+    currency = 'CLP'
+) {
+    return new Intl.NumberFormat(
+        'es-CL',
+        {
+            style: 'currency',
+            currency,
+            maximumFractionDigits: 0,
+        }
+    ).format(amount)
 }
 
 export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
@@ -100,58 +160,117 @@ export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
     }
 
     const [
-        { data: businessPlan, error: businessPlanError },
+        {
+            data: businessPlan,
+            error: businessPlanError,
+        },
+        {
+            data: subscription,
+            error: subscriptionError,
+        },
         barbersCountRes,
         servicesCountRes,
-        { data: planHistory, error: planHistoryError },
-        { data: pendingPlanRequest },
+        {
+            data: subscriptionHistory,
+            error: historyError,
+        },
+        {
+            data: pendingPlanRequest,
+        },
     ] = await Promise.all([
         supabase
             .from('businesses')
-            .select(
-                'id, name, slug, plan_slug, subscription_status, trial_ends_at, max_barbers, max_services'
-            )
+            .select(`
+        id,
+        name,
+        slug,
+        plan_slug,
+        subscription_status,
+        trial_ends_at,
+        max_barbers,
+        max_services
+    `)
             .eq('id', business.id)
             .single(),
 
         supabase
+            .from('business_subscriptions')
+            .select(`
+        id,
+        plan_slug,
+        status,
+        provider,
+        price_monthly,
+        currency,
+        current_period_start,
+        current_period_end
+    `)
+            .eq('business_id', business.id)
+            .maybeSingle(),
+
+        supabase
             .from('barbers')
-            .select('*', { count: 'exact', head: true })
+            .select('*', {
+                count: 'exact',
+                head: true,
+            })
             .eq('business_id', business.id)
             .eq('is_active', true),
 
         supabase
             .from('services')
-            .select('*', { count: 'exact', head: true })
+            .select('*', {
+                count: 'exact',
+                head: true,
+            })
             .eq('business_id', business.id)
             .eq('is_active', true),
 
         supabase
-            .from('business_plan_history')
+            .from('business_subscription_history')
             .select(`
-                id,
-                previous_plan_slug,
-                next_plan_slug,
-                created_at,
-                changed_by,
-                profiles:changed_by (
-                    full_name
-                )
-            `)
+        id,
+        previous_plan_slug,
+        next_plan_slug,
+        previous_status,
+        next_status,
+        change_source,
+        reason,
+        created_at
+    `)
             .eq('business_id', business.id)
-            .order('created_at', { ascending: false })
-            .limit(3),
+            .order('created_at', {
+                ascending: false,
+            })
+            .limit(5),
 
         supabase
             .from('plan_change_requests')
-            .select('id, current_plan_slug, requested_plan_slug, status, created_at')
+            .select(`
+        id,
+        current_plan_slug,
+        requested_plan_slug,
+        status,
+        created_at
+    `)
             .eq('business_id', business.id)
             .eq('status', 'pending')
+            .order('created_at', {
+                ascending: false,
+            })
+            .limit(1)
             .maybeSingle(),
     ])
 
     if (businessPlanError || !businessPlan) {
         redirect('/admin')
+    }
+
+    if (subscriptionError) {
+        console.error(
+            'Error cargando suscripción:',
+            subscriptionError
+        )
     }
 
     const canManageCatalog = canManageCatalogWithSubscription(
@@ -171,15 +290,40 @@ export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
         businessPlan.max_services
     )
 
-    const history: PlanHistoryItem[] = planHistoryError
-        ? []
-        : ((planHistory ?? []) as PlanHistoryItem[])
+    const history: SubscriptionHistoryItem[] =
+        historyError
+            ? []
+            : (
+                subscriptionHistory ??
+                []
+            ) as SubscriptionHistoryItem[]
 
     const hasPendingRequest = !!pendingPlanRequest
 
     const statusLabel = formatSubscriptionStatus(
         businessPlan.subscription_status
     )
+    const subscriptionStatus =
+        businessPlan.subscription_status
+
+    const isPaymentPending =
+        subscriptionStatus === 'past_due'
+
+    const isCancelled =
+        subscriptionStatus === 'cancelled'
+
+    const isBlocked =
+        isPaymentPending ||
+        isCancelled
+
+    const canRequestPlanChange =
+        subscriptionStatus === 'active' ||
+        subscriptionStatus === 'trialing'
+
+    const regularizationLabel =
+        isCancelled
+            ? 'Reactivar suscripción'
+            : 'Regularizar pago'
 
     return (
         <main className="min-h-screen px-4 py-6 text-slate-950 md:px-8 md:py-8">
@@ -247,30 +391,56 @@ export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
                                     </div>
                                 </div>
 
-                                {hasPendingRequest ? (
-                                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-sm">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                            Solicitud
-                                        </p>
+                                <div className="flex flex-col items-stretch gap-3 sm:items-end">
+                                    {hasPendingRequest && (
+                                        <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-sm">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                                Solicitud
+                                            </p>
 
-                                        <p className="mt-1 text-sm font-black text-slate-950">
-                                            {formatPlanLabel(pendingPlanRequest.current_plan_slug)} →{' '}
-                                            {formatPlanLabel(pendingPlanRequest.requested_plan_slug)}
-                                        </p>
+                                            <p className="mt-1 text-sm font-black text-slate-950">
+                                                {formatPlanLabel(
+                                                    pendingPlanRequest.current_plan_slug
+                                                )}{' '}
+                                                <span className="text-slate-400">
+                                                    →
+                                                </span>{' '}
+                                                {formatPlanLabel(
+                                                    pendingPlanRequest.requested_plan_slug
+                                                )}
+                                            </p>
 
-                                        <p className="mt-1 text-xs font-bold text-slate-500">
-                                            Pendiente de revisión
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <Link
-                                        href={`/admin/b/${business.slug}/plan/cambiar`}
-                                        className="inline-flex h-10 min-w-[170px] items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-4 text-xs font-black text-[#8A5D16] shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8942E]/50 hover:bg-[#FFF7E8] active:scale-[0.98]"
-                                    >
-                                        Solicitar cambio
-                                        <span className="text-sm leading-none">→</span>
-                                    </Link>
-                                )}
+                                            <p className="mt-1 text-xs font-bold text-slate-500">
+                                                Pendiente de revisión
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {isBlocked ? (
+                                        <Link
+                                            href={`/admin/b/${business.slug}/plan/regularizar`}
+                                            className="inline-flex h-10 min-w-[190px] items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 text-xs font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-red-700 active:scale-[0.98]"
+                                        >
+                                            {regularizationLabel}
+
+                                            <span aria-hidden="true">
+                                                →
+                                            </span>
+                                        </Link>
+                                    ) : !hasPendingRequest &&
+                                        canRequestPlanChange ? (
+                                        <Link
+                                            href={`/admin/b/${business.slug}/plan/cambiar`}
+                                            className="inline-flex h-10 min-w-[170px] items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white px-4 text-xs font-black text-[#8A5D16] shadow-sm transition hover:-translate-y-0.5 hover:border-[#C8942E]/50 hover:bg-[#FFF7E8] active:scale-[0.98]"
+                                        >
+                                            Solicitar cambio
+
+                                            <span aria-hidden="true">
+                                                →
+                                            </span>
+                                        </Link>
+                                    ) : null}
+                                </div>
                             </div>
 
                             <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -285,13 +455,25 @@ export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
                                 </div>
 
                                 <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                        Prueba
-                                    </p>
+                                    <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                            {subscriptionStatus === 'trialing'
+                                                ? 'Fin de prueba'
+                                                : 'Próxima renovación'}
+                                        </p>
 
-                                    <p className="mt-1 text-sm font-black text-slate-950">
-                                        {formatTrialEndDate(businessPlan.trial_ends_at)}
-                                    </p>
+                                        <p className="mt-1 text-sm font-black text-slate-950">
+                                            {subscriptionStatus === 'trialing'
+                                                ? formatTrialEndDate(
+                                                    businessPlan.trial_ends_at
+                                                )
+                                                : subscription?.current_period_end
+                                                    ? formatShortDateTime(
+                                                        subscription.current_period_end
+                                                    )
+                                                    : '-'}
+                                        </p>
+                                    </div>
                                 </div>
 
                                 <div className="rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
@@ -305,6 +487,32 @@ export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
                                     >
                                         {canManageCatalog ? 'Habilitado' : 'Bloqueado'}
                                     </p>
+                                </div>
+                                <div className="col-span-full grid gap-3 sm:grid-cols-2">
+                                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-sm">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                            Precio mensual
+                                        </p>
+
+                                        <p className="mt-1 text-lg font-black text-slate-950">
+                                            {formatCurrency(
+                                                subscription?.price_monthly ?? 0,
+                                                subscription?.currency ?? 'CLP'
+                                            )}
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-sm">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                            Medio de pago
+                                        </p>
+
+                                        <p className="mt-1 text-lg font-black capitalize text-slate-950">
+                                            {subscription?.provider === 'manual'
+                                                ? 'Manual'
+                                                : subscription?.provider ?? '-'}
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="col-span-full mt-5 rounded-2xl border border-black/10 bg-[#FBF7EE] px-4 py-3">
                                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
@@ -468,95 +676,90 @@ export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
                                 </div>
 
                                 <h3 className="mt-4 text-xl font-black text-slate-950">
-                                    No hay cambios de plan todavía
+                                    No hay movimientos todavía
                                 </h3>
 
                                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
-                                    Cuando este negocio cambie de plan, los movimientos aparecerán aquí.
+                                    Los cambios de plan, pagos y actualizaciones de la suscripción aparecerán aquí.
                                 </p>
                             </div>
                         ) : (
                             <div className="overflow-hidden rounded-[24px] border border-black/10 bg-white">
                                 {history.map((item, index) => {
-                                    const changeType = getPlanChangeType(
-                                        item.previous_plan_slug,
+                                    const planChanged =
+                                        item.previous_plan_slug !==
                                         item.next_plan_slug
-                                    )
 
-                                    const isUpgrade = changeType === 'Upgrade'
-                                    const isDowngrade = changeType === 'Downgrade'
-
-                                    const userName =
-                                        item.profiles?.[0]?.full_name?.trim() ||
-                                        'Sistema'
+                                    const statusChanged =
+                                        item.previous_status !==
+                                        item.next_status
 
                                     return (
                                         <article
                                             key={item.id}
-                                            className={`flex flex-col gap-3 px-4 py-2.5 transition hover:bg-[#FBF7EE] md:flex-row md:items-center md:justify-between ${index !== history.length - 1
+                                            className={`px-4 py-3 transition hover:bg-[#FBF7EE] ${index !== history.length - 1
                                                 ? 'border-b border-black/10'
                                                 : ''
                                                 }`}
                                         >
-                                            <div className="flex min-w-0 items-start gap-3">
-                                                <div
-                                                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-base font-black ring-1 ${isUpgrade
-                                                        ? 'bg-emerald-100 text-emerald-800 ring-emerald-300'
-                                                        : isDowngrade
-                                                            ? 'bg-orange-100 text-orange-800 ring-orange-300'
-                                                            : 'bg-slate-100 text-slate-700 ring-slate-300'
-                                                        }`}
-                                                >
-                                                    {isUpgrade ? '↑' : isDowngrade ? '↓' : '•'}
-                                                </div>
-
+                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                                 <div className="min-w-0">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <span
-                                                            className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${isUpgrade
-                                                                ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300'
-                                                                : isDowngrade
-                                                                    ? 'bg-orange-100 text-orange-800 ring-1 ring-orange-300'
-                                                                    : 'bg-slate-100 text-slate-700 ring-1 ring-slate-300'
-                                                                }`}
-                                                        >
-                                                            {changeType}
-                                                        </span>
+                                                    {statusChanged && (
+                                                        <h3 className="text-sm font-black text-slate-950">
+                                                            {formatHistoryStatus(
+                                                                item.previous_status
+                                                            )}{' '}
+                                                            <span className="text-slate-400">
+                                                                →
+                                                            </span>{' '}
+                                                            {formatHistoryStatus(
+                                                                item.next_status
+                                                            )}
+                                                        </h3>
+                                                    )}
 
-                                                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-                                                            {formatShortDateTime(item.created_at)}
-                                                        </span>
-                                                    </div>
+                                                    {planChanged && (
+                                                        <p className="mt-1 text-sm font-black text-[#8A5D16]">
+                                                            {item.previous_plan_slug
+                                                                ? formatPlanLabel(
+                                                                    item.previous_plan_slug
+                                                                )
+                                                                : 'Sin plan'}{' '}
+                                                            <span className="text-slate-400">
+                                                                →
+                                                            </span>{' '}
+                                                            {formatPlanLabel(
+                                                                item.next_plan_slug
+                                                            )}
+                                                        </p>
+                                                    )}
 
-                                                    <h3 className="mt-2 text-base font-black text-slate-950">
-                                                        {formatPlanLabel(item.previous_plan_slug)}{' '}
-                                                        <span className="text-slate-400">→</span>{' '}
-                                                        {formatPlanLabel(item.next_plan_slug)}
-                                                    </h3>
+                                                    {!statusChanged &&
+                                                        !planChanged && (
+                                                            <h3 className="text-sm font-black text-slate-950">
+                                                                Suscripción actualizada
+                                                            </h3>
+                                                        )}
 
-                                                    <p className="mt-0.5 text-sm text-slate-500">
-                                                        Por{' '}
-                                                        <span className="font-black text-slate-700">
-                                                            {userName}
-                                                        </span>
+                                                    {item.reason && (
+                                                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                                                            {item.reason}
+                                                        </p>
+                                                    )}
+
+                                                    <p className="mt-1 text-xs font-bold text-slate-400">
+                                                        {formatShortDateTime(
+                                                            item.created_at
+                                                        )}
                                                     </p>
                                                 </div>
-                                            </div>
 
-                                            <span
-                                                className={`w-fit rounded-full px-3 py-1.5 text-xs font-black ring-1 ${isUpgrade
-                                                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                                                    : isDowngrade
-                                                        ? 'bg-orange-50 text-orange-700 ring-orange-200'
-                                                        : 'bg-slate-100 text-slate-700 ring-slate-200'
-                                                    }`}
-                                            >
-                                                {isUpgrade
-                                                    ? 'Aumentó capacidad'
-                                                    : isDowngrade
-                                                        ? 'Redujo capacidad'
-                                                        : 'Sin cambio mayor'}
-                                            </span>
+                                                <span className="w-fit shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">
+                                                    {formatHistorySource(
+                                                        item.change_source
+                                                    )}
+                                                </span>
+                                            </div>
                                         </article>
                                     )
                                 })}
