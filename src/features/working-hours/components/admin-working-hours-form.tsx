@@ -15,6 +15,7 @@ import {
     useSearchParams,
 } from 'next/navigation'
 
+
 type Barber = {
     id: string
     business_id: string
@@ -27,6 +28,8 @@ type Props = {
     barbers: Barber[]
     canEdit: boolean
     subscriptionBlockReason?: string
+    setupMode?: boolean
+    returnTo?: string
 }
 
 const weekDays = [
@@ -125,7 +128,13 @@ function getInitials(name: string) {
         .join('')
 }
 
-export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReason }: Props) {
+export function AdminWorkingHoursForm({
+    barbers,
+    canEdit,
+    subscriptionBlockReason,
+    setupMode = false,
+    returnTo,
+}: Props) {
     const isSingleBarber = barbers.length === 1
 
     const router = useRouter()
@@ -207,6 +216,8 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
                 const data = await getWorkingHoursByBarber(selectedBarberId)
                 const defaultRows = getDefaultRows()
 
+                const hasSavedHours = data.length > 0
+
                 const mergedRows = weekDays.map((day) => {
                     const existing = data.find(
                         (item) => item.day_of_week === day.value
@@ -227,12 +238,21 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
                             existing?.end_time?.slice(0, 5) ??
                             defaultRow?.end_time ??
                             '20:00',
-                        is_active: existing?.is_active ?? false,
+                        /* * Fuera del onboarding, un * profesional sin horarios * comienza cerrado. * * Durante el onboarding usamos * los valores predeterminados. */ is_active:
+                            existing
+                                ? existing.is_active
+                                : setupMode
+                                    ? defaultRow?.is_active ?? false
+                                    : false,
                     }
                 })
 
                 setRows(mergedRows)
-                setHasUnsavedChanges(false)
+
+                /* * Los horarios predeterminados todavía * deben ser guardados en PostgreSQL. */
+                setHasUnsavedChanges(
+                    setupMode && !hasSavedHours
+                )
             } catch (error) {
                 setErrorMessage(
                     error instanceof Error ? error.message : 'Error cargando horarios'
@@ -243,7 +263,7 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
         }
 
         loadWorkingHours()
-    }, [selectedBarberId])
+    }, [selectedBarberId, setupMode])
 
     useEffect(() => {
         function handleBeforeUnload(event: BeforeUnloadEvent) {
@@ -333,6 +353,11 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
             return
         }
 
+        if (setupMode && activeDaysCount === 0) {
+            setErrorMessage('Activa al menos un día para completar la configuración.')
+            return
+        }
+
         setSaving(true)
         setMessage('')
         setErrorMessage('')
@@ -356,17 +381,44 @@ export function AdminWorkingHoursForm({ barbers, canEdit, subscriptionBlockReaso
             await upsertWorkingHoursServer({
                 barber_id: selectedBarber.id,
                 hours: rows.map((row) => ({
-                    day_of_week: row.day_of_week,
-                    start_time: row.start_time,
-                    end_time: row.end_time,
-                    is_active: row.is_active,
+                    day_of_week:
+                        row.day_of_week,
+                    start_time:
+                        row.start_time,
+                    end_time:
+                        row.end_time,
+                    is_active:
+                        row.is_active,
                 })),
             })
 
             setHasUnsavedChanges(false)
+
+            /*
+             * Durante el onboarding volvemos al dashboard
+             * con una marca especial para mostrar la
+             * confirmación de configuración completada.
+             */
+            if (returnTo) {
+                const separator =
+                    returnTo.includes('?')
+                        ? '&'
+                        : '?'
+
+                router.replace(
+                    `${returnTo}${separator}setup=complete`
+                )
+
+                return
+            }
+
             setMessage(
                 'La disponibilidad pública fue actualizada correctamente.'
             )
+
+            router.refresh()
+
+
         } catch (error) {
             setErrorMessage(
                 error instanceof Error

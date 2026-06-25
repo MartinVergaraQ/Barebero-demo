@@ -13,6 +13,8 @@ type Props = {
     businessId: string
     canCreate: boolean
     disabledReason?: string
+    returnTo?: string
+    openOnMount?: boolean
 }
 
 function slugify(value: string) {
@@ -38,11 +40,18 @@ const initialForm = {
     display_order: '0',
 }
 
-export function AdminServiceForm({ businessId, canCreate, disabledReason }: Props) {
+export function AdminServiceForm({
+    businessId,
+    canCreate,
+    disabledReason,
+    returnTo,
+    openOnMount = false,
+}: Props) {
     const router = useRouter()
 
     const [open, setOpen] = useState(false)
     const [form, setForm] = useState(initialForm)
+    const [slugEdited, setSlugEdited,] = useState(false)
 
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState('')
@@ -53,6 +62,31 @@ export function AdminServiceForm({ businessId, canCreate, disabledReason }: Prop
         duration_minutes: '',
         price: '',
     })
+
+    useEffect(() => {
+        if (
+            !openOnMount ||
+            !canCreate
+        ) {
+            return
+        }
+
+        setForm(initialForm)
+        setMessage('')
+        setErrorMessage('')
+
+        setFieldErrors({
+            name: '',
+            slug: '',
+            duration_minutes: '',
+            price: '',
+        })
+
+        setOpen(true)
+    }, [
+        openOnMount,
+        canCreate,
+    ])
 
     useEffect(() => {
         if (!open) return
@@ -74,6 +108,8 @@ export function AdminServiceForm({ businessId, canCreate, disabledReason }: Prop
 
     function resetForm() {
         setForm(initialForm)
+        setSlugEdited(false)
+        setMessage('')
         setErrorMessage('')
         setFieldErrors({
             name: '',
@@ -81,7 +117,9 @@ export function AdminServiceForm({ businessId, canCreate, disabledReason }: Prop
             duration_minutes: '',
             price: '',
         })
+
     }
+
     function validateForm() {
         const nextErrors = {
             name: '',
@@ -138,28 +176,35 @@ export function AdminServiceForm({ businessId, canCreate, disabledReason }: Prop
         return new Intl.NumberFormat('es-CL').format(Number(digits))
     }
 
+    function handleNameChange(value: string) {
+        if (!canCreate) return
+        setForm((previous) => ({
+            ...previous,
+            name: value,
+            slug: slugEdited ? previous.slug : slugify(value),
+        }))
+        setFieldErrors((previous) => ({ ...previous, name: '', slug: '', }))
+        setMessage('')
+        setErrorMessage('')
+    }
+
+    function handleSlugChange(value: string) {
+        if (!canCreate) return
+        setSlugEdited(true)
+        setForm((previous) => ({ ...previous, slug: slugify(value), }))
+        setFieldErrors((previous) => ({ ...previous, slug: '', }))
+        setMessage('')
+        setErrorMessage('')
+    }
+
     function updateField(field: keyof typeof form, value: string | boolean) {
         if (!canCreate) return
-        setForm((prev) => {
-            const next = {
-                ...prev,
-                [field]: value,
-            }
-
-            if (field === 'name' && typeof value === 'string' && !prev.slug) {
-                next.slug = slugify(value)
-            }
-
-            return next
-        })
-        setFieldErrors((prev) => ({
-            ...prev,
-            [field]: '',
-        }))
-
-        setErrorMessage('')
+        setForm((previous) => ({ ...previous, [field]: value, }))
+        if (field in fieldErrors) {
+            setFieldErrors((previous) => ({ ...previous, [field]: '', }))
+        }
         setMessage('')
-
+        setErrorMessage('')
     }
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -173,6 +218,16 @@ export function AdminServiceForm({ businessId, canCreate, disabledReason }: Prop
         }
         if (!validateForm()) {
             setErrorMessage('Revisa los campos marcados antes de continuar.')
+            return
+        }
+
+        if (
+            returnTo &&
+            !form.is_active
+        ) {
+            setErrorMessage(
+                'Para completar este paso, el servicio debe quedar visible para reservas.'
+            )
             return
         }
 
@@ -193,9 +248,20 @@ export function AdminServiceForm({ businessId, canCreate, disabledReason }: Prop
                 display_order: Number(form.display_order || 0),
             })
 
-            setMessage('El servicio fue creado correctamente.')
             setForm(initialForm)
             setOpen(false)
+
+            if (returnTo) {
+                window.location.assign(
+                    returnTo
+                )
+                return
+            }
+
+            setMessage(
+                'El servicio fue creado correctamente.'
+            )
+
             router.refresh()
         } catch (error) {
             setErrorMessage(
@@ -311,7 +377,7 @@ export function AdminServiceForm({ businessId, canCreate, disabledReason }: Prop
                                                         id="service-name"
                                                         label="Nombre"
                                                         value={form.name}
-                                                        onChange={(value) => updateField('name', value)}
+                                                        onChange={handleNameChange}
                                                         placeholder="Corte premium"
                                                         disabled={!canCreate || loading}
                                                         error={fieldErrors.name}
@@ -321,7 +387,7 @@ export function AdminServiceForm({ businessId, canCreate, disabledReason }: Prop
                                                         id="service-slug"
                                                         label="Slug"
                                                         value={form.slug}
-                                                        onChange={(value) => updateField('slug', slugify(value))}
+                                                        onChange={handleSlugChange}
                                                         placeholder="corte-premium"
                                                         disabled={!canCreate || loading}
                                                         error={fieldErrors.slug}
@@ -433,8 +499,17 @@ export function AdminServiceForm({ businessId, canCreate, disabledReason }: Prop
                                                             : 'border-black/10 bg-white text-slate-600 hover:bg-[#FFFCF4]'
                                                             }`}
                                                     >
-                                                        <span>Visible para reservas</span>
-                                                        <span>{form.is_active ? 'Activo' : 'Oculto'}</span>
+                                                        <span>
+                                                            {form.is_active
+                                                                ? 'Ocultar servicio'
+                                                                : 'Reactivar servicio'}
+                                                        </span>
+
+                                                        <span>
+                                                            {form.is_active
+                                                                ? 'Visible'
+                                                                : 'Archivado'}
+                                                        </span>
                                                     </button>
                                                 </div>
                                             </div>

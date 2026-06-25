@@ -22,6 +22,7 @@ type Props = {
     business: BusinessAdminItem
     canEdit: boolean
     subscriptionBlockReason?: string
+    returnTo?: string
 }
 
 type UploadedBusinessAsset = {
@@ -61,6 +62,7 @@ export function AdminBusinessForm({
     business,
     canEdit,
     subscriptionBlockReason,
+    returnTo,
 }: Props) {
     const router = useRouter()
 
@@ -579,11 +581,20 @@ export function AdminBusinessForm({
                 })
             }
 
+
+            if (returnTo) {
+                window.location.assign(returnTo)
+                return
+            }
+
             showSuccess(
                 'Negocio actualizado correctamente'
             )
 
             router.refresh()
+
+
+
         } catch (error) {
             showError(
                 error instanceof Error

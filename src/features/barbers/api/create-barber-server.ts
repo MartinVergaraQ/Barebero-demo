@@ -13,6 +13,7 @@ export type CreateBarberServerInput = {
     is_active?: boolean
     display_order?: number
     whatsapp_phone?: string | null
+    link_to_current_profile?: boolean
 }
 
 type BarberData = {
@@ -26,6 +27,8 @@ type BarberData = {
     is_active: boolean
     display_order: number
     whatsapp_phone: string | null
+    profile_id: string | null
+
 }
 
 type Result =
@@ -178,6 +181,24 @@ export async function createBarberServer(
         input.whatsapp_phone
     )
 
+    const linkToCurrentProfile = input.link_to_current_profile === true
+    let barberProfileId: | string | null = null
+    if (linkToCurrentProfile) {
+        /* * Solo el owner puede vincularse a sí mismo * durante este flujo. */
+        if (profile.role !== 'owner') {
+            return failure('Solo el propietario puede registrarse a sí mismo como barbero')
+        }
+        const { data: existingLinkedBarber, error: existingLinkedBarberError, } = await supabase.from('barbers').select('id').eq('profile_id', profile.id).maybeSingle()
+        if (existingLinkedBarberError) {
+            console.error('Error comprobando perfil de barbero:', existingLinkedBarberError)
+            return failure('No se pudo comprobar si el propietario ya está vinculado')
+        }
+        if (existingLinkedBarber) {
+            return failure('El propietario ya tiene un perfil de barbero')
+        }
+        barberProfileId = profile.id
+    }
+
     if (!name || name.length < 2 || name.length > 80) {
         return failure(
             'El nombre debe tener entre 2 y 80 caracteres'
@@ -301,6 +322,7 @@ export async function createBarberServer(
         .from('barbers')
         .insert({
             business_id: profile.business_id,
+            profile_id: barberProfileId,
             name,
             slug,
             bio,
@@ -313,6 +335,7 @@ export async function createBarberServer(
         .select(`
             id,
             business_id,
+            profile_id,
             name,
             slug,
             bio,
@@ -344,9 +367,8 @@ export async function createBarberServer(
     /*
      * 8. Actualizar panel y sitio público
      */
-    revalidatePath(
-        `/admin/b/${business.slug}/barberos`
-    )
+    revalidatePath(`/admin/b/${business.slug}/barberos`)
+    revalidatePath(`/admin/b/${business.slug}`)
     revalidatePath(`/b/${business.slug}`)
 
     return {

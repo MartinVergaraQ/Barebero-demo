@@ -285,7 +285,15 @@ export async function upsertWorkingHoursServer(
     revalidatePath(
         `/admin/b/${business.slug}/horarios`
     )
-    revalidatePath(`/b/${business.slug}`)
+
+    revalidatePath(
+        `/admin/b/${business.slug}`
+    )
+
+    revalidatePath(
+        `/b/${business.slug}`
+    )
+
 
     return (data ?? []) as SavedWorkingHour[]
 }

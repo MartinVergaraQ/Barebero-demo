@@ -1,4 +1,7 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
+
 import { createClient } from '@/src/lib/supabase/server'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getServicesAdmin } from '@/src/features/services/api/get-services-admin'
@@ -17,81 +20,198 @@ type AdminServiciosPageProps = {
     params: Promise<{
         slug: string
     }>
+    searchParams: Promise<{
+        from?: string
+    }>
 }
 
-function formatPrice(price: number | string, currency = 'CLP') {
-    const numericPrice = typeof price === 'string' ? Number(price) : price
+function formatPrice(
+    price: number | string,
+    currency = 'CLP'
+) {
+    const numericPrice =
+        typeof price === 'string'
+            ? Number(price)
+            : price
 
-    if (Number.isNaN(numericPrice)) return '$0'
+    if (Number.isNaN(numericPrice)) {
+        return '$0'
+    }
 
-    return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency,
-        maximumFractionDigits: 0,
-    }).format(numericPrice)
+    return new Intl.NumberFormat(
+        'es-CL',
+        {
+            style: 'currency',
+            currency,
+            maximumFractionDigits: 0,
+        }
+    ).format(numericPrice)
 }
 
 export default async function AdminServiciosPage({
     params,
+    searchParams,
 }: AdminServiciosPageProps) {
-    const { slug } = await params
-    const supabase = await createClient()
+    const [
+        { slug },
+        query,
+    ] = await Promise.all([
+        params,
+        searchParams,
+    ])
 
+    const supabase =
+        await createClient()
+
+    /*
+     * 1. Validar sesión.
+     */
     const {
-        data: { user },
+        data: {
+            user,
+        },
+        error: userError,
     } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (userError || !user) {
         redirect('/admin/login')
     }
 
-    const { data: profile, error: profileError } = await supabase
+    /*
+     * 2. Validar perfil y permisos.
+     */
+    const {
+        data: profile,
+        error: profileError,
+    } = await supabase
         .from('profiles')
-        .select('id, business_id, role')
+        .select(
+            'id, business_id, role'
+        )
         .eq('id', user.id)
         .single()
 
-    if (profileError || !profile || !canManageCatalog(profile.role)) {
+    if (
+        profileError ||
+        !profile ||
+        !canManageCatalog(profile.role)
+    ) {
         redirect('/admin')
     }
 
-    const business = await getBusinessBySlug(slug)
+    /*
+     * 3. Validar pertenencia al negocio.
+     */
+    const business =
+        await getBusinessBySlug(slug)
 
-    if (profile.business_id !== business.id) {
+    if (
+        profile.business_id !==
+        business.id
+    ) {
         redirect('/admin')
     }
-    const subscriptionStatus = normalizeSubscriptionStatus(
-        business.subscription_status
-    )
 
-    const services = await getServicesAdmin(business.id)
+    /*
+     * 4. Detectar si llegamos desde
+     * el checklist del dashboard.
+     */
+    const isSetupFlow =
+        query.from === 'setup'
 
-    const activeServices = services.filter((service) => service.is_active).length
-    const popularServices = services.filter((service) => service.is_popular).length
-    const canCreate = canCreateWithSubscription(subscriptionStatus)
-    const canEdit = canEditWithSubscription(subscriptionStatus)
-    const maxServices = business.max_services
-    const hasUnlimitedServices = maxServices === null
+    const returnTo =
+        isSetupFlow
+            ? `/admin/b/${business.slug}`
+            : undefined
+
+    /*
+     * 5. Estado de suscripción.
+     */
+    const subscriptionStatus =
+        normalizeSubscriptionStatus(
+            business.subscription_status
+        )
+
+    const canCreate =
+        canCreateWithSubscription(
+            subscriptionStatus
+        )
+
+    const canEdit =
+        canEditWithSubscription(
+            subscriptionStatus
+        )
+
+    /*
+     * 6. Cargar servicios del negocio.
+     */
+    const services =
+        await getServicesAdmin(
+            business.id
+        )
+
+    const activeServices =
+        services.filter(
+            (service) =>
+                service.is_active
+        ).length
+
+    const popularServices =
+        services.filter(
+            (service) =>
+                service.is_popular
+        ).length
+
+    /*
+     * 7. Validar límites del plan.
+     */
+    const maxServices =
+        business.max_services
+
+    const hasUnlimitedServices =
+        maxServices === null
+
     const reachedServiceLimit =
-        !hasUnlimitedServices && activeServices >= maxServices
+        !hasUnlimitedServices &&
+        activeServices >= maxServices
 
-    const createDisabledReason = !canCreate
-        ? getSubscriptionBlockReason(subscriptionStatus)
-        : reachedServiceLimit
-            ? `Este plan permite ${maxServices} servicio${maxServices === 1 ? '' : 's'} activo${maxServices === 1 ? '' : 's'}. Puedes ocultar uno existente o cambiar de plan para agregar más.`
-            : ''
+    const createDisabledReason =
+        !canCreate
+            ? getSubscriptionBlockReason(
+                subscriptionStatus
+            )
+            : reachedServiceLimit
+                ? `Este plan permite ${maxServices} servicio${maxServices === 1
+                    ? ''
+                    : 's'
+                } activo${maxServices === 1
+                    ? ''
+                    : 's'
+                }. Puedes ocultar uno existente o cambiar de plan para agregar más.`
+                : ''
 
-    const canCreateService = canCreate && !reachedServiceLimit
+    const canCreateService =
+        canCreate &&
+        !reachedServiceLimit
 
-    const serviceLimitLabel = hasUnlimitedServices
-        ? `${activeServices}/∞ activos`
-        : `${activeServices}/${maxServices} activos`
+    const serviceLimitLabel =
+        hasUnlimitedServices
+            ? `${activeServices}/∞ activos`
+            : `${activeServices}/${maxServices} activos`
 
     return (
         <main className="min-h-screen px-4 py-5 text-slate-950 md:px-8 md:py-6">
             <div className="mx-auto max-w-7xl space-y-5">
                 <header className="flex flex-col gap-4 border-b border-black/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
                     <div>
+                        <Link
+                            href={`/admin/b/${business.slug}`}
+                            className="mb-3 inline-flex items-center gap-2 text-sm font-black text-[#8A5D16] transition hover:text-[#C8942E]"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Volver al dashboard
+                        </Link>
+
                         <p className="text-sm font-bold text-slate-500">
                             {business.name}
                         </p>
@@ -101,29 +221,66 @@ export default async function AdminServiciosPage({
                         </h1>
 
                         <p className="mt-2 max-w-[680px] text-sm leading-6 text-slate-600">
-                            Administra precios, duración, orden y visibilidad de los servicios que aparecen en la reserva pública.
+                            Administra precios,
+                            duración, orden y
+                            visibilidad de los
+                            servicios que aparecen
+                            en la reserva pública.
                         </p>
                     </div>
 
                     <div className="flex w-fit flex-wrap items-center gap-2 rounded-full bg-[#C8942E]/10 px-4 py-2 text-xs font-black text-[#8A5D16]">
-                        <span>{services.length} servicio{services.length === 1 ? '' : 's'}</span>
+                        <span>
+                            {services.length}{' '}
+                            servicio
+                            {services.length === 1
+                                ? ''
+                                : 's'}
+                        </span>
+
                         <span className="h-1 w-1 rounded-full bg-[#C8942E]" />
-                        <span>{activeServices} activo{activeServices === 1 ? '' : 's'}</span>
+
+                        <span>
+                            {serviceLimitLabel}
+                        </span>
+
                         <span className="h-1 w-1 rounded-full bg-[#C8942E]" />
-                        <span>{popularServices} popular{popularServices === 1 ? '' : 'es'}</span>
+
+                        <span>
+                            {popularServices}{' '}
+                            popular
+                            {popularServices === 1
+                                ? ''
+                                : 'es'}
+                        </span>
                     </div>
                 </header>
 
                 {!canCreate && (
                     <SubscriptionRestrictedBanner
-                        message={getSubscriptionBlockReason(subscriptionStatus)}
+                        message={getSubscriptionBlockReason(
+                            subscriptionStatus
+                        )}
                     />
                 )}
 
                 <AdminServiceForm
-                    businessId={business.id}
-                    canCreate={canCreateService}
-                    disabledReason={createDisabledReason}
+                    businessId={
+                        business.id
+                    }
+                    canCreate={
+                        canCreateService
+                    }
+                    disabledReason={
+                        createDisabledReason
+                    }
+                    returnTo={
+                        returnTo
+                    }
+                    openOnMount={
+                        isSetupFlow &&
+                        activeServices === 0
+                    }
                 />
 
                 <section className="overflow-hidden rounded-[26px] border border-black/10 bg-[#FFFCF4] shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
@@ -138,12 +295,18 @@ export default async function AdminServiciosPage({
                             </h2>
 
                             <p className="mt-1 text-sm leading-6 text-slate-500">
-                                Revisa precios, duración, orden y visibilidad.
+                                Revisa precios,
+                                duración, orden y
+                                visibilidad.
                             </p>
                         </div>
 
                         <span className="w-fit rounded-full bg-[#F4E7C7] px-4 py-2 text-xs font-black text-[#8A5D16]">
-                            {services.length} registro{services.length === 1 ? '' : 's'}
+                            {services.length}{' '}
+                            registro
+                            {services.length === 1
+                                ? ''
+                                : 's'}
                         </span>
                     </div>
 
@@ -154,85 +317,114 @@ export default async function AdminServiciosPage({
                             </div>
 
                             <h3 className="mt-4 text-xl font-black text-slate-950">
-                                No hay servicios todavía
+                                No hay servicios
+                                todavía
                             </h3>
 
                             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
-                                Crea tu primer servicio para que los clientes puedan reservar online.
+                                Crea tu primer
+                                servicio para que
+                                los clientes puedan
+                                reservar online.
                             </p>
                         </div>
                     ) : (
                         <div className="divide-y divide-black/10">
-                            {services.map((service) => (
-                                <article
-                                    key={service.id}
-                                    className="group grid gap-4 px-5 py-4 transition hover:bg-[#FBF7EE] md:grid-cols-[minmax(0,1fr)_160px_120px] md:items-center md:px-6"
-                                >
-                                    <div className="flex min-w-0 items-start gap-4">
-                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#C8942E]/10 text-sm font-black text-[#8A5D16] ring-1 ring-[#C8942E]/15">
-                                            #{service.display_order || 0}
-                                        </div>
-
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className="truncate text-lg font-black leading-tight text-slate-950">
-                                                    {service.name}
-                                                </h3>
-
-                                                {service.is_popular && (
-                                                    <span className="rounded-full bg-[#F4E7C7] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#8A5D16]">
-                                                        Popular
-                                                    </span>
-                                                )}
-
-                                                <span
-                                                    className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ring-1 ${service.is_active
-                                                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                                                        : 'bg-slate-100 text-slate-500 ring-slate-200'
-                                                        }`}
-                                                >
-                                                    {service.is_active ? 'Activo' : 'Oculto'}
-                                                </span>
+                            {services.map(
+                                (service) => (
+                                    <article
+                                        key={
+                                            service.id
+                                        }
+                                        className="group grid gap-4 px-5 py-4 transition hover:bg-[#FBF7EE] md:grid-cols-[minmax(0,1fr)_160px_120px] md:items-center md:px-6"
+                                    >
+                                        <div className="flex min-w-0 items-start gap-4">
+                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#C8942E]/10 text-sm font-black text-[#8A5D16] ring-1 ring-[#C8942E]/15">
+                                                #
+                                                {service.display_order ||
+                                                    0}
                                             </div>
 
-                                            <p className="mt-1 line-clamp-1 text-sm font-medium leading-6 text-slate-500">
-                                                {service.description || 'Sin descripción.'}
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h3 className="truncate text-lg font-black leading-tight text-slate-950">
+                                                        {
+                                                            service.name
+                                                        }
+                                                    </h3>
+
+                                                    {service.is_popular && (
+                                                        <span className="rounded-full bg-[#F4E7C7] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#8A5D16]">
+                                                            Popular
+                                                        </span>
+                                                    )}
+
+                                                    <span
+                                                        className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ring-1 ${service.is_active
+                                                            ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                                            : 'bg-slate-100 text-slate-500 ring-slate-200'
+                                                            }`}
+                                                    >
+                                                        {service.is_active
+                                                            ? 'Activo'
+                                                            : 'Oculto'}
+                                                    </span>
+                                                </div>
+
+                                                <p className="mt-1 line-clamp-1 text-sm font-medium leading-6 text-slate-500">
+                                                    {service.description ||
+                                                        'Sin descripción.'}
+                                                </p>
+
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-black/5">
+                                                        {
+                                                            service.duration_minutes
+                                                        }{' '}
+                                                        min
+                                                    </span>
+
+                                                    <span className="max-w-full truncate rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-black/5">
+                                                        {
+                                                            service.slug
+                                                        }
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="rounded-2xl px-4 py-3 md:text-right">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#8A5D16]/70">
+                                                Precio
                                             </p>
 
-                                            <div className="mt-2 flex flex-wrap gap-2">
-                                                <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-black/5">
-                                                    {service.duration_minutes} min
-                                                </span>
+                                            <p className="mt-0.5 text-2xl font-black leading-none text-[#C8942E]">
+                                                {formatPrice(
+                                                    service.price,
+                                                    service.currency
+                                                )}
+                                            </p>
 
-                                                <span className="max-w-full truncate rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-black/5">
-                                                    {service.slug}
-                                                </span>
-                                            </div>
+                                            <p className="mt-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#8A5D16]/60">
+                                                {
+                                                    service.currency
+                                                }
+                                            </p>
                                         </div>
-                                    </div>
 
-                                    <div className="rounded-2xl  px-4 py-3 md:text-right">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#8A5D16]/70">
-                                            Precio
-                                        </p>
-
-                                        <p className="mt-0.5 text-2xl font-black leading-none text-[#C8942E]">
-                                            {formatPrice(service.price, service.currency)}
-                                        </p>
-
-                                        <p className="mt-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#8A5D16]/60">
-                                            {service.currency}
-                                        </p>
-                                    </div>
-
-                                    <div className="md:justify-self-end">
-                                        <AdminServiceEditForm
-                                            service={service}
-                                            canEdit={canEdit}
-                                        />
-                                    </div>
-                                </article>
-                            ))}
+                                        <div className="md:justify-self-end">
+                                            <AdminServiceEditForm
+                                                service={
+                                                    service
+                                                }
+                                                canEdit={
+                                                    canEdit
+                                                }
+                                            />
+                                        </div>
+                                    </article>
+                                )
+                            )}
                         </div>
                     )}
                 </section>
@@ -240,3 +432,4 @@ export default async function AdminServiciosPage({
         </main>
     )
 }
+

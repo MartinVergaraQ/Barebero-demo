@@ -1,4 +1,7 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
+
 import { createClient } from '@/src/lib/supabase/server'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
 import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
@@ -18,6 +21,9 @@ type AdminBarberosPageProps = {
     params: Promise<{
         slug: string
     }>
+    searchParams: Promise<{
+        from?: string
+    }>
 }
 
 function getInitials(name: string) {
@@ -25,14 +31,22 @@ function getInitials(name: string) {
         .split(' ')
         .filter(Boolean)
         .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase())
+        .map(
+            (part) =>
+                part[0]?.toUpperCase()
+        )
         .join('')
 }
 
-function formatChileWhatsapp(value?: string | null) {
-    if (!value) return 'Sin WhatsApp'
+function formatChileWhatsapp(
+    value?: string | null
+) {
+    if (!value) {
+        return 'Sin WhatsApp'
+    }
 
-    const digits = value.replace(/\D/g, '')
+    const digits =
+        value.replace(/\D/g, '')
 
     let phone = digits
 
@@ -47,20 +61,38 @@ function formatChileWhatsapp(value?: string | null) {
     phone = phone.slice(0, 8)
 
     if (phone.length <= 4) {
-        return `+56 9 ${phone}`
+        return `+ 56 9 ${phone} `
     }
 
-    return `+56 9 ${phone.slice(0, 4)} ${phone.slice(4)}`
+    return `+ 56 9 ${phone.slice(
+        0,
+        4
+    )
+        } ${phone.slice(4)} `
 }
 
 export default async function AdminBarberosPage({
     params,
+    searchParams,
 }: AdminBarberosPageProps) {
-    const { slug } = await params
-    const supabase = await createClient()
+    const [
+        { slug },
+        query,
+    ] = await Promise.all([
+        params,
+        searchParams,
+    ])
 
+    const supabase =
+        await createClient()
+
+    /*
+     * 1. Validar sesión.
+     */
     const {
-        data: { user },
+        data: {
+            user,
+        },
         error: userError,
     } = await supabase.auth.getUser()
 
@@ -68,256 +100,429 @@ export default async function AdminBarberosPage({
         redirect('/admin/login')
     }
 
-    const { data: profile, error: profileError } = await supabase
+    /*
+     * 2. Validar perfil y permisos.
+     */
+    const {
+        data: profile,
+        error: profileError,
+    } = await supabase
         .from('profiles')
-        .select('id, business_id, role')
+        .select(
+            'id, business_id, role, full_name'
+        )
         .eq('id', user.id)
         .single()
 
-    if (profileError || !profile || !canManageCatalog(profile.role)) {
+    if (
+        profileError ||
+        !profile ||
+        !canManageCatalog(
+            profile.role
+        )
+    ) {
         redirect('/admin')
     }
 
-    const business = await getBusinessBySlug(slug)
+    /*
+     * 3. Validar negocio y aislamiento.
+     */
+    const business =
+        await getBusinessBySlug(slug)
 
-    if (profile.business_id !== business.id) {
+    if (
+        profile.business_id !==
+        business.id
+    ) {
         redirect('/admin')
     }
-    const subscriptionStatus = normalizeSubscriptionStatus(
-        business.subscription_status
-    )
 
-    const [barbers, services] = await Promise.all([
+    /*
+     * 4. Detectar onboarding.
+     */
+    const isSetupFlow =
+        query.from === 'setup'
+
+    const returnTo =
+        isSetupFlow
+            ? `/admin/b/${business.slug}`
+            : undefined
+
+    /*
+     * 5. Suscripción.
+     */
+    const subscriptionStatus =
+        normalizeSubscriptionStatus(
+            business.subscription_status
+        )
+
+    const [
+        barbers,
+        services,
+    ] = await Promise.all([
         getBarbersAdmin(),
-        getServicesAdmin(business.id),
+        getServicesAdmin(
+            business.id
+        ),
     ])
 
-    const serviceOptions = services.map((service) => ({
-        id: service.id,
-        name: service.name,
-        price: service.price,
-        duration_minutes: service.duration_minutes,
-    }))
+    /*
+     * Para editar conservamos todos los
+     * servicios, incluso los ocultos.
+     */
+    const serviceOptions =
+        services.map((service) => ({
+            id: service.id,
+            name: service.name,
+            price: service.price,
+            duration_minutes:
+                service.duration_minutes,
+        }))
 
-    const activeBarbers = barbers.filter((barber) => barber.is_active).length
-    const withPhoto = barbers.filter((barber) => !!barber.photo_url).length
+    /*
+     * Al crear un barbero solo permitimos
+     * asignar servicios activos.
+     */
+    const activeServiceOptions =
+        services
+            .filter(
+                (service) =>
+                    service.is_active
+            )
+            .map((service) => ({
+                id: service.id,
+                name: service.name,
+                price: service.price,
+                duration_minutes:
+                    service.duration_minutes,
+            }))
+
+    const activeBarbers =
+        barbers.filter(
+            (barber) =>
+                barber.is_active
+        ).length
+
+    const showSetupChoice =
+        isSetupFlow &&
+        activeBarbers === 0
+
+    const withPhoto =
+        barbers.filter(
+            (barber) =>
+                Boolean(
+                    barber.photo_url
+                )
+        ).length
 
     const canCreate =
-        canCreateWithSubscription(subscriptionStatus)
+        canCreateWithSubscription(
+            subscriptionStatus
+        )
 
     const canEdit =
-        canEditWithSubscription(subscriptionStatus)
+        canEditWithSubscription(
+            subscriptionStatus
+        )
 
     const subscriptionBlockReason =
-        getSubscriptionBlockReason(subscriptionStatus)
+        getSubscriptionBlockReason(
+            subscriptionStatus
+        )
 
     const isSubscriptionReadOnly =
-        !canCreate || !canEdit
+        !canCreate ||
+        !canEdit
 
-    const maxBarbers = business.max_barbers
-    const hasUnlimitedBarbers = maxBarbers === null
+    /*
+     * 6. Límites del plan.
+     */
+    const maxBarbers =
+        business.max_barbers
+
+    const hasUnlimitedBarbers =
+        maxBarbers === null
+
     const reachedBarberLimit =
-        !hasUnlimitedBarbers && activeBarbers >= maxBarbers
+        !hasUnlimitedBarbers &&
+        activeBarbers >= maxBarbers
 
-    const canCreateBarber = canCreate && !reachedBarberLimit
+    const canCreateBarber =
+        canCreate &&
+        !reachedBarberLimit
 
-    const barberLimitLabel = hasUnlimitedBarbers
-        ? `${activeBarbers}/∞ activos`
-        : `${activeBarbers}/${maxBarbers} activos`
+    const barberLimitLabel =
+        hasUnlimitedBarbers
+            ? `${activeBarbers}/∞ activos`
+            : `${activeBarbers}/${maxBarbers} activos`
 
-    const createDisabledReason = !canCreate
-        ? subscriptionBlockReason
-        : reachedBarberLimit
-            ? `Este plan permite ${maxBarbers} barbero${maxBarbers === 1 ? '' : 's'
-            } activo${maxBarbers === 1 ? '' : 's'
-            }. Puedes ocultar uno existente o cambiar de plan para agregar más.`
-            : ''
+    const createDisabledReason =
+        !canCreate
+            ? subscriptionBlockReason
+            : reachedBarberLimit
+                ? `Este plan permite ${maxBarbers} barbero${maxBarbers === 1
+                    ? ''
+                    : 's'
+                } activo${maxBarbers === 1
+                    ? ''
+                    : 's'
+                }. Puedes ocultar uno existente o cambiar de plan para agregar más.`
+                : ''
 
     return (
         <main className="min-h-screen px-4 py-5 text-slate-950 md:px-8 md:py-6">
             <div className="mx-auto max-w-7xl space-y-5">
                 <header className="flex flex-col gap-4 border-b border-black/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
                     <div>
+                        <Link
+                            href={`/admin/b/${business.slug}`}
+                            className="mb-3 inline-flex items-center gap-2 text-sm font-black text-[#8A5D16] transition hover:text-[#C8942E]"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Volver al dashboard
+                        </Link>
+
                         <p className="text-sm font-bold text-slate-500">
                             {business.name}
                         </p>
 
                         <h1 className="mt-1 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                            Barberos
+                            {showSetupChoice
+                                ? 'Configura quién atenderá'
+                                : 'Barberos'}
                         </h1>
 
                         <p className="mt-2 max-w-[700px] text-sm leading-6 text-slate-600 md:text-base md:leading-7">
-                            Administra los profesionales del negocio, sus perfiles, WhatsApp, orden de aparición y servicios disponibles.
+                            {showSetupChoice
+                                ? 'Elige si tú atenderás las reservas o si deseas agregar a otro profesional.'
+                                : 'Administra los profesionales, sus perfiles, WhatsApp, servicios y orden de aparición.'}
                         </p>
                     </div>
+                    {!showSetupChoice && (
+                        <div className="grid w-fit grid-cols-3 overflow-hidden rounded-2xl border border-black/10 bg-[#FFFCF4] shadow-sm">
+                            <div className="px-4 py-2 text-center">
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                    Uso
+                                </p>
 
-                    <div className="grid w-fit grid-cols-3 overflow-hidden rounded-2xl border border-black/10 bg-[#FFFCF4] shadow-sm">
-                        <div className="px-4 py-2 text-center">
-                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                Uso
-                            </p>
-                            <p className="text-sm font-black text-[#8A5D16]">
-                                {barberLimitLabel}
-                            </p>
-                        </div>
+                                <p className="text-sm font-black text-[#8A5D16]">
+                                    {
+                                        barberLimitLabel
+                                    }
+                                </p>
+                            </div>
 
-                        <div className="border-x border-black/10 px-4 py-2 text-center">
-                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                Activos
-                            </p>
-                            <p className="text-sm font-black text-[#8A5D16]">
-                                {activeBarbers}
-                            </p>
-                        </div>
+                            <div className="border-x border-black/10 px-4 py-2 text-center">
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                    Activos
+                                </p>
 
-                        <div className="px-4 py-2 text-center">
-                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                Fotos
-                            </p>
-                            <p className="text-sm font-black text-[#8A5D16]">
-                                {withPhoto}
-                            </p>
+                                <p className="text-sm font-black text-[#8A5D16]">
+                                    {
+                                        activeBarbers
+                                    }
+                                </p>
+                            </div>
+
+                            <div className="px-4 py-2 text-center">
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                                    Fotos
+                                </p>
+
+                                <p className="text-sm font-black text-[#8A5D16]">
+                                    {withPhoto}
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </header>
 
                 {isSubscriptionReadOnly && (
                     <SubscriptionRestrictedBanner
-                        message={subscriptionBlockReason}
+                        message={
+                            subscriptionBlockReason
+                        }
                     />
                 )}
 
                 <AdminBarberForm
-                    services={serviceOptions}
+                    services={activeServiceOptions}
                     canCreate={canCreateBarber}
                     disabledReason={createDisabledReason}
+                    returnTo={returnTo}
+                    ownerName={profile.full_name ?? ''}
+                    showSetupChoice={showSetupChoice}
                 />
 
-                <section className="overflow-hidden rounded-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
-                    <div className="flex flex-col gap-2 border-b border-black/10 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-6">
-                        <div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
-                                Equipo
-                            </p>
+                {!showSetupChoice && (
+                    <section className="overflow-hidden rounded-[28px] border border-black/10 bg-[#FFFCF4] shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
+                        <div className="flex flex-col gap-2 border-b border-black/10 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-6">
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#C8942E]">
+                                    Equipo
+                                </p>
 
-                            <h2 className="mt-1 text-2xl font-black text-slate-950">
-                                Lista de barberos
-                            </h2>
+                                <h2 className="mt-1 text-2xl font-black text-slate-950">
+                                    Lista de barberos
+                                </h2>
 
-                            <p className="mt-1 text-sm leading-6 text-slate-500">
-                                Revisa y edita la información visible de cada profesional.
-                            </p>
-                        </div>
-
-                        <span className="w-fit rounded-full bg-[#C8942E]/10 px-4 py-2 text-xs font-black text-[#8A5D16]">
-                            {barbers.length} registro{barbers.length === 1 ? '' : 's'}
-                        </span>
-                    </div>
-
-                    {barbers.length === 0 ? (
-                        <div className="px-5 py-14 text-center">
-                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
-                                💈
+                                <p className="mt-1 text-sm leading-6 text-slate-500">
+                                    Revisa y edita la
+                                    información visible
+                                    de cada profesional.
+                                </p>
                             </div>
 
-                            <h3 className="mt-4 text-xl font-black text-slate-950">
-                                No hay barberos todavía
-                            </h3>
-
-                            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
-                                Crea tu primer barbero para asignar servicios, horarios y recibir reservas.
-                            </p>
+                            <span className="w-fit rounded-full bg-[#C8942E]/10 px-4 py-2 text-xs font-black text-[#8A5D16]">
+                                {barbers.length}{' '}
+                                registro
+                                {barbers.length === 1
+                                    ? ''
+                                    : 's'}
+                            </span>
                         </div>
-                    ) : (
-                        <div className="divide-y divide-black/10">
-                            {barbers.map((barber) => (
-                                <article
-                                    key={barber.id}
-                                    className="grid gap-4 px-5 py-5 transition hover:bg-[#FBF7EE] lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_auto] lg:items-center md:px-6"
-                                >
-                                    <div className="flex min-w-0 items-start gap-4">
-                                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-black/10">
-                                            {barber.photo_url ? (
-                                                <img
-                                                    src={barber.photo_url}
-                                                    alt={barber.name}
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="flex h-full w-full items-center justify-center text-sm font-black text-white">
-                                                    {getInitials(barber.name)}
+
+                        {barbers.length === 0 ? (
+                            <div className="px-5 py-14 text-center">
+                                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">
+                                    💈
+                                </div>
+
+                                <h3 className="mt-4 text-xl font-black text-slate-950">
+                                    No hay barberos
+                                    todavía
+                                </h3>
+
+                                <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                                    Crea tu primer
+                                    barbero para asignar
+                                    servicios, horarios
+                                    y recibir reservas.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-black/10">
+                                {barbers.map(
+                                    (barber) => (
+                                        <article
+                                            key={
+                                                barber.id
+                                            }
+                                            className="grid gap-4 px-5 py-5 transition hover:bg-[#FBF7EE] md:px-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_auto] lg:items-center"
+                                        >
+                                            <div className="flex min-w-0 items-start gap-4">
+                                                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-black/10">
+                                                    {barber.photo_url ? (
+                                                        <img
+                                                            src={
+                                                                barber.photo_url
+                                                            }
+                                                            alt={
+                                                                barber.name
+                                                            }
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex h-full w-full items-center justify-center text-sm font-black text-white">
+                                                            {getInitials(
+                                                                barber.name
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
 
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className="line-clamp-1 text-lg font-black text-slate-950">
-                                                    {barber.name}
-                                                </h3>
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <h3 className="line-clamp-1 text-lg font-black text-slate-950">
+                                                            {
+                                                                barber.name
+                                                            }
+                                                        </h3>
 
-                                                <span
-                                                    className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${barber.is_active
-                                                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                                        : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
-                                                        }`}
-                                                >
-                                                    {barber.is_active ? 'Visible' : 'Oculto'}
-                                                </span>
+                                                        <span
+                                                            className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${barber.is_active
+                                                                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                                                                : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
+                                                                }`}
+                                                        >
+                                                            {barber.is_active
+                                                                ? 'Visible'
+                                                                : 'Oculto'}
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-500">
+                                                        {barber.specialty ||
+                                                            'Sin especialidad definida'}
+                                                    </p>
+
+                                                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">
+                                                        {barber.bio ||
+                                                            'Sin biografía.'}
+                                                    </p>
+
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                                                            {
+                                                                barber.slug
+                                                            }
+                                                        </span>
+
+                                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                                                            Orden{' '}
+                                                            {
+                                                                barber.display_order
+                                                            }
+                                                        </span>
+
+                                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                                                            {formatChileWhatsapp(
+                                                                barber.whatsapp_phone
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-500">
-                                                {barber.specialty || 'Sin especialidad definida'}
-                                            </p>
+                                            <div className="rounded-[22px] border border-black/10 bg-[#FBF7EE] px-4 py-3 lg:text-right">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                                                    Perfil
+                                                    público
+                                                </p>
 
-                                            <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">
-                                                {barber.bio || 'Sin biografía.'}
-                                            </p>
+                                                <p className="mt-1 text-sm font-black text-slate-950">
+                                                    {barber.photo_url
+                                                        ? 'Foto configurada'
+                                                        : 'Sin foto'}
+                                                </p>
 
-                                            <div className="mt-3 flex flex-wrap gap-2">
-                                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-                                                    {barber.slug}
-                                                </span>
-
-                                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-                                                    Orden {barber.display_order}
-                                                </span>
-
-                                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-                                                    {formatChileWhatsapp(barber.whatsapp_phone)}
-                                                </span>
+                                                <p className="mt-1 text-xs font-semibold text-slate-500">
+                                                    {barber.whatsapp_phone
+                                                        ? 'Contacto listo'
+                                                        : 'WhatsApp pendiente'}
+                                                </p>
                                             </div>
-                                        </div>
-                                    </div>
 
-                                    <div className="rounded-[22px] border border-black/10 bg-[#FBF7EE] px-4 py-3 lg:text-right">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
-                                            Perfil público
-                                        </p>
-
-                                        <p className="mt-1 text-sm font-black text-slate-950">
-                                            {barber.photo_url ? 'Foto configurada' : 'Sin foto'}
-                                        </p>
-
-                                        <p className="mt-1 text-xs font-semibold text-slate-500">
-                                            {barber.whatsapp_phone
-                                                ? 'Contacto listo'
-                                                : 'WhatsApp pendiente'}
-                                        </p>
-                                    </div>
-
-                                    <div className="lg:justify-self-end">
-                                        <AdminBarberEditForm
-                                            barber={barber}
-                                            services={serviceOptions}
-                                            canEdit={canEdit}
-                                        />
-                                    </div>
-                                </article>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                                            <div className="lg:justify-self-end">
+                                                <AdminBarberEditForm
+                                                    barber={
+                                                        barber
+                                                    }
+                                                    services={
+                                                        serviceOptions
+                                                    }
+                                                    canEdit={
+                                                        canEdit
+                                                    }
+                                                />
+                                            </div>
+                                        </article>
+                                    )
+                                )}
+                            </div>
+                        )}
+                    </section>
+                )}
             </div>
         </main>
     )

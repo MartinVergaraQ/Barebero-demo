@@ -1,7 +1,6 @@
 'use client'
 
 import {
-    useMemo,
     useState,
 } from 'react'
 import {
@@ -12,15 +11,10 @@ import {
 import { toast } from 'sonner'
 
 import {
-    createClient,
-} from '@/src/lib/supabase/browser'
+    completeInvitationSetupServer,
+} from '@/src/features/auth/api/complete-invitation-setup-server'
 
 export function SetPasswordForm() {
-    const supabase = useMemo(
-        () => createClient(),
-        []
-    )
-
     const [
         password,
         setPassword,
@@ -58,6 +52,13 @@ export function SetPasswordForm() {
             return
         }
 
+        if (password.length > 72) {
+            toast.error(
+                'La contraseña no puede superar los 72 caracteres'
+            )
+            return
+        }
+
         if (
             !/[a-z]/.test(password) ||
             !/[A-Z]/.test(password) ||
@@ -82,45 +83,38 @@ export function SetPasswordForm() {
         setLoading(true)
 
         try {
-            const {
-                error,
-            } =
-                await supabase.auth
-                    .updateUser({
-                        password,
-                    })
-
-            if (error) {
-                console.error(
-                    'Error creando contraseña:',
-                    error
+            const result =
+                await completeInvitationSetupServer(
+                    password
                 )
 
+            if (!result.ok) {
                 toast.error(
-                    'No se pudo guardar la contraseña. La invitación puede haber vencido.'
+                    result.message
                 )
                 return
             }
 
             toast.success(
-                'Contraseña creada correctamente'
+                result.message
             )
 
             /*
-             * Navegación completa para que el servidor
-             * reciba la sesión actualizada.
+             * Navegación completa:
+             * el servidor volverá a leer
+             * la sesión, profile y rol.
              */
             window.location.assign(
-                '/admin'
+                result.destination
             )
         } catch (error) {
             console.error(
-                'Error inesperado creando contraseña:',
+                'Error inesperado completando invitación:',
                 error
             )
 
             toast.error(
-                'No se pudo crear la contraseña'
+                'No se pudo completar la creación de la cuenta'
             )
         } finally {
             setLoading(false)
@@ -171,7 +165,8 @@ export function SetPasswordForm() {
                                     !value
                             )
                         }
-                        className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        disabled={loading}
+                        className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label={
                             showPassword
                                 ? 'Ocultar contraseña'
@@ -227,7 +222,7 @@ export function SetPasswordForm() {
                 className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
                 {loading
-                    ? 'Guardando contraseña...'
+                    ? 'Activando cuenta...'
                     : 'Crear contraseña y entrar'}
             </button>
         </form>

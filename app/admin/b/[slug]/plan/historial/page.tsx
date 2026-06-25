@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/server'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
-import { canManageBusiness } from '@/src/features/auth/utils/admin-access'
 import { PlanHistoryList } from '@/src/features/business/components/plan-history-list'
 
 type PlanHistoryItem = {
@@ -53,8 +52,17 @@ export default async function AdminPlanHistoryPage({
         .eq('id', user.id)
         .single()
 
-    if (profileError || !profile || !canManageBusiness(profile.role)) {
+    if (
+        profileError ||
+        !profile?.business_id
+    ) {
         redirect('/admin')
+    }
+
+    if (profile.role !== 'owner') {
+        redirect(
+            `/admin/b/${slug}`
+        )
     }
 
     const business = await getBusinessBySlug(slug)
@@ -212,8 +220,8 @@ export default async function AdminPlanHistoryPage({
                                 1
                             )}`}
                             className={`inline-flex h-11 items-center justify-center rounded-2xl border border-black/10 bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFFCF4] active:scale-[0.98] ${currentPage <= 1
-                                    ? 'pointer-events-none opacity-50'
-                                    : ''
+                                ? 'pointer-events-none opacity-50'
+                                : ''
                                 }`}
                         >
                             Anterior
@@ -225,8 +233,8 @@ export default async function AdminPlanHistoryPage({
                                 totalPages
                             )}`}
                             className={`inline-flex h-11 items-center justify-center rounded-2xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98] ${currentPage >= totalPages
-                                    ? 'pointer-events-none opacity-50'
-                                    : ''
+                                ? 'pointer-events-none opacity-50'
+                                : ''
                                 }`}
                         >
                             Siguiente

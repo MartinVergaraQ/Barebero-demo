@@ -108,8 +108,17 @@ export default async function AdminCambiarPlanPage({
         .eq('id', user.id)
         .single()
 
-    if (profileError || !profile || !canManageBusiness(profile.role)) {
+    if (
+        profileError ||
+        !profile?.business_id
+    ) {
         redirect('/admin')
+    }
+
+    if (profile.role !== 'owner') {
+        redirect(
+            `/admin/b/${slug}`
+        )
     }
 
     const business = await getBusinessBySlug(slug)

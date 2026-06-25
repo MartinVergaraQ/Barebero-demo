@@ -51,15 +51,21 @@ export default async function BarberLayout({
     }
 
     return (
-        <div className="min-h-screen bg-[#f6f3e8] text-[#1f1f1f]">
+        <div className="min-h-screen bg-[#F6F3E8] text-[#1F1F1F]">
             <AdminNav
-                businessSlug={business.slug}
-                businessName={business.name}
-                role={profile.role}
+                businessSlug={
+                    business.slug
+                }
+                businessName={
+                    business.name
+                }
+                role={
+                    profile.role
+                }
             />
 
-            <section className="min-w-0 md:ml-[254px]">
-                <div className="w-full px-4 py-5 sm:px-5 md:px-10 md:py-8">
+            <section className="min-w-0 md:ml-[248px]">
+                <div className="mx-auto w-full max-w-6xl px-4 pb-28 pt-4 sm:px-5 sm:pt-5 md:px-8 md:pb-8 md:pt-8">
                     {children}
                 </div>
             </section>

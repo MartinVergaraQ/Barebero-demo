@@ -182,7 +182,13 @@ export async function updateReservationStatusByBarber({
     const { data: reservation, error: reservationError } =
         await supabase
             .from('appointments')
-            .select('id, business_id, barber_id, status')
+            .select(`
+    id,
+    business_id,
+    barber_id,
+    status,
+    start_at
+`)
             .eq('id', normalizedReservationId)
             .eq('business_id', profile.business_id)
             .eq('barber_id', barber.id)
@@ -224,7 +230,50 @@ export async function updateReservationStatusByBarber({
     }
 
     /*
-     * 8. Actualización protegida.
+ * 8. Una reserva solamente puede completarse
+ * cuando su horario de inicio ya llegó.
+ *
+ * Esta validación vive en el servidor para
+ * impedir que se evada desde el navegador.
+ */
+    if (nextStatus === 'completed') {
+        const startTimestamp =
+            new Date(
+                reservation.start_at
+            ).getTime()
+
+        if (
+            Number.isNaN(
+                startTimestamp
+            )
+        ) {
+            console.error(
+                'La reserva tiene un start_at inválido:',
+                {
+                    reservationId:
+                        reservation.id,
+                    startAt:
+                        reservation.start_at,
+                }
+            )
+
+            return failure(
+                'La reserva tiene una fecha inválida'
+            )
+        }
+
+        if (
+            startTimestamp >
+            Date.now()
+        ) {
+            return failure(
+                'No puedes completar una reserva antes de su horario.'
+            )
+        }
+    }
+
+    /*
+     * 9. Actualización protegida.
      *
      * Incluimos el estado actual en el filtro para evitar
      * sobrescribir un cambio realizado simultáneamente.

@@ -8,9 +8,19 @@ import {
 } from '@/src/features/booking/api/get-appointments'
 import { canAccessAdmin } from '@/src/features/auth/utils/admin-access'
 import {
+    ArrowRight,
+    CalendarCheck2,
+    CalendarDays,
     Check,
     ChevronRight,
     Circle,
+    Clock3,
+    ExternalLink,
+    Scissors,
+    Sparkles,
+    Store,
+    Users,
+    Ban,
 } from 'lucide-react'
 
 import {
@@ -18,7 +28,33 @@ import {
     formatSubscriptionStatus,
     formatTrialEndDate,
 } from '@/src/features/business/utils/subscription-rules'
+import type React from 'react'
 
+type AdminBusinessDashboardPageProps = {
+    params: Promise<{
+        slug: string
+    }>
+    searchParams: Promise<{
+        setup?: string
+    }>
+}
+
+type ActiveBarberRow = {
+    id: string
+}
+
+type ActiveServiceRow = {
+    id: string
+}
+
+type ActiveWorkingHourRow = {
+    barber_id: string
+}
+
+type BarberServiceRow = {
+    barber_id: string
+    service_id: string
+}
 
 const COLORS = {
     primary: '#a87408',
@@ -33,6 +69,178 @@ const COLORS = {
     dangerText: '#b73a32',
     doneSoft: '#e7e3d6',
     doneText: '#6c6657',
+}
+
+function getAppointmentStatusMeta(
+    status: string | null | undefined
+) {
+    const normalized =
+        normalizeStatus(status)
+
+    if (
+        [
+            'confirmed',
+            'confirmada',
+            'confirmado',
+        ].includes(normalized)
+    ) {
+        return {
+            label: 'Confirmada',
+            className:
+                'border-blue-200 bg-blue-50 text-blue-700',
+            dotClassName:
+                'bg-blue-500',
+        }
+    }
+
+    if (
+        [
+            'completed',
+            'completada',
+            'completado',
+        ].includes(normalized)
+    ) {
+        return {
+            label: 'Completada',
+            className:
+                'border-emerald-200 bg-emerald-50 text-emerald-700',
+            dotClassName:
+                'bg-emerald-500',
+        }
+    }
+
+    if (
+        [
+            'cancelled',
+            'cancelada',
+            'cancelado',
+        ].includes(normalized)
+    ) {
+        return {
+            label: 'Cancelada',
+            className:
+                'border-red-200 bg-red-50 text-red-700',
+            dotClassName:
+                'bg-red-500',
+        }
+    }
+
+    return {
+        label: 'Pendiente',
+        className:
+            'border-amber-200 bg-amber-50 text-amber-700',
+        dotClassName:
+            'bg-amber-500',
+    }
+}
+
+function UpcomingReservationCard({
+    appointment,
+    reservationsHref,
+}: {
+    appointment: AppointmentItem
+    reservationsHref: string
+}) {
+    const status =
+        getAppointmentStatusMeta(
+            appointment.status
+        )
+
+    const serviceName =
+        getRelationName(
+            appointment.services
+        )
+
+    const barberName =
+        getRelationName(
+            appointment.barbers
+        )
+
+    return (
+        <article className="group relative overflow-hidden rounded-[20px] border border-[#E9E0D0] bg-gradient-to-br from-white to-[#FFF9EE] p-4 shadow-[0_10px_26px_rgba(15,23,42,0.04)] transition duration-200 hover:-translate-y-0.5 hover:border-[#D9C18A] hover:shadow-[0_16px_34px_rgba(15,23,42,0.08)]">
+            <span className="absolute inset-y-0 left-0 w-1 bg-[#C8942E]" />
+
+            <div className="flex items-start justify-between gap-4 pl-1">
+                <div className="min-w-0">
+                    <p className="truncate text-base font-black text-slate-950">
+                        {appointment.client_name}
+                    </p>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${status.className}`}
+                        >
+                            <span
+                                className={`h-1.5 w-1.5 rounded-full ${status.dotClassName}`}
+                            />
+
+                            {status.label}
+                        </span>
+
+                        <span className="rounded-full border border-black/5 bg-white px-2.5 py-1 text-[10px] font-black text-slate-600">
+                            {formatShortDate(
+                                appointment.appointment_date
+                            )}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="shrink-0 rounded-2xl bg-[#F4E7C7] px-3 py-2 text-center text-[#8A5D16]">
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em]">
+                        Hora
+                    </p>
+
+                    <p className="mt-0.5 text-sm font-black">
+                        {formatTime(
+                            appointment.start_at
+                        )}
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <div className="rounded-2xl border border-black/5 bg-white px-3 py-2.5">
+                    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">
+                        Servicio
+                    </p>
+
+                    <p className="mt-1 truncate text-xs font-black text-slate-700">
+                        {serviceName}
+                    </p>
+                </div>
+
+                <div className="rounded-2xl border border-black/5 bg-white px-3 py-2.5">
+                    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">
+                        Profesional
+                    </p>
+
+                    <p className="mt-1 truncate text-xs font-black text-slate-700">
+                        {barberName}
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-black/5 pt-3">
+                <p className="text-xs font-semibold text-slate-500">
+                    {formatTime(
+                        appointment.start_at
+                    )}{' '}
+                    –{' '}
+                    {formatTime(
+                        appointment.end_at
+                    )}
+                </p>
+
+                <Link
+                    href={reservationsHref}
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#C8942E] px-3 text-xs font-black text-white shadow-[0_8px_18px_rgba(200,148,46,0.20)] transition hover:brightness-105 active:scale-[0.98]"
+                >
+                    Ver reserva
+                    <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+            </div>
+        </article>
+    )
 }
 
 function normalizeStatus(status: string | null | undefined) {
@@ -95,50 +303,126 @@ function MetricCard({
 }) {
     return (
         <article
-            className="rounded-[12px] border bg-white p-5 md:p-6"
+            className="rounded-[20px] border bg-gradient-to-br from-white to-[#FCFAF6] p-5 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(15,23,42,0.08)]"
             style={{ borderColor: COLORS.border }}
         >
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <p className="text-[13px] font-semibold uppercase tracking-[0.24em] text-[#59544c]">
+                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#6b655c]">
                         {title}
                     </p>
-                    <p className="mt-3 text-[42px] font-bold leading-none text-black sm:text-[46px] md:text-[54px]">
+
+                    <p className="mt-3 text-[40px] font-black leading-none text-slate-950 sm:text-[44px]">
                         {value}
                     </p>
                 </div>
 
                 <div
-                    className="flex h-12 w-12 items-center justify-center rounded-[8px] text-[18px]"
+                    className="flex h-12 w-12 items-center justify-center rounded-2xl text-[18px] ring-1 ring-black/5"
                     style={{ backgroundColor: iconBg }}
                 >
                     {icon}
                 </div>
             </div>
 
-            <p className="mt-5 text-[14px] text-[#5e584f]">{subtitle}</p>
+            <p className="mt-4 text-sm font-medium text-[#5e584f]">
+                {subtitle}
+            </p>
         </article>
     )
 }
 
-function QuickLink({
+function ActionCard({
     href,
     label,
     description,
+    icon,
 }: {
     href: string
     label: string
     description: string
+    icon: React.ReactNode
 }) {
     return (
         <Link
             href={href}
-            className="rounded-[12px] border bg-white p-5 transition hover:bg-[#faf8f2]"
+            className="group rounded-[18px] border bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition duration-200 hover:-translate-y-0.5 hover:border-[#d9c59a] hover:bg-[#fffdf8] hover:shadow-[0_16px_32px_rgba(15,23,42,0.08)]"
             style={{ borderColor: COLORS.border }}
         >
-            <p className="text-lg font-semibold text-[#1f1f1f]">{label}</p>
-            <p className="mt-2 text-sm text-[#5f5a52]">{description}</p>
+            <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#F6EFDf] text-[#A87408]">
+                    {icon}
+                </span>
+
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-black text-slate-950">
+                            {label}
+                        </p>
+
+                        <ChevronRight className="h-4 w-4 shrink-0 text-[#A87408] transition group-hover:translate-x-0.5" />
+                    </div>
+
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {description}
+                    </p>
+                </div>
+            </div>
         </Link>
+    )
+}
+
+function UsageMeter({
+    label,
+    used,
+    limit,
+}: {
+    label: string
+    used: number
+    limit: number | null
+}) {
+    const normalizedLimit =
+        typeof limit === 'number' && limit > 0
+            ? limit
+            : null
+
+    const percent = normalizedLimit
+        ? Math.min(
+            100,
+            Math.round((used / normalizedLimit) * 100)
+        )
+        : 0
+
+    return (
+        <div
+            className="rounded-[18px] border bg-[#FFFDF8] p-4"
+            style={{ borderColor: '#efe8d8' }}
+        >
+            <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-black text-slate-800">
+                    {label}
+                </p>
+
+                <span className="rounded-full bg-[#F4E7C7] px-2.5 py-1 text-[11px] font-black text-[#8A5D16]">
+                    {normalizedLimit
+                        ? `${used} / ${normalizedLimit}`
+                        : `${used}`}
+                </span>
+            </div>
+
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#EEE4D2]">
+                <div
+                    className="h-full rounded-full bg-[#C8942E] transition-all duration-500"
+                    style={{
+                        width: `${percent}%`,
+                    }}
+                />
+            </div>
+
+            <p className="mt-2 text-xs font-medium text-slate-500">
+                Uso actual del plan
+            </p>
+        </div>
     )
 }
 
@@ -206,10 +490,18 @@ function SetupStep({
 
 export default async function AdminBusinessDashboardPage({
     params,
-}: {
-    params: Promise<{ slug: string }>
-}) {
-    const { slug } = await params
+    searchParams
+}: AdminBusinessDashboardPageProps) {
+    const [
+        { slug },
+        query,
+    ] = await Promise.all([
+        params,
+        searchParams,
+    ])
+
+    const setup = query.setup
+
     const supabase = await createClient()
 
     const {
@@ -269,9 +561,9 @@ export default async function AdminBusinessDashboardPage({
 
     const [
         appointments,
-        barbersCountRes,
-        servicesCountRes,
-        workingHoursCountRes,
+        activeBarbersResult,
+        activeServicesResult,
+        activeWorkingHoursResult,
     ] = await Promise.all([
         getAppointments({
             businessId: business.id,
@@ -280,10 +572,7 @@ export default async function AdminBusinessDashboardPage({
 
         supabase
             .from('barbers')
-            .select('*', {
-                count: 'exact',
-                head: true,
-            })
+            .select('id')
             .eq(
                 'business_id',
                 business.id
@@ -295,10 +584,7 @@ export default async function AdminBusinessDashboardPage({
 
         supabase
             .from('services')
-            .select('*', {
-                count: 'exact',
-                head: true,
-            })
+            .select('id')
             .eq(
                 'business_id',
                 business.id
@@ -310,10 +596,7 @@ export default async function AdminBusinessDashboardPage({
 
         supabase
             .from('working_hours')
-            .select('*', {
-                count: 'exact',
-                head: true,
-            })
+            .select('barber_id')
             .eq(
                 'business_id',
                 business.id
@@ -323,6 +606,102 @@ export default async function AdminBusinessDashboardPage({
                 true
             ),
     ])
+
+    if (
+        activeBarbersResult.error ||
+        activeServicesResult.error ||
+        activeWorkingHoursResult.error
+    ) {
+        console.error(
+            'Error cargando estado del onboarding:',
+            {
+                barbers:
+                    activeBarbersResult.error,
+                services:
+                    activeServicesResult.error,
+                workingHours:
+                    activeWorkingHoursResult.error,
+            }
+        )
+
+        throw new Error(
+            'No se pudo cargar el estado de configuración del negocio'
+        )
+    }
+
+    const activeBarbers =
+        (
+            activeBarbersResult.data ??
+            []
+        ) as ActiveBarberRow[]
+
+    const activeServices =
+        (
+            activeServicesResult.data ??
+            []
+        ) as ActiveServiceRow[]
+
+    const activeWorkingHours =
+        (
+            activeWorkingHoursResult.data ??
+            []
+        ) as ActiveWorkingHourRow[]
+
+    const activeBarberIds =
+        activeBarbers.map(
+            (barber) =>
+                barber.id
+        )
+
+    const activeServiceIds =
+        activeServices.map(
+            (service) =>
+                service.id
+        )
+
+    let barberServices:
+        BarberServiceRow[] = []
+
+    if (
+        activeBarberIds.length > 0 &&
+        activeServiceIds.length > 0
+    ) {
+        const {
+            data,
+            error,
+        } = await supabase
+            .from('barber_services')
+            .select(
+                'barber_id, service_id'
+            )
+            .in(
+                'barber_id',
+                activeBarberIds
+            )
+            .in(
+                'service_id',
+                activeServiceIds
+            )
+
+        if (error) {
+            console.error(
+                'Error comprobando servicios asignados:',
+                error
+            )
+
+            throw new Error(
+                'No se pudo comprobar la configuración de los profesionales'
+            )
+        }
+
+        barberServices =
+            (
+                data ??
+                []
+            ) as BarberServiceRow[]
+    }
+
+
 
     const items = appointments as AppointmentItem[]
 
@@ -338,21 +717,31 @@ export default async function AdminBusinessDashboardPage({
         'cancelado',
     ])
 
-    const barbersUsed = barbersCountRes.count ?? 0
-    const servicesUsed = servicesCountRes.count ?? 0
+    const barbersUsed =
+        activeBarbers.length
+
+    const servicesUsed =
+        activeServices.length
 
     const workingHoursUsed =
-        workingHoursCountRes.count ?? 0
+        activeWorkingHours.length
 
-    const businessCompleted = Boolean(
-        businessPlan.description?.trim() &&
-        businessPlan.address?.trim() &&
-        businessPlan.city?.trim() &&
-        (
-            businessPlan.phone?.trim() ||
-            businessPlan.whatsapp_phone?.trim()
+    const businessCompleted =
+        Boolean(
+            businessPlan.description
+                ?.trim() &&
+            businessPlan.address
+                ?.trim() &&
+            businessPlan.city
+                ?.trim() &&
+            (
+                businessPlan.phone
+                    ?.trim() ||
+                businessPlan
+                    .whatsapp_phone
+                    ?.trim()
+            )
         )
-    )
 
     const hasServices =
         servicesUsed > 0
@@ -363,11 +752,53 @@ export default async function AdminBusinessDashboardPage({
     const hasWorkingHours =
         workingHoursUsed > 0
 
+    /*
+     * Profesionales activos que tienen al menos
+     * un servicio activo asignado.
+     */
+    const configuredBarberIds =
+        new Set(
+            barberServices.map(
+                (relation) =>
+                    relation.barber_id
+            )
+        )
+
+    const hasConfiguredProfessional =
+        configuredBarberIds.size > 0
+
+    /*
+     * Barberos que poseen al menos un horario activo.
+     */
+    const barbersWithActiveHours =
+        new Set(
+            activeWorkingHours.map(
+                (hour) =>
+                    hour.barber_id
+            )
+        )
+
+    /*
+     * La cadena está lista solamente cuando
+     * el mismo barbero:
+     *
+     * - está activo;
+     * - tiene servicio activo asignado;
+     * - tiene horario activo.
+     */
+    const hasReadyProfessional =
+        Array.from(
+            configuredBarberIds
+        ).some(
+            (barberId) =>
+                barbersWithActiveHours.has(
+                    barberId
+                )
+        )
+
     const publicPageReady =
         businessCompleted &&
-        hasServices &&
-        hasBarbers &&
-        hasWorkingHours
+        hasReadyProfessional
 
     const setupSteps = [
         {
@@ -388,7 +819,7 @@ export default async function AdminBusinessDashboardPage({
             description:
                 'Agrega descripción, dirección, ciudad y datos de contacto.',
             href:
-                `/admin/b/${business.slug}/negocio`,
+                `/admin/b/${business.slug}/negocio?from=setup`,
             action:
                 'Completar negocio',
         },
@@ -401,33 +832,33 @@ export default async function AdminBusinessDashboardPage({
             description:
                 'Configura nombre, duración y precio de lo que ofreces.',
             href:
-                `/admin/b/${business.slug}/servicios`,
+                `/admin/b/${business.slug}/servicios?from=setup`,
             action:
                 'Crear servicio',
         },
         {
             id: 'barbers',
             completed:
-                hasBarbers,
+                hasConfiguredProfessional,
             title:
-                'Agrega tu primer barbero',
+                'Configura quién atenderá',
             description:
-                'Crea el perfil de la persona que atenderá las reservas.',
+                'Configura un profesional activo y asígnale al menos un servicio.',
             href:
-                `/admin/b/${business.slug}/barberos`,
+                `/admin/b/${business.slug}/barberos?from=setup`,
             action:
-                'Agregar barbero',
+                'Configurar profesional',
         },
         {
             id: 'hours',
             completed:
-                hasWorkingHours,
+                hasReadyProfessional,
             title:
                 'Configura los horarios',
             description:
                 'Define los días y horas disponibles para recibir clientes.',
             href:
-                `/admin/b/${business.slug}/horarios`,
+                `/admin/b/${business.slug}/horarios?from=setup`,
             action:
                 'Configurar horarios',
         },
@@ -465,15 +896,66 @@ export default async function AdminBusinessDashboardPage({
         completedSetupSteps <
         setupSteps.length
 
+    const showSetupCompleted =
+        query.setup === 'complete' &&
+        completedSetupSteps ===
+        setupSteps.length
+
     const firstName =
         profile.full_name
             ?.trim()
             .split(/\s+/)[0] ||
         'Bienvenido'
+    const nowTimestamp =
+        Date.now()
 
-    const upcomingAppointments = [...items]
-        .sort((a, b) => a.start_at.localeCompare(b.start_at))
-        .slice(0, 5)
+    const excludedUpcomingStatuses = [
+        'cancelled',
+        'cancelada',
+        'cancelado',
+        'completed',
+        'completada',
+        'completado',
+    ]
+
+    const upcomingAppointments =
+        [...items]
+            .filter(
+                (appointment) => {
+                    const startTimestamp =
+                        new Date(
+                            appointment.start_at
+                        ).getTime()
+
+                    if (
+                        Number.isNaN(
+                            startTimestamp
+                        )
+                    ) {
+                        return false
+                    }
+
+                    return (
+                        startTimestamp >=
+                        nowTimestamp &&
+                        !excludedUpcomingStatuses.includes(
+                            normalizeStatus(
+                                appointment.status
+                            )
+                        )
+                    )
+                }
+            )
+            .sort(
+                (a, b) =>
+                    new Date(
+                        a.start_at
+                    ).getTime() -
+                    new Date(
+                        b.start_at
+                    ).getTime()
+            )
+            .slice(0, 5)
 
     return (
         <main className="space-y-4 md:space-y-5">
@@ -494,18 +976,120 @@ export default async function AdminBusinessDashboardPage({
                             color: COLORS.primary,
                         }}
                     >
-                        {showSetup
-                            ? `Hola, ${firstName}`
-                            : 'Dashboard'}
+                        {showSetupCompleted
+                            ? `¡Todo listo, ${firstName}!`
+                            : showSetup
+                                ? `Hola, ${firstName}`
+                                : 'Dashboard'}
                     </h1>
 
                     <p className="mt-2 max-w-[680px] text-sm leading-6 text-[#4f4b45]">
-                        {showSetup
-                            ? 'Completa la configuración para comenzar a recibir reservas.'
-                            : 'Revisa las reservas del día y la actividad de tu negocio.'}
+                        {showSetupCompleted
+                            ? 'La configuración inicial terminó correctamente. Tu barbería ya puede comenzar a recibir reservas.'
+                            : showSetup
+                                ? 'Completa la configuración para comenzar a recibir reservas.'
+                                : 'Revisa las reservas del día y la actividad de tu negocio.'}
                     </p>
                 </div>
             </header>
+
+            {showSetupCompleted && (
+                <section className="overflow-hidden rounded-[24px] border border-emerald-200 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.10)]">
+                    <div className="bg-gradient-to-br from-emerald-50 via-white to-[#FFF7E5] px-5 py-7 md:px-8 md:py-9">
+                        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                            <div className="flex items-start gap-4">
+                                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-[0_14px_30px_rgba(5,150,105,0.24)]">
+                                    <Sparkles className="h-7 w-7" />
+                                </span>
+
+                                <div>
+                                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">
+                                        Configuración completada
+                                    </p>
+
+                                    <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
+                                        Tu barbería está lista
+                                    </h2>
+
+                                    <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-600">
+                                        Ya configuraste la información del negocio,
+                                        el primer servicio, quién atenderá y sus
+                                        horarios. Tus clientes ya pueden consultar
+                                        disponibilidad y reservar.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="shrink-0 rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-center shadow-sm">
+                                <p className="text-3xl font-black leading-none text-emerald-700">
+                                    100%
+                                </p>
+
+                                <p className="mt-1 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
+                                    Lista para operar
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-2xl border border-emerald-100 bg-white/80 p-4">
+                                <Check className="h-5 w-5 text-emerald-600" />
+
+                                <p className="mt-3 text-sm font-black text-slate-950">
+                                    Catálogo preparado
+                                </p>
+
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                    Servicio activo y disponible públicamente.
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-emerald-100 bg-white/80 p-4">
+                                <Check className="h-5 w-5 text-emerald-600" />
+
+                                <p className="mt-3 text-sm font-black text-slate-950">
+                                    Profesional configurado
+                                </p>
+
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                    Daniela ya puede recibir reservas.
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-emerald-100 bg-white/80 p-4">
+                                <CalendarCheck2 className="h-5 w-5 text-emerald-600" />
+
+                                <p className="mt-3 text-sm font-black text-slate-950">
+                                    Disponibilidad publicada
+                                </p>
+
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                    Los horarios ya están guardados.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <Link
+                                href={`/b/${business.slug}`}
+                                target="_blank"
+                                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#C8942E] px-5 text-sm font-black text-white shadow-[0_12px_26px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.98]"
+                            >
+                                Probar reserva pública
+                                <ExternalLink className="h-4 w-4" />
+                            </Link>
+
+                            <Link
+                                href={`/admin/b/${business.slug}`}
+                                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
+                            >
+                                Entrar al dashboard
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {showSetup && (
                 <section className="overflow-hidden rounded-[18px] border border-[#dfcda8] bg-[#fffaf0] shadow-sm">
@@ -570,201 +1154,246 @@ export default async function AdminBusinessDashboardPage({
             )}
 
 
-            {!showSetup && (
-                <>
-                    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 md:gap-6">
-                        <MetricCard
-                            title="Reservas hoy"
-                            value={items.length}
-                            subtitle="Total del día"
-                            icon="🗓️"
-                            iconBg={COLORS.primarySoft}
-                        />
-                        <MetricCard
-                            title="Pendientes"
-                            value={pendingCount}
-                            subtitle="Requieren atención"
-                            icon="👜"
-                            iconBg={COLORS.pendingSoft}
-                        />
-                        <MetricCard
-                            title="Confirmadas"
-                            value={confirmedCount}
-                            subtitle="Listas para atender"
-                            icon="✓"
-                            iconBg={COLORS.blueSoft}
-                        />
-                        <MetricCard
-                            title="Canceladas"
-                            value={cancelledCount}
-                            subtitle="Registradas hoy"
-                            icon="✕"
-                            iconBg={COLORS.dangerSoft}
-                        />
-                    </section>
+            {!showSetup &&
+                !showSetupCompleted && (
+                    <>
+                        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                            <MetricCard
+                                title="Reservas hoy"
+                                value={items.length}
+                                subtitle="Total del día"
+                                icon="📅"
+                                iconBg={COLORS.primarySoft}
+                            />
 
-                    <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-                        <article
-                            className="rounded-[12px] border bg-white p-5 md:p-6"
-                            style={{ borderColor: COLORS.border }}
-                        >
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <p className="text-[13px] font-semibold uppercase tracking-[0.24em] text-[#59544c]">
-                                        Plan actual
-                                    </p>
-                                    <h2 className="mt-3 text-3xl font-bold text-[#1f1f1f]">
-                                        {formatPlanLabel(businessPlan.plan_slug)}
-                                    </h2>
-                                    <p className="mt-2 text-sm text-[#5e584f]">
-                                        Estado: {formatSubscriptionStatus(businessPlan.subscription_status)}
-                                    </p>
-                                    {businessPlan.trial_ends_at && (
-                                        <p className="mt-1 text-sm text-[#5e584f]">
-                                            Trial hasta:{' '}
-                                            {formatTrialEndDate(businessPlan.trial_ends_at)}
-                                        </p>
-                                    )}
-                                </div>
+                            <MetricCard
+                                title="Pendientes"
+                                value={pendingCount}
+                                subtitle="Requieren atención"
+                                icon="🔐"
+                                iconBg={COLORS.pendingSoft}
+                            />
 
-                                <Link
-                                    href={`/admin/b/${business.slug}/plan`}
-                                    className="rounded-[8px] border bg-white px-4 py-2 text-sm font-semibold text-[#2a2927]"
-                                    style={{ borderColor: COLORS.border }}
-                                >
-                                    Ver plan
-                                </Link>
-                            </div>
+                            <MetricCard
+                                title="Confirmadas"
+                                value={confirmedCount}
+                                subtitle="Listas para atender"
+                                icon="✓"
+                                iconBg={COLORS.blueSoft}
+                            />
 
-                            <div className="mt-6 grid gap-4 md:grid-cols-2">
-                                <div className="rounded-[10px] border p-4" style={{ borderColor: '#efe8d8' }}>
-                                    <p className="text-sm font-semibold text-[#59544c]">Barberos</p>
-                                    <p className="mt-2 text-2xl font-bold text-[#1f1f1f]">
-                                        {barbersUsed} / {businessPlan.max_barbers}
-                                    </p>
-                                    <p className="mt-1 text-sm text-[#5e584f]">Uso actual del plan</p>
-                                </div>
-
-                                <div className="rounded-[10px] border p-4" style={{ borderColor: '#efe8d8' }}>
-                                    <p className="text-sm font-semibold text-[#59544c]">Servicios</p>
-                                    <p className="mt-2 text-2xl font-bold text-[#1f1f1f]">
-                                        {servicesUsed} / {businessPlan.max_services}
-                                    </p>
-                                    <p className="mt-1 text-sm text-[#5e584f]">Uso actual del plan</p>
-                                </div>
-                            </div>
-                        </article>
-
-                        <section className="grid gap-4">
-                            <QuickLink
-                                href={`/admin/b/${business.slug}/reservas`}
-                                label="Ver reservas"
-                                description="Gestiona citas, estados y agenda del día."
-                            />
-                            <QuickLink
-                                href={`/admin/b/${business.slug}/servicios`}
-                                label="Servicios"
-                                description="Edita precios, duración y orden de tus servicios."
-                            />
-                            <QuickLink
-                                href={`/admin/b/${business.slug}/barberos`}
-                                label="Barberos"
-                                description="Administra el equipo, perfiles y WhatsApp."
-                            />
-                            <QuickLink
-                                href={`/admin/b/${business.slug}/horarios`}
-                                label="Horarios"
-                                description="Configura la disponibilidad semanal."
-                            />
-                            <QuickLink
-                                href={`/admin/b/${business.slug}/bloqueos`}
-                                label="Bloqueos"
-                                description="Marca descansos, feriados o ausencias."
-                            />
-                            <QuickLink
-                                href={`/admin/b/${business.slug}/plan`}
-                                label="Plan"
-                                description="Revisa estado, límites y suscripción del negocio."
-                            />
-                            <QuickLink
-                                href={`/admin/b/${business.slug}/negocio`}
-                                label="Negocio"
-                                description="Actualiza nombre, slug, WhatsApp y configuración."
+                            <MetricCard
+                                title="Canceladas"
+                                value={cancelledCount}
+                                subtitle="Registradas hoy"
+                                icon="✕"
+                                iconBg={COLORS.dangerSoft}
                             />
                         </section>
-                    </section>
 
-                    <section
-                        className="rounded-[12px] border bg-white p-5 md:p-6"
-                        style={{ borderColor: COLORS.border }}
-                    >
-                        <div className="mb-5 flex items-center justify-between gap-4">
-                            <div>
-                                <h2 className="text-2xl font-bold text-[#1f1f1f]">
-                                    Próximas reservas de hoy
-                                </h2>
-                                <p className="mt-1 text-sm text-[#5f5a52]">
-                                    Vista rápida de las siguientes citas del día.
-                                </p>
+                        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,420px)]">
+                            <div className="space-y-4">
+                                <article
+                                    className="rounded-[24px] border bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] md:p-6"
+                                    style={{ borderColor: COLORS.border }}
+                                >
+                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                        <div>
+                                            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#6b655c]">
+                                                Plan actual
+                                            </p>
+
+                                            <div className="mt-3 flex flex-wrap items-center gap-3">
+                                                <h2 className="text-3xl font-black text-slate-950">
+                                                    {formatPlanLabel(
+                                                        businessPlan.plan_slug
+                                                    )}
+                                                </h2>
+
+                                                <span className="rounded-full bg-[#F6EFDf] px-3 py-1 text-xs font-black text-[#8A5D16]">
+                                                    {formatSubscriptionStatus(
+                                                        businessPlan.subscription_status
+                                                    )}
+                                                </span>
+                                            </div>
+
+                                            {businessPlan.trial_ends_at && (
+                                                <p className="mt-2 text-sm font-medium text-slate-500">
+                                                    Trial hasta{' '}
+                                                    {formatTrialEndDate(
+                                                        businessPlan.trial_ends_at
+                                                    )}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2">
+                                            {profile.role === 'owner' && (
+                                                <Link
+                                                    href={`/admin/b/${business.slug}/plan`}
+                                                    className="inline-flex h-10 items-center justify-center rounded-xl border bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                                                    style={{
+                                                        borderColor: COLORS.border,
+                                                    }}
+                                                >
+                                                    Ver plan
+                                                </Link>
+                                            )}
+
+                                            <Link
+                                                href={`/b/${business.slug}`}
+                                                target="_blank"
+                                                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C8942E] px-4 text-sm font-black text-white shadow-[0_10px_22px_rgba(200,148,46,0.24)] transition hover:-translate-y-0.5 hover:brightness-105"
+                                            >
+                                                Ver página
+                                                <ExternalLink className="h-4 w-4" />
+                                            </Link>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 grid gap-4 md:grid-cols-2">
+                                        <UsageMeter
+                                            label="Barberos"
+                                            used={barbersUsed}
+                                            limit={businessPlan.max_barbers}
+                                        />
+
+                                        <UsageMeter
+                                            label="Servicios"
+                                            used={servicesUsed}
+                                            limit={businessPlan.max_services}
+                                        />
+                                    </div>
+                                </article>
+
+                                <article
+                                    className="rounded-[24px] border bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] md:p-6"
+                                    style={{ borderColor: COLORS.border }}
+                                >
+                                    <div className="mb-4">
+                                        <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#A87408]">
+                                            Accesos rápidos
+                                        </p>
+
+                                        <h2 className="mt-1 text-2xl font-black text-slate-950">
+                                            Centro de control
+                                        </h2>
+
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Entra rápido a las secciones más usadas.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <ActionCard
+                                            href={`/admin/b/${business.slug}/reservas`}
+                                            label="Reservas"
+                                            description="Gestiona citas y agenda del día."
+                                            icon={<CalendarDays className="h-5 w-5" />}
+                                        />
+
+                                        <ActionCard
+                                            href={`/admin/b/${business.slug}/servicios`}
+                                            label="Servicios"
+                                            description="Precios, duración y orden."
+                                            icon={<Scissors className="h-5 w-5" />}
+                                        />
+
+                                        <ActionCard
+                                            href={`/admin/b/${business.slug}/barberos`}
+                                            label="Barberos"
+                                            description="Equipo, perfiles y WhatsApp."
+                                            icon={<Users className="h-5 w-5" />}
+                                        />
+
+                                        <ActionCard
+                                            href={`/admin/b/${business.slug}/horarios`}
+                                            label="Horarios"
+                                            description="Disponibilidad semanal."
+                                            icon={<Clock3 className="h-5 w-5" />}
+                                        />
+
+                                        <ActionCard
+                                            href={`/admin/b/${business.slug}/bloqueos`}
+                                            label="Bloqueos"
+                                            description="Descansos, ausencias y feriados."
+                                            icon={<Ban className="h-5 w-5" />}
+                                        />
+
+                                        <ActionCard
+                                            href={`/admin/b/${business.slug}/negocio`}
+                                            label="Negocio"
+                                            description="Datos públicos y configuración."
+                                            icon={<Store className="h-5 w-5" />}
+                                        />
+                                    </div>
+                                </article>
                             </div>
 
-                            <Link
-                                href={`/admin/b/${business.slug}/reservas`}
-                                className="rounded-[8px] border bg-white px-4 py-2 text-sm font-semibold text-[#2a2927]"
+                            <section
+                                className="rounded-[24px] border bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] md:p-6"
                                 style={{ borderColor: COLORS.border }}
                             >
-                                Ir a reservas
-                            </Link>
-                        </div>
+                                <div className="mb-5 flex items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-2xl font-black text-slate-950">
+                                            Próximas reservas
+                                        </h2>
 
-                        {upcomingAppointments.length === 0 ? (
-                            <div
-                                className="rounded-[12px] p-6 text-center"
-                                style={{ backgroundColor: COLORS.bgSoft }}
-                            >
-                                <p className="text-base font-semibold text-[#3f3a34]">
-                                    No hay reservas para hoy.
-                                </p>
-                                <p className="mt-2 text-sm text-[#5f5a52]">
-                                    Cuando se agenden citas aparecerán aquí.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {upcomingAppointments.map((appointment) => (
-                                    <article
-                                        key={appointment.id}
-                                        className="rounded-[10px] border p-4"
-                                        style={{ borderColor: '#efe8d8' }}
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Vista rápida de las siguientes citas de hoy.
+                                        </p>
+                                    </div>
+
+                                    <Link
+                                        href={`/admin/b/${business.slug}/reservas`}
+                                        className="inline-flex h-10 items-center justify-center rounded-xl border bg-white px-4 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                                        style={{ borderColor: COLORS.border }}
                                     >
-                                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                            <div>
-                                                <p className="text-lg font-semibold text-[#1f1f1f]">
-                                                    {appointment.client_name}
-                                                </p>
-                                                <p className="mt-1 text-sm text-[#5f5a52]">
-                                                    {getRelationName(appointment.services)} ·{' '}
-                                                    {getRelationName(appointment.barbers)}
-                                                </p>
-                                            </div>
+                                        Ir
+                                    </Link>
+                                </div>
 
-                                            <div className="text-sm text-[#3f3a34] md:text-right">
-                                                <p className="font-semibold">
-                                                    {formatShortDate(appointment.appointment_date)}
-                                                </p>
-                                                <p className="mt-1">
-                                                    {formatTime(appointment.start_at)} -{' '}
-                                                    {formatTime(appointment.end_at)}
-                                                </p>
-                                            </div>
+                                {upcomingAppointments.length === 0 ? (
+                                    <div className="rounded-[18px] border border-dashed border-[#E7DFCF] bg-[#F8F4EA] px-5 py-10 text-center">
+                                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">
+                                            <CalendarCheck2 className="h-6 w-6 text-[#A87408]" />
                                         </div>
-                                    </article>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-                </>
-            )}
+
+                                        <h2 className="text-2xl font-black text-slate-950">
+                                            Próximas de hoy
+                                        </h2>
+
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Las siguientes citas pendientes de esta jornada.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {upcomingAppointments.map(
+                                            (appointment) => (
+                                                <UpcomingReservationCard
+                                                    key={
+                                                        appointment.id
+                                                    }
+                                                    appointment={
+                                                        appointment
+                                                    }
+                                                    reservationsHref={
+                                                        `/admin/b/${business.slug}/reservas`
+                                                    }
+                                                />
+                                            )
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+                        </section>
+                    </>
+                )}
         </main>
+
+
+
     )
 }

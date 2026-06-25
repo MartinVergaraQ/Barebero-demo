@@ -387,8 +387,17 @@ export function AdminServiceEditForm({ service, canEdit }: Props) {
                                                     : 'border-black/10 bg-[#FBF7EE] text-slate-600 hover:bg-white'
                                                     }`}
                                             >
-                                                <span>Visible para reservas</span>
-                                                <span>{form.is_active ? 'Activo' : 'Oculto'}</span>
+                                                <span>
+                                                    {form.is_active
+                                                        ? 'Ocultar servicio'
+                                                        : 'Reactivar servicio'}
+                                                </span>
+
+                                                <span>
+                                                    {form.is_active
+                                                        ? 'Visible'
+                                                        : 'Archivado'}
+                                                </span>
                                             </button>
                                         </div>
                                     </div>

@@ -13,6 +13,7 @@ type ReservationStatus =
 type Props = {
     reservationId: string
     currentStatus: ReservationStatus | string
+    startAt: string
     canManage?: boolean
     subscriptionBlockReason?: string
 }
@@ -27,6 +28,7 @@ type StatusAction = {
 export function BarberReservationStatusActions({
     reservationId,
     currentStatus,
+    startAt,
     canManage = true,
     subscriptionBlockReason,
 }: Props) {
@@ -36,8 +38,24 @@ export function BarberReservationStatusActions({
     const [processingStatus, setProcessingStatus] =
         useState<ReservationStatus | null>(null)
 
+    const normalizedStatus =
+        currentStatus
+            .trim()
+            .toLowerCase()
+
+    const appointmentStartTimestamp =
+        new Date(startAt).getTime()
+
+    const canCompleteByTime =
+        !Number.isNaN(
+            appointmentStartTimestamp
+        ) &&
+        appointmentStartTimestamp <=
+        Date.now()
+
+
     const actions: StatusAction[] =
-        currentStatus === 'pending'
+        normalizedStatus === 'pending'
             ? [
                 {
                     label: 'Confirmar',
@@ -54,7 +72,7 @@ export function BarberReservationStatusActions({
                         'border-red-300 bg-red-50 text-red-700 hover:bg-red-100',
                 },
             ]
-            : currentStatus === 'confirmed'
+            : normalizedStatus === 'confirmed'
                 ? [
                     {
                         label: 'Completar',
@@ -78,6 +96,16 @@ export function BarberReservationStatusActions({
             setError(
                 subscriptionBlockReason ||
                 'La suscripción actual no permite modificar reservas.'
+            )
+            return
+        }
+
+        if (
+            nextStatus === 'completed' &&
+            !canCompleteByTime
+        ) {
+            setError(
+                'Podrás completar la reserva cuando llegue su horario.'
             )
             return
         }
@@ -120,8 +148,13 @@ export function BarberReservationStatusActions({
 
     return (
         <div className="mt-3 space-y-2">
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 {actions.map((action) => {
+
+                    const completionBlocked =
+                        action.status === 'completed' &&
+                        !canCompleteByTime
+
                     const isProcessing =
                         isPending &&
                         processingStatus === action.status

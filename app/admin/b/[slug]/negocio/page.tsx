@@ -4,18 +4,32 @@ import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-s
 import { getBusinessAdmin } from '@/src/features/business/api/get-business-admin'
 import { AdminBusinessForm } from '@/src/features/business/components/admin-business-form'
 import { canManageBusiness } from '@/src/features/auth/utils/admin-access'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 
 type AdminNegocioPageProps = {
     params: Promise<{
         slug: string
     }>
+    searchParams: Promise<{
+        from?: string
+    }>
 }
 
 export default async function AdminNegocioPage({
     params,
+    searchParams,
 }: AdminNegocioPageProps) {
-    const { slug } = await params
-    const supabase = await createClient()
+    const [
+        { slug },
+        query,
+    ] = await Promise.all([
+        params,
+        searchParams,
+    ])
+
+    const supabase =
+        await createClient()
 
     /*
      * 1. Validar sesión.
@@ -53,6 +67,11 @@ export default async function AdminNegocioPage({
      */
     const business = await getBusinessBySlug(slug)
 
+    const returnTo =
+        query.from === 'setup'
+            ? `/admin/b/${business.slug}`
+            : undefined
+
     if (profile.business_id !== business.id) {
         redirect('/admin')
     }
@@ -80,53 +99,21 @@ export default async function AdminNegocioPage({
                 ? 'Tu negocio está en modo solo lectura porque la suscripción está cancelada.'
                 : ''
 
-    const hasLogo = Boolean(
-        businessData.logo_url?.trim()
-    )
-
-    const hasCover = Boolean(
-        businessData.cover_url?.trim()
-    )
-
-    const hasWhatsApp = Boolean(
-        businessData.whatsapp_phone?.trim()
-    )
-
-    const hasAddress = Boolean(
-        businessData.address?.trim()
-    )
-    type BusinessTab =
-        | 'general'
-        | 'contact'
-        | 'images'
-
-    const BUSINESS_TABS: Array<{
-        id: BusinessTab
-        label: string
-        description: string
-    }> = [
-            {
-                id: 'general',
-                label: 'General',
-                description: 'Nombre e información pública',
-            },
-            {
-                id: 'contact',
-                label: 'Contacto',
-                description: 'Ubicación, WhatsApp y redes',
-            },
-            {
-                id: 'images',
-                label: 'Imágenes',
-                description: 'Logo y portada',
-            },
-        ]
-
     return (
-        <main className="min-h-screenpx-4 py-6 text-slate-950 md:px-8 md:py-8">
+        <main className="min-h-screen px-4 py-6 text-slate-950 md:px-8 md:py-8">
             <div className="mx-auto max-w-7xl space-y-6 md:space-y-8">
                 <header className="flex flex-col gap-5 border-b border-black/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
                     <div>
+                        ```tsx
+                        <Link
+                            href={`/admin/b/${business.slug}`}
+                            className="mb-3 inline-flex items-center gap-2 text-sm font-black text-[#8A5D16] transition hover:text-[#C8942E]"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Volver al dashboard
+                        </Link>
+                        ```
+
                         <p className="text-sm font-bold text-slate-500">
                             {businessData.name}
                         </p>
@@ -165,43 +152,13 @@ export default async function AdminNegocioPage({
                     <AdminBusinessForm
                         business={businessData}
                         canEdit={canEdit}
-                        subscriptionBlockReason={subscriptionBlockReason}
+                        subscriptionBlockReason={
+                            subscriptionBlockReason
+                        }
+                        returnTo={returnTo}
                     />
                 </section>
             </div>
         </main>
-    )
-}
-
-type StatusCardProps = {
-    label: string
-    ready: boolean
-    description: string
-}
-
-function StatusCard({
-    label,
-    ready,
-    description,
-}: StatusCardProps) {
-    return (
-        <article className="rounded-[26px] border border-black/10 bg-[#FFFCF4] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
-            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
-                {label}
-            </p>
-
-            <h2
-                className={`mt-3 text-2xl font-black ${ready
-                    ? 'text-emerald-700'
-                    : 'text-slate-950'
-                    }`}
-            >
-                {ready ? 'Listo' : 'Pendiente'}
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-                {description}
-            </p>
-        </article>
     )
 }

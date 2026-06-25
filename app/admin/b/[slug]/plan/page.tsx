@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/server'
 import { getBusinessBySlug } from '@/src/features/business/api/get-business-by-slug'
-import { canManageBusiness } from '@/src/features/auth/utils/admin-access'
 import {
     canManageCatalogWithSubscription,
     formatPlanLabel,
@@ -81,8 +80,17 @@ export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
         .eq('id', user.id)
         .single()
 
-    if (profileError || !profile || !canManageBusiness(profile.role)) {
+    if (
+        profileError ||
+        !profile?.business_id
+    ) {
         redirect('/admin')
+    }
+
+    if (profile.role !== 'owner') {
+        redirect(
+            `/admin/b/${slug}`
+        )
     }
 
     const business = await getBusinessBySlug(slug)
