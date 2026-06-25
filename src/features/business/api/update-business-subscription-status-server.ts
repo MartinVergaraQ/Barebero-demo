@@ -1,129 +1,196 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
-import { supabaseAdmin } from '@/src/lib/supabase/admin'
-import { getPlatformAdmin } from '@/src/features/auth/api/get-platform-admin'
+import {
+    revalidatePath,
+} from 'next/cache'
 
-type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'cancelled'
+import {
+    supabaseAdmin,
+} from '@/src/lib/supabase/admin'
+
+import {
+    getPlatformAdmin,
+} from '@/src/features/auth/api/get-platform-admin'
+
+type SubscriptionStatus =
+    | 'active'
+    | 'past_due'
+    | 'cancelled'
+
+type Input = {
+    businessId: string
+    status: SubscriptionStatus
+}
 
 type Result =
     | {
         ok: true
+        previousStatus: string
+        status: SubscriptionStatus
     }
     | {
         ok: false
         message: string
     }
 
-const ALLOWED_STATUSES: SubscriptionStatus[] = [
-    'trialing',
-    'active',
-    'past_due',
-    'cancelled',
-]
+type RpcResult = {
+    businessId: string
+    businessSlug: string
+    subscriptionId: string
+    planSlug: string
+    previousStatus: string
+    nextStatus: SubscriptionStatus
+    currentPeriodStart: string | null
+    currentPeriodEnd: string | null
+}
 
-function addOneMonth(date: Date) {
-    const next = new Date(date)
-    next.setMonth(next.getMonth() + 1)
-    return next
+const ALLOWED_STATUSES =
+    new Set<SubscriptionStatus>([
+        'active',
+        'past_due',
+        'cancelled',
+    ])
+
+function failure(
+    message: string
+): Result {
+    return {
+        ok: false,
+        message,
+    }
+}
+
+function isAllowedStatus(
+    value: unknown
+): value is SubscriptionStatus {
+    return (
+        typeof value === 'string' &&
+        ALLOWED_STATUSES.has(
+            value as SubscriptionStatus
+        )
+    )
 }
 
 export async function updateBusinessSubscriptionStatusServer({
     businessId,
     status,
-}: {
-    businessId: string
-    status: SubscriptionStatus
-}): Promise<Result> {
-    const platformAdmin = await getPlatformAdmin()
+}: Input): Promise<Result> {
+    /*
+     * 1. Validar sesión de superadmin.
+     */
+    const platformAdmin =
+        await getPlatformAdmin()
 
     if (!platformAdmin) {
-        return {
-            ok: false,
-            message: 'No autorizado como administrador de plataforma',
+        return failure(
+            'No autorizado como administrador de plataforma'
+        )
+    }
+
+    /*
+     * 2. Validar parámetros.
+     */
+    const normalizedBusinessId =
+        typeof businessId === 'string'
+            ? businessId.trim()
+            : ''
+
+    if (!normalizedBusinessId) {
+        return failure(
+            'Negocio no válido'
+        )
+    }
+
+    if (!isAllowedStatus(status)) {
+        return failure(
+            'Estado de suscripción no válido'
+        )
+    }
+
+    /*
+     * 3. Ejecutar cambio atómico.
+     */
+    const {
+        data,
+        error,
+    } = await supabaseAdmin.rpc(
+        'apply_manual_subscription_status_change',
+        {
+            p_business_id:
+                normalizedBusinessId,
+
+            p_next_status:
+                status,
+
+            p_platform_admin_id:
+                platformAdmin.id,
         }
+    )
+
+    if (error) {
+        console.error(
+            'Error aplicando cambio manual de suscripción:',
+            error
+        )
+
+        const knownMessages = [
+            'Negocio no encontrado',
+            'Estado de suscripción no permitido',
+            'Administrador de plataforma no válido',
+            'La suscripción ya tiene el estado solicitado',
+        ]
+
+        const knownMessage =
+            knownMessages.find(
+                (message) =>
+                    error.message.includes(
+                        message
+                    )
+            )
+
+        return failure(
+            knownMessage ??
+            'No se pudo actualizar la suscripción'
+        )
     }
 
-    if (!ALLOWED_STATUSES.includes(status)) {
-        return {
-            ok: false,
-            message: 'Estado de suscripción no válido',
-        }
+    const result =
+        data as RpcResult | null
+
+    if (!result) {
+        return failure(
+            'La operación no devolvió un resultado válido'
+        )
     }
 
-    const { data: business, error: businessError } = await supabaseAdmin
-        .from('businesses')
-        .select('id, slug, plan_slug')
-        .eq('id', businessId)
-        .single()
+    /*
+     * 4. Revalidar las pantallas relacionadas.
+     */
+    revalidatePath(
+        '/superadmin/businesses'
+    )
 
-    if (businessError || !business) {
-        return {
-            ok: false,
-            message: 'Negocio no encontrado',
-        }
-    }
+    revalidatePath(
+        `/superadmin/businesses/${normalizedBusinessId}`
+    )
 
-    const now = new Date()
-    const nextPeriodEnd = addOneMonth(now)
+    revalidatePath(
+        '/admin',
+        'layout'
+    )
 
-    const { error: updateBusinessError } = await supabaseAdmin
-        .from('businesses')
-        .update({
-            subscription_status: status,
-        })
-        .eq('id', businessId)
+    revalidatePath(
+        `/admin/b/${result.businessSlug}/plan`
+    )
 
-    if (updateBusinessError) {
-        return {
-            ok: false,
-            message: updateBusinessError.message,
-        }
-    }
-
-    const subscriptionPayload: Record<string, unknown> = {
-        business_id: businessId,
-        plan_slug: business.plan_slug,
-        status,
-        provider: 'manual',
-        currency: 'CLP',
-        updated_at: now.toISOString(),
-    }
-
-    if (status === 'active') {
-        subscriptionPayload.current_period_start = now.toISOString()
-        subscriptionPayload.current_period_end = nextPeriodEnd.toISOString()
-        subscriptionPayload.cancel_at_period_end = false
-    }
-
-    if (status === 'trialing') {
-        subscriptionPayload.trial_ends_at = nextPeriodEnd.toISOString()
-        subscriptionPayload.cancel_at_period_end = false
-    }
-
-    if (status === 'cancelled') {
-        subscriptionPayload.cancel_at_period_end = true
-    }
-
-    const { error: subscriptionError } = await supabaseAdmin
-        .from('business_subscriptions')
-        .upsert(subscriptionPayload, {
-            onConflict: 'business_id',
-        })
-
-    if (subscriptionError) {
-        return {
-            ok: false,
-            message:
-                'El estado del negocio cambió, pero no se pudo sincronizar la suscripción',
-        }
-    }
-
-    revalidatePath('/superadmin/businesses')
-    revalidatePath(`/superadmin/businesses/${businessId}`)
-    revalidatePath(`/admin/b/${business.slug}/plan`)
+    revalidatePath(
+        `/b/${result.businessSlug}`
+    )
 
     return {
         ok: true,
+        previousStatus:
+            result.previousStatus,
+        status,
     }
 }

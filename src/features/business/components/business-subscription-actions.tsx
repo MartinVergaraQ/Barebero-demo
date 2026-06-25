@@ -6,7 +6,10 @@ import { toast } from 'sonner'
 import { ConfirmDialog } from '@/src/components/ui/confirm-dialog'
 import { updateBusinessSubscriptionStatusServer } from '@/src/features/business/api/update-business-subscription-status-server'
 
-type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'cancelled'
+type ManualSubscriptionStatus =
+    | 'active'
+    | 'past_due'
+    | 'cancelled'
 
 type Props = {
     businessId: string
@@ -15,7 +18,7 @@ type Props = {
 }
 
 type ActionConfig = {
-    status: SubscriptionStatus
+    status: ManualSubscriptionStatus
     label: string
     title: string
     description: string
@@ -51,7 +54,9 @@ const ACTIONS: ActionConfig[] = [
     },
 ]
 
-function getButtonClass(status: SubscriptionStatus) {
+function getButtonClass(
+    status: ManualSubscriptionStatus
+) {
     if (status === 'active') {
         return 'bg-emerald-600 text-white hover:bg-emerald-700'
     }
@@ -77,6 +82,10 @@ export function BusinessSubscriptionActions({
     const [selectedAction, setSelectedAction] = useState<ActionConfig | null>(
         null
     )
+    const normalizedCurrentStatus =
+        currentStatus
+            .trim()
+            .toLowerCase()
 
     function handleConfirm() {
         if (!selectedAction) return
@@ -105,7 +114,11 @@ export function BusinessSubscriptionActions({
     return (
         <>
             <div className="grid grid-cols-2 gap-2">
-                {ACTIONS.filter((action) => currentStatus !== action.status).map((action) => {
+                {ACTIONS.filter(
+                    (action) =>
+                        normalizedCurrentStatus !==
+                        action.status
+                ).map((action) => {
                     return (
                         <button
                             key={action.status}

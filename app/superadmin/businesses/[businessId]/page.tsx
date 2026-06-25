@@ -36,6 +36,58 @@ function formatDate(value?: string | null) {
     return `${day}-${month}-${year}`
 }
 
+function formatHistoryStatus(
+    value?: string | null
+) {
+    if (!value) {
+        return 'Sin estado anterior'
+    }
+
+    if (value === 'trialing') {
+        return 'Período de prueba'
+    }
+
+    if (value === 'active') {
+        return 'Activa'
+    }
+
+    if (value === 'past_due') {
+        return 'Pago pendiente'
+    }
+
+    if (value === 'cancelled') {
+        return 'Cancelada'
+    }
+
+    return value
+}
+
+function formatHistorySource(
+    value?: string | null
+) {
+    if (value === 'platform_admin') {
+        return 'Superadmin'
+    }
+
+    if (value === 'payment') {
+        return 'Pago'
+    }
+
+    if (value === 'cron') {
+        return 'Automático'
+    }
+
+    if (value === 'business') {
+        return 'Negocio'
+    }
+
+    if (value === 'creation') {
+        return 'Creación'
+    }
+
+    return 'Sistema'
+}
+
 function getStatusClasses(status?: string | null) {
     if (status === 'active') {
         return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
@@ -153,18 +205,32 @@ export default async function SuperadminBusinessDetailPage({
             .limit(4),
 
         supabaseAdmin
-            .from('business_plan_history')
+            .from(
+                'business_subscription_history'
+            )
             .select(
                 `
-                id,
-                previous_plan_slug,
-                next_plan_slug,
-                created_at
-            `
+        id,
+        previous_plan_slug,
+        next_plan_slug,
+        previous_status,
+        next_status,
+        change_source,
+        reason,
+        created_at
+    `
             )
-            .eq('business_id', businessId)
-            .order('created_at', { ascending: false })
-            .limit(6),
+            .eq(
+                'business_id',
+                businessId
+            )
+            .order(
+                'created_at',
+                {
+                    ascending: false,
+                }
+            )
+            .limit(10),
 
         supabaseAdmin
             .from('payments')
@@ -439,29 +505,74 @@ export default async function SuperadminBusinessDetailPage({
                                 </p>
                             ) : (
                                 <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
-                                    {history.map((item, index) => (
-                                        <div
-                                            key={item.id}
-                                            className={`px-3 py-2 ${index !== history.length - 1
-                                                ? 'border-b border-black/10'
-                                                : ''
-                                                }`}
-                                        >
-                                            <p className="text-xs font-black text-slate-950">
-                                                {formatPlanLabel(
-                                                    item.previous_plan_slug
-                                                )}{' '}
-                                                <span className="text-slate-400">→</span>{' '}
-                                                {formatPlanLabel(
-                                                    item.next_plan_slug
-                                                )}
-                                            </p>
+                                    {history.map(
+                                        (item, index) => {
+                                            const planChanged =
+                                                item.previous_plan_slug !==
+                                                item.next_plan_slug
 
-                                            <p className="mt-1 text-xs font-semibold text-slate-500">
-                                                {formatDate(item.created_at)}
-                                            </p>
-                                        </div>
-                                    ))}
+                                            return (
+                                                <div
+                                                    key={item.id}
+                                                    className={`px-3 py-3 ${index !==
+                                                            history.length - 1
+                                                            ? 'border-b border-black/10'
+                                                            : ''
+                                                        }`}
+                                                >
+                                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                                        <div>
+                                                            <p className="text-xs font-black text-slate-950">
+                                                                {formatHistoryStatus(
+                                                                    item.previous_status
+                                                                )}{' '}
+                                                                <span className="text-slate-400">
+                                                                    →
+                                                                </span>{' '}
+                                                                {formatHistoryStatus(
+                                                                    item.next_status
+                                                                )}
+                                                            </p>
+
+                                                            {planChanged && (
+                                                                <p className="mt-1 text-xs font-bold text-[#8A5D16]">
+                                                                    {item.previous_plan_slug
+                                                                        ? formatPlanLabel(
+                                                                            item.previous_plan_slug
+                                                                        )
+                                                                        : 'Sin plan'}{' '}
+                                                                    <span className="text-slate-400">
+                                                                        →
+                                                                    </span>{' '}
+                                                                    {formatPlanLabel(
+                                                                        item.next_plan_slug
+                                                                    )}
+                                                                </p>
+                                                            )}
+                                                        </div>
+
+                                                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-600">
+                                                            {formatHistorySource(
+                                                                item.change_source
+                                                            )}
+                                                        </span>
+                                                    </div>
+
+                                                    {item.reason && (
+                                                        <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
+                                                            {item.reason}
+                                                        </p>
+                                                    )}
+
+                                                    <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                                                        {formatDate(
+                                                            item.created_at
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            )
+                                        }
+                                    )}
                                 </div>
                             )}
                         </div>
