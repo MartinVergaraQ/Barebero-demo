@@ -39,6 +39,15 @@ export function RegisterManualPaymentButton({
     const amount = useMemo(() => parseAmount(amountInput), [amountInput])
 
     function handleConfirm() {
+        if (
+            !Number.isSafeInteger(amount) ||
+            amount <= 0
+        ) {
+            toast.error(
+                'Ingresa un monto entero mayor a 0'
+            )
+            return
+        }
         startTransition(async () => {
             try {
                 const result = await registerManualPaymentServer({
@@ -64,7 +73,12 @@ export function RegisterManualPaymentButton({
         <>
             <button
                 type="button"
-                onClick={() => setIsOpen(true)}
+                onClick={() => {
+                    setAmountInput(
+                        String(defaultAmount || '')
+                    )
+                    setIsOpen(true)
+                }}
                 disabled={isPending}
                 className="inline-flex h-8 w-full items-center justify-center rounded-xl bg-slate-950 px-3 text-[11px] font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >

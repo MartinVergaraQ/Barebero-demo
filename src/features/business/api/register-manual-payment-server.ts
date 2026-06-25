@@ -14,9 +14,12 @@ type Result =
     }
 
 type ManualPaymentRpcRow = {
+    payment_id: string
     business_id: string
     business_slug: string
     subscription_id: string
+    previous_status: string
+    next_status: string
     period_start: string
     period_end: string
 }
@@ -24,6 +27,29 @@ type ManualPaymentRpcRow = {
 function getPaymentErrorMessage(
     errorMessage?: string | null
 ) {
+    if (
+        errorMessage?.includes(
+            'BUSINESS_ID_REQUIRED'
+        )
+    ) {
+        return 'Negocio no válido'
+    }
+
+    if (
+        errorMessage?.includes(
+            'PLATFORM_ADMIN_NOT_FOUND'
+        )
+    ) {
+        return 'El administrador de plataforma no es válido'
+    }
+
+    if (
+        errorMessage?.includes(
+            'SUBSCRIPTION_OUT_OF_SYNC'
+        )
+    ) {
+        return 'El plan del negocio y la suscripción no están sincronizados'
+    }
     if (
         errorMessage?.includes(
             'BUSINESS_NOT_FOUND'
@@ -104,7 +130,12 @@ export async function registerManualPaymentServer({
         {
             p_business_id:
                 normalizedBusinessId,
-            p_amount: amount,
+
+            p_amount:
+                amount,
+
+            p_platform_admin_id:
+                platformAdmin.id,
         }
     )
 
@@ -123,13 +154,19 @@ export async function registerManualPaymentServer({
         }
     }
 
+    const rawResult =
+        Array.isArray(data)
+            ? data[0]
+            : data
+
     const result =
-        Array.isArray(data) && data.length > 0
-            ? (data[0] as ManualPaymentRpcRow)
-            : null
+        rawResult as
+        | ManualPaymentRpcRow
+        | null
 
     if (
-        !result?.business_id ||
+        !result?.payment_id ||
+        !result.business_id ||
         !result.business_slug ||
         !result.subscription_id
     ) {
@@ -154,11 +191,20 @@ export async function registerManualPaymentServer({
     )
 
     revalidatePath(
+        `/admin/b/${result.business_slug}`
+    )
+
+    revalidatePath(
         `/admin/b/${result.business_slug}/plan`
     )
 
     revalidatePath(
-        `/admin/b/${result.business_slug}`
+        `/admin/b/${result.business_slug}/plan/historial`
+    )
+
+    revalidatePath(
+        '/admin',
+        'layout'
     )
 
     return {

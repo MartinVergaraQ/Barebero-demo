@@ -137,7 +137,7 @@ export function PlanRequestActions({
 
     return (
         <>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="grid grid-cols-2 gap-2">
                 <button
                     type="button"
                     onClick={() =>

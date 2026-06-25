@@ -1,9 +1,16 @@
-
 'use server'
 
-import { revalidatePath } from 'next/cache'
-import { supabaseAdmin } from '@/src/lib/supabase/admin'
-import { getPlatformAdmin } from '@/src/features/auth/api/get-platform-admin'
+import {
+    revalidatePath,
+} from 'next/cache'
+
+import {
+    supabaseAdmin,
+} from '@/src/lib/supabase/admin'
+
+import {
+    getPlatformAdmin,
+} from '@/src/features/auth/api/get-platform-admin'
 
 type Result =
     | {
@@ -20,6 +27,11 @@ type ApprovePlanRpcRow = {
     business_slug: string
     previous_plan_slug: string
     next_plan_slug: string
+}
+
+type BusinessRelation = {
+    id: string
+    slug: string
 }
 
 function normalizeRequestId(
@@ -40,9 +52,71 @@ function getSingleRelation<T>(
     return value
 }
 
+function revalidatePlanViews({
+    businessId,
+    businessSlug,
+}: {
+    businessId: string
+    businessSlug: string
+}) {
+    revalidatePath(
+        '/superadmin/plan-requests'
+    )
+
+    revalidatePath(
+        '/superadmin/businesses'
+    )
+
+    revalidatePath(
+        `/superadmin/businesses/${businessId}`
+    )
+
+    revalidatePath(
+        `/admin/b/${businessSlug}`
+    )
+
+    revalidatePath(
+        `/admin/b/${businessSlug}/plan`
+    )
+
+    revalidatePath(
+        `/admin/b/${businessSlug}/plan/cambiar`
+    )
+
+    revalidatePath(
+        `/admin/b/${businessSlug}/plan/historial`
+    )
+
+    /*
+     * Actualiza sidebar, dashboards y datos
+     * compartidos del panel administrativo.
+     */
+    revalidatePath(
+        '/admin',
+        'layout'
+    )
+}
+
 function getApproveErrorMessage(
     message?: string | null
 ) {
+
+    if (
+        message?.includes(
+            'SUBSCRIPTION_OUT_OF_SYNC'
+        )
+    ) {
+        return 'El plan del negocio y el plan de la suscripción no están sincronizados. Debes corregirlos antes de aprobar la solicitud.'
+    }
+
+    if (
+        message?.includes(
+            'BUSINESS_NOT_FOUND'
+        )
+    ) {
+        return 'No se encontró el negocio asociado a la solicitud'
+    }
+
     if (
         message?.includes(
             'REQUEST_NOT_FOUND'
@@ -102,19 +176,39 @@ function getApproveErrorMessage(
         return 'El plan asociado a la solicitud no es válido'
     }
 
+    if (
+        message?.includes(
+            'SUBSCRIPTION_NOT_FOUND'
+        )
+    ) {
+        return 'No se encontró la suscripción del negocio'
+    }
+
+    if (
+        message?.includes(
+            'PLATFORM_ADMIN_NOT_FOUND'
+        )
+    ) {
+        return 'El administrador de plataforma no es válido'
+    }
+
     return 'No se pudo aprobar la solicitud de cambio de plan'
 }
+
 export async function rejectPlanChangeRequestServer(
     requestId: string,
     adminNote?: string
 ): Promise<Result> {
     const normalizedRequestId =
-        normalizeRequestId(requestId)
+        normalizeRequestId(
+            requestId
+        )
 
     if (!normalizedRequestId) {
         return {
             ok: false,
-            message: 'Solicitud no válida',
+            message:
+                'Solicitud no válida',
         }
     }
 
@@ -133,18 +227,32 @@ export async function rejectPlanChangeRequestServer(
         data: request,
         error: requestError,
     } = await supabaseAdmin
-        .from('plan_change_requests')
-        .select(`
-    id,
-        status,
-        businesses: business_id(
-            slug
+        .from(
+            'plan_change_requests'
         )
-            `)
-        .eq('id', normalizedRequestId)
+        .select(`
+            id,
+            status,
+            businesses:business_id (
+                id,
+                slug
+            )
+        `)
+        .eq(
+            'id',
+            normalizedRequestId
+        )
         .maybeSingle()
 
-    if (requestError || !request) {
+    if (
+        requestError ||
+        !request
+    ) {
+        console.error(
+            'Error cargando solicitud para rechazo:',
+            requestError
+        )
+
         return {
             ok: false,
             message:
@@ -152,7 +260,10 @@ export async function rejectPlanChangeRequestServer(
         }
     }
 
-    if (request.status !== 'pending') {
+    if (
+        request.status !==
+        'pending'
+    ) {
         return {
             ok: false,
             message:
@@ -162,10 +273,16 @@ export async function rejectPlanChangeRequestServer(
 
     const business =
         getSingleRelation(
-            request.businesses
+            request.businesses as
+            | BusinessRelation
+            | BusinessRelation[]
+            | null
         )
 
-    if (!business?.slug) {
+    if (
+        !business?.id ||
+        !business.slug
+    ) {
         return {
             ok: false,
             message:
@@ -180,31 +297,46 @@ export async function rejectPlanChangeRequestServer(
                 .slice(0, 500)
             : ''
 
+    /*
+     * La condición status=pending evita que dos
+     * administradores resuelvan la solicitud.
+     */
     const {
         data: rejectedRequest,
         error: rejectError,
     } = await supabaseAdmin
-        .from('plan_change_requests')
+        .from(
+            'plan_change_requests'
+        )
         .update({
-            status: 'rejected',
+            status:
+                'rejected',
+
             admin_note:
                 normalizedAdminNote ||
                 null,
-            resolved_at:
-                new Date().toISOString(),
 
-            /*
-             * resolved_by referencia profiles.id.
-             * El superadministrador se registra en
-             * resolved_by_platform_admin.
-             */
-            resolved_by: null,
+            resolved_at:
+                new Date()
+                    .toISOString(),
+
+            resolved_by:
+                null,
+
             resolved_by_platform_admin:
                 platformAdmin.id,
         })
-        .eq('id', request.id)
-        .eq('status', 'pending')
-        .select('id')
+        .eq(
+            'id',
+            request.id
+        )
+        .eq(
+            'status',
+            'pending'
+        )
+        .select(
+            'id'
+        )
         .maybeSingle()
 
     if (rejectError) {
@@ -220,10 +352,6 @@ export async function rejectPlanChangeRequestServer(
         }
     }
 
-    /*
-     * Evita que dos administradores resuelvan
-     * simultáneamente la misma solicitud.
-     */
     if (!rejectedRequest) {
         return {
             ok: false,
@@ -232,13 +360,16 @@ export async function rejectPlanChangeRequestServer(
         }
     }
 
-    revalidatePath(
-        '/superadmin/plan-requests'
-    )
-
-    revalidatePath(
-        `/ admin / b / ${business.slug}/plan`
-    )
+    /*
+     * Un rechazo no modifica la suscripción,
+     * por lo que no inserta historial de cambios.
+     */
+    revalidatePlanViews({
+        businessId:
+            business.id,
+        businessSlug:
+            business.slug,
+    })
 
     return {
         ok: true,
@@ -249,12 +380,15 @@ export async function approvePlanChangeRequestServer(
     requestId: string
 ): Promise<Result> {
     const normalizedRequestId =
-        normalizeRequestId(requestId)
+        normalizeRequestId(
+            requestId
+        )
 
     if (!normalizedRequestId) {
         return {
             ok: false,
-            message: 'Solicitud no válida',
+            message:
+                'Solicitud no válida',
         }
     }
 
@@ -269,6 +403,10 @@ export async function approvePlanChangeRequestServer(
         }
     }
 
+    /*
+     * La aprobación completa debe ocurrir dentro
+     * de la RPC para que sea transaccional.
+     */
     const {
         data,
         error,
@@ -278,10 +416,6 @@ export async function approvePlanChangeRequestServer(
             p_request_id:
                 normalizedRequestId,
 
-            /*
-             * Debe ser platform_admins.id,
-             * no auth.users.id.
-             */
             p_platform_admin_id:
                 platformAdmin.id,
         }
@@ -302,11 +436,19 @@ export async function approvePlanChangeRequestServer(
         }
     }
 
+    /*
+     * Soporta una RPC que retorne TABLE
+     * o un único objeto JSON.
+     */
+    const rawResult =
+        Array.isArray(data)
+            ? data[0]
+            : data
+
     const result =
-        Array.isArray(data) &&
-            data.length > 0
-            ? (data[0] as ApprovePlanRpcRow)
-            : null
+        rawResult as
+        | ApprovePlanRpcRow
+        | null
 
     if (
         !result?.request_id ||
@@ -325,22 +467,15 @@ export async function approvePlanChangeRequestServer(
         }
     }
 
-    revalidatePath(
-        '/superadmin/plan-requests'
-    )
+    revalidatePlanViews({
+        businessId:
+            result.business_id,
 
-    revalidatePath(
-        `/ superadmin / businesses / ${result.business_id} `
-    )
-
-    revalidatePath(
-        `/ admin / b / ${result.business_slug}/plan`
-    )
+        businessSlug:
+            result.business_slug,
+    })
 
     return {
         ok: true,
     }
-
-
 }
-
