@@ -13,6 +13,10 @@ type AdminPlanPageProps = {
     params: Promise<{
         slug: string
     }>
+
+    searchParams: Promise<{
+        webpay?: string | string[]
+    }>
 }
 
 type SubscriptionHistoryItem = {
@@ -122,8 +126,27 @@ function formatCurrency(
     ).format(amount)
 }
 
-export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
+function getSingleSearchParam(
+    value?: string | string[]
+) {
+    return Array.isArray(value)
+        ? value[0]
+        : value
+}
+
+export default async function AdminPlanPage({
+    params,
+    searchParams,
+}: AdminPlanPageProps) {
     const { slug } = await params
+
+    const resolvedSearchParams =
+        await searchParams
+
+    const webpayResult =
+        getSingleSearchParam(
+            resolvedSearchParams.webpay
+        )
     const supabase = await createClient()
 
     const {
@@ -361,6 +384,116 @@ export default async function AdminPlanPage({ params }: AdminPlanPageProps) {
                         </div>
                     </div>
                 </header>
+                {webpayResult === 'success' && (
+                    <section
+                        aria-live="polite"
+                        className="overflow-hidden rounded-[28px] border border-emerald-200 bg-emerald-50 shadow-[0_18px_45px_rgba(15,23,42,0.07)]"
+                    >
+                        <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
+                            <div className="flex items-start gap-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-2xl text-white shadow-sm">
+                                    ✓
+                                </div>
+
+                                <div>
+                                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">
+                                        Pago confirmado
+                                    </p>
+
+                                    <h2 className="mt-1 text-2xl font-black text-emerald-950">
+                                        ¡Gracias por tu pago!
+                                    </h2>
+
+                                    <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-emerald-800">
+                                        Tu suscripción fue activada correctamente y ya recuperaste el acceso completo a BarberTurn.
+                                    </p>
+
+                                    {subscription?.current_period_end && (
+                                        <p className="mt-2 text-sm font-black text-emerald-950">
+                                            Próxima renovación:{' '}
+                                            {formatShortDateTime(
+                                                subscription.current_period_end
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <Link
+                                href={`/admin/b/${business.slug}/plan`}
+                                className="inline-flex h-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-300 bg-white px-5 text-sm font-black text-emerald-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-100 active:scale-[0.98]"
+                            >
+                                Entendido
+                            </Link>
+                        </div>
+                    </section>
+                )}
+                {webpayResult === 'aborted' && (
+                    <section
+                        aria-live="polite"
+                        className="rounded-[24px] border border-amber-200 bg-amber-50 p-5"
+                    >
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm font-black text-amber-950">
+                                    Pago cancelado
+                                </p>
+
+                                <p className="mt-1 text-sm font-semibold text-amber-800">
+                                    El pago fue cancelado antes de completarse. No se realizó ningún cobro.
+                                </p>
+                            </div>
+
+                            <Link
+                                href={`/admin/b/${business.slug}/plan/regularizar`}
+                                className="inline-flex h-10 items-center justify-center rounded-2xl bg-amber-600 px-5 text-sm font-black text-white"
+                            >
+                                Intentar nuevamente
+                            </Link>
+                        </div>
+                    </section>
+                )}
+
+                {webpayResult === 'failed' && (
+                    <section
+                        aria-live="polite"
+                        className="rounded-[24px] border border-red-200 bg-red-50 p-5"
+                    >
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm font-black text-red-950">
+                                    No se pudo completar el pago
+                                </p>
+
+                                <p className="mt-1 text-sm font-semibold text-red-800">
+                                    Webpay no autorizó la operación. Revisa los datos e inténtalo nuevamente.
+                                </p>
+                            </div>
+
+                            <Link
+                                href={`/admin/b/${business.slug}/plan/regularizar`}
+                                className="inline-flex h-10 items-center justify-center rounded-2xl bg-red-600 px-5 text-sm font-black text-white"
+                            >
+                                Volver a pagar
+                            </Link>
+                        </div>
+                    </section>
+                )}
+
+                {webpayResult === 'review' && (
+                    <section
+                        aria-live="polite"
+                        className="rounded-[24px] border border-blue-200 bg-blue-50 p-5"
+                    >
+                        <p className="text-sm font-black text-blue-950">
+                            Estamos verificando tu pago
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold leading-6 text-blue-800">
+                            Webpay respondió, pero no pudimos completar la actualización automática. No realices otro pago hasta revisar el estado.
+                        </p>
+                    </section>
+                )}
 
                 <section className="overflow-hidden rounded-[32px] border border-black/10 bg-[#FFFCF4] shadow-[0_22px_55px_rgba(15,23,42,0.08)]">
                     <div className="grid lg:grid-cols-[0.92fr_1.08fr]">

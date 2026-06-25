@@ -132,6 +132,7 @@ async function handleAbortedReturn({
     request: NextRequest
     formData: FormData
 }) {
+
     const buyOrder =
         getString(
             formData.get(
@@ -501,31 +502,35 @@ export async function POST(
         }
 
         /*
-         * Webpay autorizó, pero los datos no
-         * coinciden con la orden local.
-         *
-         * Requiere revisión; no debemos activar
-         * automáticamente la suscripción.
+         * Webpay autorizó el pago, pero los datos
+         * no coinciden con el intento creado localmente.
          */
         if (!identifiersMatch) {
             await supabaseAdmin
-                .from(
-                    'webpay_transactions'
-                )
+                .from('webpay_transactions')
                 .update({
-                    status:
-                        'review_required',
+                    status: 'review_required',
 
                     response_code:
                         responseCode,
 
                     authorization_code:
-                        authorizationCode ||
-                        null,
+                        authorizationCode || null,
 
                     payment_type_code:
-                        paymentTypeCode ||
-                        null,
+                        paymentTypeCode || null,
+
+                    installments_number:
+                        installmentsNumber,
+
+                    card_number_masked:
+                        cardNumber || null,
+
+                    accounting_date:
+                        accountingDate || null,
+
+                    transaction_date:
+                        transactionDate || null,
 
                     commit_response:
                         commitJson,
@@ -534,26 +539,20 @@ export async function POST(
                         'Webpay autorizó el pago, pero los datos no coinciden con el intento local',
 
                     committed_at:
-                        new Date()
-                            .toISOString(),
+                        new Date().toISOString(),
 
                     updated_at:
-                        new Date()
-                            .toISOString(),
+                        new Date().toISOString(),
                 })
-                .eq(
-                    'id',
-                    attempt.id
-                )
+                .eq('id', attempt.id)
+                .neq('status', 'authorized')
 
             return redirectResult({
                 request,
                 slug,
-                result:
-                    'review',
+                result: 'review',
             })
         }
-
         /*
          * Confirmación y actualización local
          * completamente atómica.
@@ -686,6 +685,48 @@ export async function POST(
             'Error ejecutando commit Webpay:',
             error
         )
+
+        const errorMessage =
+            error instanceof Error
+                ? error.message
+                : 'Error desconocido durante commit'
+
+        const normalizedError =
+            errorMessage.toLowerCase()
+
+        /*
+         * Cuando Transbank indica que la transacción
+         * terminó abortada, no requiere revisión.
+         */
+        const transactionWasAborted =
+            normalizedError.includes(
+                'invalid finished state: aborted'
+            ) ||
+            normalizedError.includes(
+                'finished state: aborted'
+            )
+
+        if (transactionWasAborted) {
+            await supabaseAdmin
+                .from('webpay_transactions')
+                .update({
+                    status: 'aborted',
+
+                    error_message:
+                        'Pago cancelado o abandonado por el usuario',
+
+                    updated_at:
+                        new Date().toISOString(),
+                })
+                .eq('id', attempt.id)
+                .neq('status', 'authorized')
+
+            return redirectResult({
+                request,
+                slug,
+                result: 'aborted',
+            })
+        }
 
         /*
          * Una excepción de red no confirma que
