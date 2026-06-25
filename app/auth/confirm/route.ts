@@ -1,6 +1,7 @@
 import {
     type EmailOtpType,
 } from '@supabase/supabase-js'
+
 import {
     NextResponse,
     type NextRequest,
@@ -10,18 +11,24 @@ import {
     createClient,
 } from '@/src/lib/supabase/server'
 
-function getSafeNextPath(
-    value: string | null
+function getDestination(
+    type: EmailOtpType
 ) {
-    if (
-        !value ||
-        !value.startsWith('/') ||
-        value.startsWith('//')
-    ) {
-        return '/auth/set-password'
+    if (type === 'recovery') {
+        return '/auth/reset-password'
     }
 
-    return value
+    return '/auth/set-password'
+}
+
+function getErrorCode(
+    type: EmailOtpType | null
+) {
+    if (type === 'recovery') {
+        return 'invalid_recovery'
+    }
+
+    return 'invalid_invitation'
 }
 
 export async function GET(
@@ -37,16 +44,14 @@ export async function GET(
             'type'
         ) as EmailOtpType | null
 
-    const nextPath =
-        getSafeNextPath(
-            request.nextUrl.searchParams.get(
-                'next'
-            )
-        )
+    const supportedType =
+        type === 'invite' ||
+        type === 'recovery'
 
     if (
         tokenHash &&
-        type === 'invite'
+        type &&
+        supportedType
     ) {
         const supabase =
             await createClient()
@@ -61,14 +66,14 @@ export async function GET(
         if (!error) {
             return NextResponse.redirect(
                 new URL(
-                    nextPath,
+                    getDestination(type),
                     request.url
                 )
             )
         }
 
         console.error(
-            'Error verificando invitación:',
+            `Error verificando enlace ${type}:`,
             error
         )
     }
@@ -81,11 +86,10 @@ export async function GET(
 
     errorUrl.searchParams.set(
         'error',
-        'invalid_invitation'
+        getErrorCode(type)
     )
 
     return NextResponse.redirect(
         errorUrl
     )
 }
-

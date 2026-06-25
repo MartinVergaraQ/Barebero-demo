@@ -13,6 +13,9 @@ import {
     formatSubscriptionStatus,
     normalizeSubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
+import {
+    WebpayPaymentButton,
+} from '@/src/features/business/components/webpay-payment-button'
 
 type PageProps = {
     params: Promise<{
@@ -359,16 +362,19 @@ export default async function RegularizeSubscriptionPage({
 
                         <div className="my-5 border-t border-black/10" />
 
-                        <button
-                            type="button"
-                            disabled
-                            className="inline-flex h-12 w-full cursor-not-allowed items-center justify-center rounded-2xl bg-slate-300 px-4 text-sm font-black text-slate-600"
-                        >
-                            Continuar al pago
-                        </button>
+                        <WebpayPaymentButton
+                            businessSlug={
+                                business.slug
+                            }
+                            label={
+                                isCancelled
+                                    ? 'Pagar y reactivar'
+                                    : 'Pagar y regularizar'
+                            }
+                        />
 
                         <p className="mt-3 text-center text-xs font-semibold leading-5 text-slate-500">
-                            El botón se habilitará cuando conectemos el proveedor de pagos.
+                            Serás redirigido al sitio seguro de Webpay para completar el pago.
                         </p>
                     </aside>
                 </section>

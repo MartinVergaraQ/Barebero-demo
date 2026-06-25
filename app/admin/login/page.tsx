@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/src/lib/supabase/browser'
 import { LockKeyhole, Mail, ShieldCheck, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 
 const PRIMARY = '#C8942E'
 
@@ -232,6 +233,14 @@ export default function AdminLoginPage() {
                                         />
                                     </div>
                                 </label>
+                                <div className="flex justify-end">
+                                    <Link
+                                        href="/admin/olvide-contrasena"
+                                        className="text-xs font-black text-[#C8942E] transition hover:text-[#E7B957]"
+                                    >
+                                        ¿Olvidaste tu contraseña?
+                                    </Link>
+                                </div>
 
                                 <button
                                     type="submit"
