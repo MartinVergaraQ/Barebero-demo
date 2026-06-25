@@ -731,3 +731,74 @@ export async function POST(
         })
     }
 }
+
+const WEBPAY_RETURN_QUERY_KEYS = [
+    'token_ws',
+    'TBK_TOKEN',
+    'TBK_ORDEN_COMPRA',
+    'TBK_ID_SESION',
+] as const
+
+export async function GET(
+    request: NextRequest
+) {
+    const body =
+        new URLSearchParams()
+
+    for (
+        const key of
+        WEBPAY_RETURN_QUERY_KEYS
+    ) {
+        const value =
+            request.nextUrl
+                .searchParams
+                .get(key)
+
+        if (value) {
+            body.set(
+                key,
+                value
+            )
+        }
+    }
+
+    /*
+     * No llegó ningún parámetro reconocido
+     * desde Webpay.
+     */
+    if (
+        Array.from(
+            body.keys()
+        ).length === 0
+    ) {
+        return redirectResult({
+            request,
+            result: 'failed',
+        })
+    }
+
+    /*
+     * Convertimos la devolución GET en una
+     * solicitud POST interna para reutilizar
+     * toda la validación, commit e idempotencia.
+     */
+    const forwardedRequest =
+        new NextRequest(
+            request.url,
+            {
+                method: 'POST',
+
+                headers: {
+                    'content-type':
+                        'application/x-www-form-urlencoded',
+                },
+
+                body:
+                    body.toString(),
+            }
+        )
+
+    return POST(
+        forwardedRequest
+    )
+}
