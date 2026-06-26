@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/src/lib/supabase/server'
+import { supabaseAdmin } from '@/src/lib/supabase/admin'
 import type { CreateAppointmentInput } from './components/schemas/types/booking'
 import {
     normalizeWhitespace,
@@ -78,9 +78,10 @@ export async function createAppointmentServer(
             audience: 'public',
         })
 
-    const supabase = await createClient()
-
-    const { data, error } = await supabase
+    const {
+        data,
+        error,
+    } = await supabaseAdmin
         .from('appointments')
         .insert({
             business_id:

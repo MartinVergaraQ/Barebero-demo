@@ -1166,6 +1166,7 @@ export default function ReservarClient({
                 throw new Error('Revisa los campos del formulario')
             }
 
+
             await createAppointmentServer({
                 business_id:
                     businessId,
