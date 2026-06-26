@@ -3,10 +3,6 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/src/lib/supabase/browser'
-import { getBarberWorkingHours } from '@/src/features/booking/api/get-barber-working-hours'
-import { getBarberAppointmentsByDate } from '@/src/features/booking/api/get-barber-appointments-by-date'
-import { generateTimeSlots } from '@/src/features/booking/utils/generate-time-slots'
-import { getTimeOffByBarberAndDate } from '@/src/features/time-off/api/get-time-off-by-barber-and-date'
 import { resolveWhatsAppPhone } from '@/src/features/booking/utils/whatsapp'
 import {
     normalizeWhitespace,
@@ -19,6 +15,12 @@ import {
 import { createAppointmentServer } from '@/src/features/booking/api/create-appointment-server'
 import { AdminAlert } from '@/src/features/admin/components/admin-alert'
 import { getPublicBarberWorkingDaysServer } from '@/src/features/booking/api/get-public-barber-working-days-server'
+import type {
+    AllowedPlanSlug,
+} from '@/src/features/business/utils/plan-config'
+import {
+    getPublicAvailableSlotsServer,
+} from '@/src/features/booking/api/get-public-available-slots-server'
 
 type Service = {
     id: string
@@ -53,6 +55,8 @@ type TimeSlot = {
 type ReservarClientProps = {
     businessId: string
     businessSlug: string
+    businessPlanSlug: AllowedPlanSlug
+    businessTimezone: string
     initialServiceId?: string
     initialBarberId?: string
 }
@@ -106,47 +110,154 @@ type DateOption = {
     dayOfWeek: number
 }
 
-function formatDateValue(date: Date) {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
+function buildDateValue(
+    date: Date
+) {
+    return [
+        date.getUTCFullYear(),
+        String(
+            date.getUTCMonth() + 1
+        ).padStart(2, '0'),
+        String(
+            date.getUTCDate()
+        ).padStart(2, '0'),
+    ].join('-')
 }
 
-function getDateOptions(daysToShow = 10): DateOption[] {
-    const options: DateOption[] = []
-    const today = new Date()
-    today.setHours(12, 0, 0, 0)
+function getCurrentDateValue(
+    timezone: string
+) {
+    const parts =
+        new Intl.DateTimeFormat(
+            'en',
+            {
+                timeZone: timezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+            }
+        ).formatToParts(
+            new Date()
+        )
 
-    const todayValue = formatDateValue(today)
+    const getPart = (
+        type:
+            | 'year'
+            | 'month'
+            | 'day'
+    ) =>
+        parts.find(
+            (part) =>
+                part.type === type
+        )?.value ?? ''
 
-    const tomorrow = new Date(today)
-    tomorrow.setDate(today.getDate() + 1)
-    const tomorrowValue = formatDateValue(tomorrow)
+    return [
+        getPart('year'),
+        getPart('month'),
+        getPart('day'),
+    ].join('-')
+}
 
-    for (let offset = 0; options.length < daysToShow; offset += 1) {
-        const date = new Date(today)
-        date.setDate(today.getDate() + offset)
+function getDateOptions(
+    timezone: string,
+    daysToShow = 10
+): DateOption[] {
+    const todayValue =
+        getCurrentDateValue(
+            timezone
+        )
 
-        const value = formatDateValue(date)
-        const isToday = value === todayValue
-        const isTomorrow = value === tomorrowValue
-        const dayOfWeek = date.getDay()
+    const [
+        year,
+        month,
+        day,
+    ] = todayValue
+        .split('-')
+        .map(Number)
 
-        const weekday = date.toLocaleDateString('es-CL', { weekday: 'short' })
-        const day = date.toLocaleDateString('es-CL', { day: '2-digit' })
+    const baseDate =
+        new Date(
+            Date.UTC(
+                year,
+                month - 1,
+                day,
+                12
+            )
+        )
+
+    const tomorrowDate =
+        new Date(
+            baseDate.getTime() +
+            86_400_000
+        )
+
+    const tomorrowValue =
+        buildDateValue(
+            tomorrowDate
+        )
+
+    const options:
+        DateOption[] = []
+
+    for (
+        let offset = 0;
+        options.length <
+        daysToShow;
+        offset += 1
+    ) {
+        const date =
+            new Date(
+                baseDate.getTime() +
+                offset *
+                86_400_000
+            )
+
+        const value =
+            buildDateValue(date)
+
+        const isToday =
+            value === todayValue
+
+        const isTomorrow =
+            value ===
+            tomorrowValue
+
+        const weekday =
+            new Intl.DateTimeFormat(
+                'es-CL',
+                {
+                    weekday: 'short',
+                    timeZone: 'UTC',
+                }
+            )
+                .format(date)
+                .replace('.', '')
+
+        const dayLabel =
+            new Intl.DateTimeFormat(
+                'es-CL',
+                {
+                    day: '2-digit',
+                    timeZone: 'UTC',
+                }
+            ).format(date)
 
         options.push({
             value,
-            label: `${weekday.replace('.', '')} ${day}`,
-            shortLabel: isToday
-                ? 'Hoy'
-                : isTomorrow
-                    ? 'Mañana'
-                    : `${weekday.replace('.', '')} ${day}`,
+            label:
+                `${weekday} ${dayLabel}`,
+
+            shortLabel:
+                isToday
+                    ? 'Hoy'
+                    : isTomorrow
+                        ? 'Mañana'
+                        : `${weekday} ${dayLabel}`,
+
             isToday,
             isTomorrow,
-            dayOfWeek,
+            dayOfWeek:
+                date.getUTCDay(),
         })
     }
 
@@ -162,20 +273,33 @@ function getInitials(name: string) {
         .join('')
 }
 
-function formatHumanDate(dateString: string) {
-    if (!dateString) return '-'
+function formatHumanDate(
+    dateString: string
+) {
+    if (!dateString) {
+        return '-'
+    }
 
-    const date = new Date(`${dateString}T12:00:00`)
-    return new Intl.DateTimeFormat('es-CL', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-    }).format(date)
+    const date =
+        new Date(
+            `${dateString}T12:00:00Z`
+        )
+
+    return new Intl.DateTimeFormat(
+        'es-CL',
+        {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            timeZone: 'UTC',
+        }
+    ).format(date)
 }
 
 export default function ReservarClient({
     businessId,
     businessSlug,
+    businessTimezone,
     initialServiceId = '',
     initialBarberId = '',
 }: ReservarClientProps) {
@@ -183,7 +307,6 @@ export default function ReservarClient({
     const supabase = useMemo(() => createClient(), [])
     const [services, setServices] = useState<Service[]>([])
     const [barbers, setBarbers] = useState<Barber[]>([])
-
     const [workingDays, setWorkingDays] =
         useState<number[]>([])
 
@@ -200,6 +323,8 @@ export default function ReservarClient({
     const clientNameRef = useRef<HTMLInputElement | null>(null)
     const clientEmailRef = useRef<HTMLInputElement | null>(null)
     const clientPhoneRef = useRef<HTMLInputElement | null>(null)
+    const slotsRequestIdRef =
+        useRef(0)
     const [barberServices, setBarberServices] = useState<BarberService[]>([])
     const [message, setMessage] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
@@ -231,7 +356,15 @@ export default function ReservarClient({
     const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
     const [availabilityMessage, setAvailabilityMessage] = useState('')
-    const dateOptions = useMemo(() => getDateOptions(10), [])
+    const dateOptions =
+        useMemo(
+            () =>
+                getDateOptions(
+                    businessTimezone,
+                    10
+                ),
+            [businessTimezone]
+        )
     const [step, setStep] = useState<1 | 2 | 3>(1)
     const [fieldErrors, setFieldErrors] = useState({
         client_name: '',
@@ -280,15 +413,21 @@ export default function ReservarClient({
         if (!whatsappPhone) return '#'
 
         const text = [
-            'Hola, quiero confirmar mi reserva.',
+            'Hola, acabo de reservar una cita mediante BarberTurn.',
+            '',
+            'La reserva ya quedó confirmada en el sistema. Te envío los detalles:',
             '',
             `Nombre: ${successfulReservation.client_name}`,
             `Teléfono: ${successfulReservation.client_phone}`,
             `Servicio: ${successfulReservation.service_name}`,
             `Barbero: ${successfulReservation.barber_name}`,
-            `Fecha: ${formatHumanDate(successfulReservation.appointment_date)}`,
+            `Fecha: ${formatHumanDate(
+                successfulReservation.appointment_date
+            )}`,
             `Hora: ${successfulReservation.slot_label}`,
-            `Total: ${formatPrice(successfulReservation.price)}`,
+            `Total: ${formatPrice(
+                successfulReservation.price
+            )}`,
         ].join('\n')
 
         return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`
@@ -585,120 +724,165 @@ export default function ReservarClient({
     const availableServiceCount = filteredServices.length
 
     useEffect(() => {
+        let cancelled = false
+
         async function loadData() {
             setLoadingData(true)
             setErrorMessage('')
 
+            try {
+                const [
+                    servicesResult,
+                    barbersResult,
+                    businessResult,
+                ] = await Promise.all([
+                    supabase
+                        .from('services')
+                        .select(`
+                        id,
+                        name,
+                        description,
+                        duration_minutes,
+                        price,
+                        business_id
+                    `)
+                        .eq('business_id', businessId)
+                        .eq('is_active', true)
+                        .order('display_order', {
+                            ascending: true,
+                        }),
 
-            const [
-                { data: servicesData, error: servicesError },
-                { data: barbersData, error: barbersError },
-                { data: businessData, error: businessError },
-                { data: barberServicesData, error: barberServicesError },
-            ] = await Promise.all([
-                supabase
-                    .from('services')
-                    .select('id, name, description, duration_minutes, price, business_id')
-                    .eq('business_id', businessId)
-                    .eq('is_active', true)
-                    .order('display_order', { ascending: true }),
+                    supabase
+                        .from('barbers')
+                        .select(`
+                        id,
+                        name,
+                        bio,
+                        specialty,
+                        business_id,
+                        photo_url,
+                        whatsapp_phone
+                    `)
+                        .eq('business_id', businessId)
+                        .eq('is_active', true)
+                        .order('display_order', {
+                            ascending: true,
+                        }),
 
-                supabase
-                    .from('barbers')
-                    .select('id, name, bio, specialty, business_id, photo_url, whatsapp_phone')
-                    .eq('business_id', businessId)
-                    .eq('is_active', true)
-                    .order('display_order', { ascending: true }),
+                    supabase
+                        .from('businesses')
+                        .select(`
+                        id,
+                        name,
+                        slug,
+                        whatsapp_phone,
+                        whatsapp_routing,
+                        subscription_status
+                    `)
+                        .eq('id', businessId)
+                        .single(),
+                ])
 
-                supabase
-                    .from('businesses')
-                    .select(`
-        id,
-        name,
-        slug,
-        whatsapp_phone,
-        whatsapp_routing,
-        subscription_status
-    `)
-                    .eq('id', businessId)
-                    .single(),
+                if (servicesResult.error) {
+                    throw new Error(
+                        `Error cargando servicios: ${servicesResult.error.message}`
+                    )
+                }
 
-                supabase
-                    .from('barber_services')
-                    .select('barber_id, service_id'),
-            ])
+                if (barbersResult.error) {
+                    throw new Error(
+                        `Error cargando barberos: ${barbersResult.error.message}`
+                    )
+                }
 
-            if (barberServicesError) {
-                setErrorMessage(`Error cargando servicios de barbero: ${barberServicesError.message}`)
-                setLoadingData(false)
-                return
-            }
+                if (businessResult.error) {
+                    throw new Error(
+                        `Error cargando negocio: ${businessResult.error.message}`
+                    )
+                }
 
-            if (servicesError) {
-                setErrorMessage(`Error cargando servicios: ${servicesError.message}`)
-                setLoadingData(false)
-                return
-            }
+                const typedServices =
+                    (servicesResult.data ?? []) as Service[]
 
-            if (barbersError) {
-                setErrorMessage(`Error cargando barberos: ${barbersError.message}`)
-                setLoadingData(false)
-                return
-            }
+                const typedBarbers =
+                    (barbersResult.data ?? []) as Barber[]
 
-            if (businessError) {
-                setErrorMessage(`Error cargando negocio: ${businessError.message}`)
-                setLoadingData(false)
-                return
-            }
+                const activeBarberIds =
+                    typedBarbers.map(
+                        (barber) => barber.id
+                    )
 
-            const typedServices =
-                (servicesData ?? []) as Service[]
+                const activeServiceIds =
+                    typedServices.map(
+                        (service) => service.id
+                    )
 
-            const typedBarbers =
-                (barbersData ?? []) as Barber[]
+                let relations: BarberService[] = []
 
-            const typedBarberServices =
-                (barberServicesData ??
-                    []) as BarberService[]
-
-            const activeBarberIds =
-                typedBarbers.map(
-                    (barber) => barber.id
-                )
-
-            const barberServicesFiltered =
-                typedBarberServices.filter(
-                    (item) =>
-                        activeBarberIds.includes(
-                            item.barber_id
+                if (
+                    activeBarberIds.length > 0 &&
+                    activeServiceIds.length > 0
+                ) {
+                    const {
+                        data: relationsData,
+                        error: relationsError,
+                    } = await supabase
+                        .from('barber_services')
+                        .select(`
+                        barber_id,
+                        service_id
+                    `)
+                        .in(
+                            'barber_id',
+                            activeBarberIds
                         )
+                        .in(
+                            'service_id',
+                            activeServiceIds
+                        )
+
+                    if (relationsError) {
+                        throw new Error(
+                            `Error cargando servicios de barbero: ${relationsError.message}`
+                        )
+                    }
+
+                    relations =
+                        (relationsData ?? []) as BarberService[]
+                }
+
+                if (cancelled) return
+
+                setServices(typedServices)
+                setBarbers(typedBarbers)
+                setBarberServices(relations)
+                setBusiness(
+                    businessResult.data as Business
                 )
+            } catch (error) {
+                if (cancelled) return
 
-            setBarberServices(
-                barberServicesFiltered
-            )
-
-            setServices(
-                typedServices
-            )
-
-            setBarbers(
-                typedBarbers
-            )
-
-            setBusiness(
-                businessData as Business
-            )
-
-            setLoadingData(false)
-
-
-            setLoadingData(false)
+                setErrorMessage(
+                    error instanceof Error
+                        ? error.message
+                        : 'No se pudo cargar la información de la reserva'
+                )
+            } finally {
+                if (!cancelled) {
+                    setLoadingData(false)
+                }
+            }
         }
 
-        loadData()
-    }, [businessId])
+        void loadData()
+
+        return () => {
+            cancelled = true
+        }
+    }, [
+        businessId,
+        supabase,
+    ])
 
 
 
@@ -793,61 +977,94 @@ export default function ReservarClient({
         setAvailableSlots([])
         setAvailabilityMessage('')
 
+        if (
+            !form.barber_id ||
+            !form.service_id ||
+            !form.appointment_date
+        ) {
+            return
+        }
 
-        if (!form.barber_id || !form.appointment_date || !selectedService) return
+        const requestId =
+            ++slotsRequestIdRef.current
 
         setLoadingSlots(true)
 
         try {
-            const localDate = new Date(`${form.appointment_date}T12:00:00`)
-            const dayOfWeek = localDate.getDay()
-
-            const [workingHours, appointments, timeOffRanges] = await Promise.all([
-                getBarberWorkingHours(form.barber_id, dayOfWeek),
-                getBarberAppointmentsByDate(form.barber_id, form.appointment_date),
-                getTimeOffByBarberAndDate({
+            const result =
+                await getPublicAvailableSlotsServer({
                     businessId,
-                    businessSlug,
-                    barberId: form.barber_id,
+                    barberId:
+                        form.barber_id,
+                    serviceId:
+                        form.service_id,
                     appointmentDate:
                         form.appointment_date,
-                }),
-            ])
+                })
 
-            if (workingHours.length === 0) {
-
-                setAvailabilityMessage('Este barbero no atiende ese día')
+            if (
+                requestId !==
+                slotsRequestIdRef.current
+            ) {
                 return
             }
 
-            const slots = generateTimeSlots({
-                date: form.appointment_date,
-                serviceDurationMinutes: selectedService.duration_minutes,
-                workingHours,
-                appointments,
-                timeOffRanges,
-                slotStepMinutes: 30,
-            })
+            setAvailableSlots(
+                result.slots
+            )
 
-            setAvailableSlots(slots)
-
-            if (slots.length === 0) {
-                setAvailabilityMessage('No hay horarios disponibles para esa fecha')
-            }
+            setAvailabilityMessage(
+                result.message
+            )
         } catch (error) {
+            if (
+                requestId !==
+                slotsRequestIdRef.current
+            ) {
+                return
+            }
+
             setErrorMessage(
-                error instanceof Error ? error.message : 'Error cargando horarios'
+                error instanceof Error
+                    ? error.message
+                    : 'Error cargando horarios'
+            )
+
+            setAvailabilityMessage(
+                'No fue posible cargar la disponibilidad'
             )
         } finally {
-            setLoadingSlots(false)
+            if (
+                requestId ===
+                slotsRequestIdRef.current
+            ) {
+                setLoadingSlots(false)
+            }
         }
     }
 
     useEffect(() => {
-        if (form.barber_id && form.appointment_date && selectedService) {
-            loadAvailableSlots()
+        if (
+            form.barber_id &&
+            form.service_id &&
+            form.appointment_date
+        ) {
+            void loadAvailableSlots()
+            return
         }
-    }, [form.barber_id, form.appointment_date, selectedService])
+
+        slotsRequestIdRef.current += 1
+
+        setAvailableSlots([])
+        setSelectedSlot(null)
+        setAvailabilityMessage('')
+        setLoadingSlots(false)
+    }, [
+        businessId,
+        form.barber_id,
+        form.service_id,
+        form.appointment_date,
+    ])
 
     const canContinueToStepTwo =
         canAcceptBookings &&
@@ -951,7 +1168,8 @@ export default function ReservarClient({
             }
 
             await createAppointmentServer({
-                business_id: selectedBarber.business_id,
+                business_id:
+                    businessId,
                 barber_id: form.barber_id,
                 service_id: form.service_id,
                 client_name: normalizedName,
@@ -1443,7 +1661,7 @@ export default function ReservarClient({
                                                             className="mt-2 text-xs font-black uppercase tracking-[0.16em]"
                                                             style={{ color: PRIMARY }}
                                                         >
-                                                            Profesional elegido desde galería
+                                                            Profesional seleccionado
                                                         </p>
                                                     </div>
                                                 </div>
@@ -2230,7 +2448,8 @@ export default function ReservarClient({
                                 </h2>
 
                                 <p className="mx-auto mt-2 max-w-sm text-[13px] font-medium leading-5 text-slate-400 md:text-sm md:leading-6">
-                                    Ya registramos tu cita. Puedes confirmarla por WhatsApp.
+                                    Tu cita quedó registrada y confirmada correctamente.
+                                    Guarda estos datos o avisa al negocio por WhatsApp.
                                 </p>
                             </div>
 
@@ -2322,10 +2541,12 @@ export default function ReservarClient({
                                             href={whatsappUrl}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="inline-flex h-12 items-center justify-center rounded-2xl px-4 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.24)] transition active:scale-[0.98]"
-                                            style={{ backgroundColor: PRIMARY }}
+                                            className="inline-flex h-12 items-center justify-center rounded-2xl px-4 text-sm font-black text-white shadow-[0_12px_28px_rgba(183,121,31,0.24)] transition hover:brightness-105 active:scale-[0.98]"
+                                            style={{
+                                                backgroundColor: PRIMARY,
+                                            }}
                                         >
-                                            Confirmar por WhatsApp →
+                                            Avisar por WhatsApp →
                                         </a>
                                     )}
 
@@ -2344,12 +2565,6 @@ export default function ReservarClient({
                                         Hacer otra reserva
                                     </button>
                                 </div>
-
-                                {hasWhatsApp && (
-                                    <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(16,185,129,0.04))] px-4 py-3 text-center text-xs font-bold leading-5 text-emerald-200">
-                                        Recomendamos confirmar por WhatsApp para que el negocio tenga tu reserva a mano.
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </section>

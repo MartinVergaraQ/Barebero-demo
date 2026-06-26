@@ -1,11 +1,19 @@
 import { notFound } from 'next/navigation'
+
 import { createClient } from '@/src/lib/supabase/server'
 import ReservarClient from '@/src/features/booking/components/reservar-client'
+import {
+    normalizePlanSlug,
+} from '@/src/features/business/utils/plan-config'
+import {
+    DEFAULT_BUSINESS_TIMEZONE,
+} from '@/src/features/business/utils/plan-config'
 
 type ReservarPageProps = {
     params: Promise<{
         slug: string
     }>
+
     searchParams?: Promise<{
         serviceId?: string
         barberId?: string
@@ -19,16 +27,23 @@ export default async function ReservarPage({
     const { slug } = await params
     const query = await searchParams
 
-    const serviceId = query?.serviceId ?? ''
-    const barberId = query?.barberId ?? ''
+    const supabase =
+        await createClient()
 
-    const supabase = await createClient()
-
-    const { data: business, error } = await supabase
+    const {
+        data: business,
+        error,
+    } = await supabase
         .from('businesses')
-        .select('id, slug')
+        .select(`
+            id,
+            slug,
+            plan_slug,
+            subscription_status,
+            timezone
+        `)
         .eq('slug', slug)
-        .single()
+        .maybeSingle()
 
     if (error || !business) {
         notFound()
@@ -38,8 +53,21 @@ export default async function ReservarPage({
         <ReservarClient
             businessId={business.id}
             businessSlug={business.slug}
-            initialServiceId={serviceId}
-            initialBarberId={barberId}
+            businessPlanSlug={
+                normalizePlanSlug(
+                    business.plan_slug
+                )
+            }
+            businessTimezone={
+                business.timezone ??
+                DEFAULT_BUSINESS_TIMEZONE
+            }
+            initialServiceId={
+                query?.serviceId ?? ''
+            }
+            initialBarberId={
+                query?.barberId ?? ''
+            }
         />
     )
 }

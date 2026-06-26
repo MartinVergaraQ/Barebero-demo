@@ -12,6 +12,9 @@ import {
 } from '@/src/features/booking/utils/validation'
 import { validateAppointmentAvailabilityServer } from '@/src/features/booking/api/validate-appointment-availability-server'
 import { isAppointmentOverlapError } from '@/src/features/booking/utils/appointment-errors'
+import {
+    enqueueAppointmentNotifications,
+} from '@/src/features/booking/api/enqueue-appointment-notifications'
 
 export async function createAppointmentServer(
     input: CreateAppointmentInput
@@ -129,6 +132,54 @@ export async function createAppointmentServer(
         )
         throw new Error(
             'No se pudo crear la reserva'
+        )
+    }
+
+    /*
+ * La reserva ya existe y está confirmada.
+ *
+ * Un fallo al programar notificaciones no puede
+ * invalidar ni borrar la reserva.
+ */
+    try {
+        console.log(
+            '[booking] reserva creada, iniciando encolado',
+            {
+                appointmentId:
+                    data.id,
+                businessId:
+                    validated.businessId,
+                planSlug:
+                    validated.planSlug,
+                clientEmail:
+                    clientEmail || null,
+                startAt:
+                    validated.startAt,
+            }
+        )
+
+        const notificationResult =
+            await enqueueAppointmentNotifications({
+                appointmentId:
+                    data.id,
+                businessId:
+                    validated.businessId,
+                planSlug:
+                    validated.planSlug,
+                clientEmail:
+                    clientEmail || null,
+                startAt:
+                    validated.startAt,
+            })
+
+        console.log(
+            '[booking] resultado del encolado',
+            notificationResult
+        )
+    } catch (notificationError) {
+        console.error(
+            '[booking] reserva creada, pero falló el encolado',
+            notificationError
         )
     }
 

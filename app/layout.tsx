@@ -15,8 +15,8 @@ const bebasNeue = Bebas_Neue({
 })
 
 export const metadata: Metadata = {
-  title: 'Barbero Demo',
-  description: 'Demo de barbería con reservas online',
+  title: 'Barbería App',
+  description: 'Reserva hora en tu barbería',
 }
 
 export const viewport: Viewport = {

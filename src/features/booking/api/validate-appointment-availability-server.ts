@@ -25,6 +25,7 @@ export type ValidatedAppointmentSlot = {
     startAt: string
     endAt: string
     durationMinutes: number
+    planSlug: string | null
 }
 
 export type ValidateAppointmentAvailabilityInput = {
@@ -194,7 +195,12 @@ export async function validateAppointmentAvailabilityServer(
     const { data: business, error: businessError } =
         await supabase
             .from('businesses')
-            .select('id, slug, subscription_status')
+            .select(`
+    id,
+    slug,
+    plan_slug,
+    subscription_status
+`)
             .eq('id', businessId)
             .maybeSingle()
 
@@ -527,6 +533,7 @@ export async function validateAppointmentAvailabilityServer(
     return {
         businessId: business.id,
         businessSlug: business.slug,
+        planSlug: business.plan_slug,
         barberId: barber.id,
         serviceId: service.id,
         appointmentDate,

@@ -11,7 +11,10 @@ import { PublicGallerySection } from '@/src/features/gallery/components/PublicGa
 import { formatInTimeZone } from 'date-fns-tz'
 import { BUSINESS_TIME_ZONE } from '@/src/features/booking/utils/datetime'
 import { PublicServicesExplorer } from './components/public-services-explorer'
-
+import {
+    getPlanFeatures,
+    normalizePlanSlug,
+} from '@/src/features/business/utils/plan-config'
 
 type BusinessRow = {
     id: string
@@ -29,6 +32,7 @@ type BusinessRow = {
     description: string | null
     timezone: string | null
     updated_at: string | null
+    plan_slug: string | null
 }
 type BusinessPageProps = {
     params: Promise<{
@@ -38,6 +42,12 @@ type BusinessPageProps = {
         tab?: string
     }>
 }
+
+type TabKey =
+    | 'services'
+    | 'gallery'
+    | 'reviews'
+    | 'details'
 
 const PRIMARY = '#C8942E'
 const PRIMARY_SOFT = 'rgba(200,148,46,0.14)'
@@ -63,14 +73,8 @@ export default async function BusinessPage({
 }: BusinessPageProps) {
     const { slug } = await params
     const query = await searchParams
-    const allowedTabs = ['services', 'gallery', 'reviews', 'details'] as const
-    type TabKey = (typeof allowedTabs)[number]
 
     const requestedTab = query?.tab
-    const tab: TabKey = allowedTabs.includes(requestedTab as TabKey)
-        ? (requestedTab as TabKey)
-        : 'services'
-
     const supabase = await createClient()
 
     const { data: business, error: businessError } = await supabase
@@ -79,6 +83,7 @@ export default async function BusinessPage({
     id,
     name,
     slug,
+    plan_slug,
     phone,
     email,
     address,
@@ -102,12 +107,86 @@ export default async function BusinessPage({
     const businessId = typedBusiness.id
     const businessSlug = typedBusiness.slug
 
-    const [contentMap, services, barbers, reviews, galleryItems] = await Promise.all([
+    const planSlug =
+        normalizePlanSlug(
+            typedBusiness.plan_slug
+        )
+
+    const planFeatures =
+        getPlanFeatures(planSlug)
+
+    const tabs: Array<{
+        key: TabKey
+        label: string
+    }> = [
+            {
+                key: 'services',
+                label: 'Servicios',
+            },
+
+            ...(planFeatures.publicGallery
+                ? [
+                    {
+                        key: 'gallery' as const,
+                        label: 'Trabajos',
+                    },
+                ]
+                : []),
+
+            ...(planFeatures.publicReviews
+                ? [
+                    {
+                        key: 'reviews' as const,
+                        label: 'Reseñas',
+                    },
+                ]
+                : []),
+
+            {
+                key: 'details',
+                label: 'Detalles',
+            },
+        ]
+
+    const allowedTabs =
+        tabs.map((item) => item.key)
+
+    const tab: TabKey =
+        requestedTab &&
+            allowedTabs.includes(
+                requestedTab as TabKey
+            )
+            ? requestedTab as TabKey
+            : 'services'
+
+    const [
+        contentMap,
+        services,
+        barbers,
+        reviews,
+        galleryItems,
+    ] = await Promise.all([
         getSiteContentMap(businessId),
-        getActiveServices(businessId),
-        getActiveBarbers(businessId),
-        getPublicReviews(businessId),
-        getActiveGalleryItems(businessId),
+
+        getActiveServices(
+            businessId
+        ),
+
+        getActiveBarbers(
+            businessId
+        ),
+
+        planFeatures.publicReviews
+            ? getPublicReviews(
+                businessId
+            )
+            : Promise.resolve([]),
+
+        planFeatures.publicGallery
+            ? getActiveGalleryItems(
+                businessId
+            )
+            : Promise.resolve([]),
     ])
 
     const businessName =
@@ -116,8 +195,11 @@ export default async function BusinessPage({
         'The Gentry Barbería'
 
     const businessCategory =
-        (contentMap.business_category as string) ||
-        'Barbería Premium'
+        planFeatures.publicBranding
+            ? (
+                contentMap.business_category as string
+            ) || 'Barbería Premium'
+            : 'Reserva online'
 
     const businessAddress =
         (contentMap.business_address as string) ||
@@ -134,13 +216,6 @@ export default async function BusinessPage({
         'Somos una barbería moderna enfocada en entregar una experiencia profesional, cercana y fácil de reservar.'
 
     const averageRating = getAverageRating(reviews)
-
-    const tabs = [
-        { key: 'services', label: 'Servicios' },
-        { key: 'gallery', label: 'Trabajos' },
-        { key: 'reviews', label: 'Reseñas' },
-        { key: 'details', label: 'Detalles' },
-    ]
 
     const schedule = [
         { dayKey: 'monday', label: 'Lunes', open: '09:00', close: '20:00', closed: false },
@@ -208,7 +283,12 @@ export default async function BusinessPage({
         return `${url}${separator}v=${encodeURIComponent(version)}`
     }
 
-    const rawHeroImage = typedBusiness.cover_url || FALLBACK_HERO_IMAGE
+    const rawHeroImage =
+        planFeatures.publicBranding &&
+            typedBusiness.cover_url
+            ? typedBusiness.cover_url
+            : FALLBACK_HERO_IMAGE
+
     const heroImage = withCacheBuster(rawHeroImage, typedBusiness.updated_at)
 
     function getBarberWorkCount(barberId: string) {
@@ -322,41 +402,66 @@ export default async function BusinessPage({
                                         <span className="line-clamp-1">{businessAddress}</span>
                                     </div>
 
-                                    <div className="mt-4 grid grid-cols-3 gap-1.5 md:mt-5 md:gap-4">
-                                        <div className="rounded-2xl bg-surface/5 px-2 py-2.5 ring-1 ring-white/10 md:px-3 md:py-3">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <p className="text-lg font-black leading-none text-foreground md:text-3xl">
-                                                    {averageRating}
+                                    <div
+                                        className={`mt-4 grid gap-1.5 md:mt-5 md:gap-4 ${planFeatures.publicReviews
+                                            ? 'grid-cols-3'
+                                            : 'grid-cols-2'
+                                            }`}
+                                    >
+                                        {planFeatures.publicReviews && (
+                                            <div className="rounded-2xl bg-surface/5 px-2 py-2.5 ring-1 ring-white/10 md:px-3 md:py-3">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <p className="text-lg font-black leading-none text-foreground md:text-3xl">
+                                                        {averageRating}
+                                                    </p>
+
+                                                    <span
+                                                        className="text-sm leading-none md:text-base"
+                                                        style={{
+                                                            color: PRIMARY,
+                                                        }}
+                                                    >
+                                                        ★
+                                                    </span>
+                                                </div>
+
+                                                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
+                                                    Rating
                                                 </p>
-                                                <span
-                                                    className="text-sm leading-none md:text-base"
-                                                    style={{ color: PRIMARY }}
-                                                >
-                                                    ★
-                                                </span>
                                             </div>
-                                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
-                                                Rating
-                                            </p>
-                                        </div>
+                                        )}
 
                                         <div className="rounded-2xl bg-surface/5 px-2 py-2.5 ring-1 ring-white/10 md:px-3 md:py-3">
                                             <p className="text-lg font-black leading-none text-foreground md:text-3xl">
                                                 {services.length}
                                             </p>
+
                                             <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
                                                 Servicios
                                             </p>
                                         </div>
 
-                                        <div className="rounded-2xl bg-surface/5 px-2 py-2.5 ring-1 ring-white/10 md:px-3 md:py-3">
-                                            <p className="text-lg font-black leading-none text-foreground md:text-3xl">
-                                                {reviews.length}
-                                            </p>
-                                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
-                                                Reseñas
-                                            </p>
-                                        </div>
+                                        {planFeatures.publicReviews ? (
+                                            <div className="rounded-2xl bg-surface/5 px-2 py-2.5 ring-1 ring-white/10 md:px-3 md:py-3">
+                                                <p className="text-lg font-black leading-none text-foreground md:text-3xl">
+                                                    {reviews.length}
+                                                </p>
+
+                                                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
+                                                    Reseñas
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-2xl bg-surface/5 px-2 py-2.5 ring-1 ring-white/10 md:px-3 md:py-3">
+                                                <p className="text-lg font-black leading-none text-foreground md:text-3xl">
+                                                    {barbers.length}
+                                                </p>
+
+                                                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 md:text-[10px]">
+                                                    Profesionales
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="mt-4 md:mt-6">
@@ -413,26 +518,28 @@ export default async function BusinessPage({
                             />
                         )}
 
-                        {tab === 'gallery' && (
-                            <PublicGallerySection
-                                items={galleryItems}
-                                businessSlug={businessSlug}
-                                barbers={barbers.map((barber) => ({
-                                    id: barber.id,
-                                    name: barber.name,
-                                }))}
-                            />
-                        )}
+                        {planFeatures.publicGallery &&
+                            tab === 'gallery' && (
+                                <PublicGallerySection
+                                    items={galleryItems}
+                                    businessSlug={businessSlug}
+                                    barbers={barbers.map((barber) => ({
+                                        id: barber.id,
+                                        name: barber.name,
+                                    }))}
+                                />
+                            )}
 
-                        {tab === 'reviews' && (
-                            <ReviewsSection
-                                reviews={reviews}
-                                averageRating={averageRating}
-                                businessSlug={businessSlug}
-                                primary={PRIMARY}
-                                primarySoft={PRIMARY_SOFT}
-                            />
-                        )}
+                        {planFeatures.publicReviews &&
+                            tab === 'reviews' && (
+                                <ReviewsSection
+                                    reviews={reviews}
+                                    averageRating={averageRating}
+                                    businessSlug={businessSlug}
+                                    primary={PRIMARY}
+                                    primarySoft={PRIMARY_SOFT}
+                                />
+                            )}
 
                         {tab === 'details' && (
                             <div className="mx-auto max-w-6xl pb-24">
