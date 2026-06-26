@@ -283,6 +283,15 @@ export default async function BusinessPage({
         return `${url}${separator}v=${encodeURIComponent(version)}`
     }
 
+    const publicLogoUrl =
+        planFeatures.publicBranding &&
+            typedBusiness.logo_url
+            ? withCacheBuster(
+                typedBusiness.logo_url,
+                typedBusiness.updated_at
+            )
+            : '/brand/barberturn-mark.png'
+
     const rawHeroImage =
         planFeatures.publicBranding &&
             typedBusiness.cover_url
@@ -359,6 +368,17 @@ export default async function BusinessPage({
                                 />
 
                                 <div className="relative px-4 py-4 text-center md:px-10 md:py-8">
+                                    <div className="mb-3 flex justify-center">
+                                        <div className="mb-3 flex justify-center">
+                                            <div className="h-20 w-20 overflow-hidden rounded-[22px] bg-transparent shadow-[0_14px_36px_rgba(0,0,0,0.28)] ring-1 ring-white/10 md:h-24 md:w-24">
+                                                <img
+                                                    src={publicLogoUrl}
+                                                    alt={`Logo de ${businessName}`}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div className="flex justify-center">
                                         <div
                                             className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 shadow-sm ring-1 ${isOpenNow

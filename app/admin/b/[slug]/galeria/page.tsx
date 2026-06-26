@@ -14,6 +14,10 @@ import {
 import { getBarbersAdmin } from '@/src/features/barbers/api/get-barbers-admin'
 import { getActiveServices } from '@/src/features/services/api/get-services'
 import { AlertTriangle } from 'lucide-react'
+import {
+    getPlanFeatures,
+    normalizePlanSlug,
+} from '@/src/features/business/utils/plan-config'
 
 type AdminGaleriaPageProps = {
     params: Promise<{
@@ -55,6 +59,23 @@ export default async function AdminGaleriaPage({
         redirect('/admin')
     }
 
+    const planFeatures =
+        getPlanFeatures(
+            normalizePlanSlug(
+                business.plan_slug
+            )
+        )
+
+    if (!planFeatures.publicGallery) {
+        if (profile.role === 'owner') {
+            redirect(
+                `/admin/b/${business.slug}/plan/cambiar`
+            )
+        }
+
+        redirect('/admin')
+    }
+
     const isBarber = isBarberRole(profile.role)
     const isFullAdmin = isFullAdminRole(profile.role)
 
@@ -80,6 +101,7 @@ export default async function AdminGaleriaPage({
     const activeItems = items.filter((item) => item.is_active).length
     const inactiveItems = items.length - activeItems
     const withService = items.filter((item) => !!item.service_id).length
+
 
     const canEdit =
         business.subscription_status === 'trialing' ||

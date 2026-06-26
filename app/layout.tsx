@@ -15,8 +15,30 @@ const bebasNeue = Bebas_Neue({
 })
 
 export const metadata: Metadata = {
-  title: 'Barbería App',
-  description: 'Reserva hora en tu barbería',
+  title: {
+    default: 'BarberTurn',
+    template: '%s | BarberTurn',
+  },
+
+  description:
+    'Reservas online, gestión de equipo y recordatorios automáticos para barberías.',
+
+  applicationName: 'BarberTurn',
+
+  icons: {
+    icon: [
+      {
+        url: '/brand/barberturn-mark.png',
+        type: 'image/png',
+      },
+    ],
+
+    shortcut:
+      '/brand/barberturn-mark.png',
+
+    apple:
+      '/brand/barberturn-mark.png',
+  },
 }
 
 export const viewport: Viewport = {

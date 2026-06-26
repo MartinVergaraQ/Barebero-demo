@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/src/lib/supabase/server'
 import { cloudinary } from '@/src/lib/cloudinary/cloudinary'
+import {
+    canUseGalleryByPlan,
+    GALLERY_PLAN_ERROR,
+} from '@/src/features/gallery/utils/gallery-plan'
 
 export const runtime = 'nodejs'
 
@@ -53,11 +57,16 @@ export async function POST(req: Request) {
             )
         }
 
-        const { data: business, error: businessError } = await supabase
-            .from('businesses')
-            .select('id, subscription_status')
-            .eq('id', profile.business_id)
-            .single()
+        const { data: business, error: businessError } =
+            await supabase
+                .from('businesses')
+                .select(`
+            id,
+            plan_slug,
+            subscription_status
+        `)
+                .eq('id', profile.business_id)
+                .single()
 
         if (businessError || !business) {
             return NextResponse.json(
@@ -78,6 +87,21 @@ export async function POST(req: Request) {
                             : 'La suscripción actual no permite subir imágenes.',
                 },
                 { status: 403 }
+            )
+        }
+        if (
+            !canUseGalleryByPlan(
+                business.plan_slug
+            )
+        ) {
+            return NextResponse.json(
+                {
+                    error:
+                        GALLERY_PLAN_ERROR,
+                },
+                {
+                    status: 403,
+                }
             )
         }
 
@@ -101,7 +125,7 @@ export async function POST(req: Request) {
         if (file.size > MAX_FILE_SIZE) {
             return NextResponse.json(
                 { error: 'La imagen no puede superar los 5 MB' },
-                { status: 403 }
+                { status: 413 }
             )
         }
 

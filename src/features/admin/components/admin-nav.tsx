@@ -30,6 +30,7 @@ import {
     canManageCatalog,
     canManageReviews,
 } from '@/src/features/auth/utils/admin-access'
+import Image from 'next/image'
 
 const PRIMARY = '#C8942E'
 
@@ -55,10 +56,11 @@ function isActiveRoute(
 function buildLinks(
     slug: string,
     role: string,
-    showPlatformPayments = false
+    showPlatformPayments = false,
+    canUseGallery = false
 ): NavItem[] {
     if (role === 'barber') {
-        return [
+        const barberLinks: NavItem[] = [
             {
                 href: '/admin/mi-agenda',
                 label: 'Mi agenda',
@@ -84,12 +86,17 @@ function buildLinks(
                 label: 'Mis bloqueos',
                 icon: Ban,
             },
-            {
+        ]
+
+        if (canUseGallery) {
+            barberLinks.push({
                 href: `/admin/b/${slug}/galeria`,
                 label: 'Mi galería',
                 icon: ImageIcon,
-            },
-        ]
+            })
+        }
+
+        return barberLinks
     }
 
     const links: NavItem[] = []
@@ -127,11 +134,13 @@ function buildLinks(
             icon: User,
         })
 
-        links.push({
-            href: `/admin/b/${slug}/galeria`,
-            label: 'Galería',
-            icon: ImageIcon,
-        })
+        if (canUseGallery) {
+            links.push({
+                href: `/admin/b/${slug}/galeria`,
+                label: 'Galería',
+                icon: ImageIcon,
+            })
+        }
     }
 
     if (canManageReviews(role)) {
@@ -206,25 +215,48 @@ function buildBarberBottomLinks(
     ]
 }
 
+function BarberTurnMark({
+    className = '',
+}: {
+    className?: string
+}) {
+    return (
+        <span
+            className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#FFFCF4] p-1.5 shadow-[0_10px_28px_rgba(200,148,46,0.18)] ${className}`}
+        >
+            <Image
+                src="/brand/barberturn-mark.png"
+                alt="BarberTurn"
+                width={64}
+                height={64}
+                priority
+                className="h-full w-full object-contain"
+            />
+        </span>
+    )
+}
+
 function NavLinks({
     pathname,
     businessSlug,
     role,
     showPlatformPayments,
+    canUseGallery,
     onNavigate,
 }: {
     pathname: string
     businessSlug: string
     role: string
     showPlatformPayments?: boolean
+    canUseGallery?: boolean
     onNavigate?: () => void
 }) {
-    const links =
-        buildLinks(
-            businessSlug,
-            role,
-            showPlatformPayments
-        )
+    const links = buildLinks(
+        businessSlug,
+        role,
+        showPlatformPayments,
+        canUseGallery
+    )
 
     return (
         <nav className="space-y-1 px-3">
@@ -317,11 +349,13 @@ function BarberBottomNavigation({
     pathname,
     businessSlug,
     moreOpen,
+    canUseGallery,
     onOpenMore,
 }: {
     pathname: string
     businessSlug: string
     moreOpen: boolean
+    canUseGallery: boolean
     onOpenMore: () => void
 }) {
     const links =
@@ -330,11 +364,13 @@ function BarberBottomNavigation({
         )
 
     const moreIsActive =
-        pathname ===
-        '/admin/mi-perfil' ||
-        isActiveRoute(
-            pathname,
-            `/admin/b/${businessSlug}/galeria`
+        pathname === '/admin/mi-perfil' ||
+        (
+            canUseGallery &&
+            isActiveRoute(
+                pathname,
+                `/admin/b/${businessSlug}/galeria`
+            )
         )
 
     return (
@@ -423,11 +459,13 @@ function BarberMoreSheet({
     businessSlug,
     businessName,
     pathname,
+    canUseGallery,
     onClose,
 }: {
     businessSlug: string
     businessName?: string
     pathname: string
+    canUseGallery: boolean
     onClose: () => void
 }) {
     const items: NavItem[] = [
@@ -436,11 +474,16 @@ function BarberMoreSheet({
             label: 'Mi perfil',
             icon: User,
         },
-        {
-            href: `/admin/b/${businessSlug}/galeria`,
-            label: 'Mi galería',
-            icon: ImageIcon,
-        },
+
+        ...(canUseGallery
+            ? [
+                {
+                    href: `/admin/b/${businessSlug}/galeria`,
+                    label: 'Mi galería',
+                    icon: ImageIcon,
+                },
+            ]
+            : []),
     ]
 
     return (
@@ -545,11 +588,13 @@ export function AdminNav({
     businessName,
     role,
     showPlatformPayments = false,
+    canUseGallery = false,
 }: {
     businessSlug: string
     businessName?: string
     role: string
     showPlatformPayments?: boolean
+    canUseGallery?: boolean
 }) {
     const pathname =
         usePathname()
@@ -583,15 +628,19 @@ export function AdminNav({
                 />
             ) : (
                 <div className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-white/10 bg-[#0F1115]/95 px-5 backdrop-blur md:hidden">
-                    <div className="min-w-0">
-                        <h2 className="text-lg font-black leading-none text-white">
-                            {panelTitle}
-                        </h2>
+                    <div className="flex min-w-0 items-center gap-3">
+                        <BarberTurnMark className="h-11 w-11" />
 
-                        <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
-                            {businessName ||
-                                businessSlug}
-                        </p>
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-black leading-none text-white">
+                                {panelTitle}
+                            </h2>
+
+                            <p className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+                                {businessName ||
+                                    businessSlug}
+                            </p>
+                        </div>
                     </div>
 
                     <button
@@ -622,21 +671,7 @@ export function AdminNav({
                         <div className="shrink-0 border-b border-white/10 px-5 py-5">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
-                                    <div
-                                        className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-black text-[#0F1115]"
-                                        style={{
-                                            backgroundColor:
-                                                PRIMARY,
-                                        }}
-                                    >
-                                        {businessName
-                                            ?.slice(
-                                                0,
-                                                1
-                                            )
-                                            .toUpperCase() ||
-                                            'A'}
-                                    </div>
+                                    <BarberTurnMark className="mb-3 h-12 w-12" />
 
                                     <h2 className="text-3xl font-black leading-none tracking-wide text-white">
                                         {panelTitle}
@@ -671,6 +706,9 @@ export function AdminNav({
                                 showPlatformPayments={
                                     showPlatformPayments
                                 }
+                                canUseGallery={
+                                    canUseGallery
+                                }
                                 onNavigate={() =>
                                     setOpen(false)
                                 }
@@ -690,18 +728,7 @@ export function AdminNav({
 
             <aside className="hidden border-r border-white/10 bg-[#0F1115] md:fixed md:left-0 md:top-0 md:flex md:h-screen md:w-[248px] md:flex-col">
                 <div className="shrink-0 px-5 py-5">
-                    <div
-                        className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black text-[#0F1115] shadow-[0_12px_28px_rgba(200,148,46,0.18)]"
-                        style={{
-                            backgroundColor:
-                                PRIMARY,
-                        }}
-                    >
-                        {businessName
-                            ?.slice(0, 1)
-                            .toUpperCase() ||
-                            'A'}
-                    </div>
+                    <BarberTurnMark className="mb-4 h-12 w-12" />
 
                     <h2 className="text-lg font-black leading-none text-white">
                         {panelTitle}
@@ -722,6 +749,9 @@ export function AdminNav({
                         role={role}
                         showPlatformPayments={
                             showPlatformPayments
+                        }
+                        canUseGallery={
+                            canUseGallery
                         }
                     />
                 </div>
@@ -744,6 +774,9 @@ export function AdminNav({
                     moreOpen={
                         barberMoreOpen
                     }
+                    canUseGallery={
+                        canUseGallery
+                    }
                     onOpenMore={() =>
                         setBarberMoreOpen(
                             true
@@ -755,19 +788,12 @@ export function AdminNav({
             {isBarber &&
                 barberMoreOpen && (
                     <BarberMoreSheet
-                        pathname={
-                            pathname
-                        }
-                        businessSlug={
-                            businessSlug
-                        }
-                        businessName={
-                            businessName
-                        }
+                        pathname={pathname}
+                        businessSlug={businessSlug}
+                        businessName={businessName}
+                        canUseGallery={canUseGallery}
                         onClose={() =>
-                            setBarberMoreOpen(
-                                false
-                            )
+                            setBarberMoreOpen(false)
                         }
                     />
                 )}

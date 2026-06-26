@@ -15,6 +15,10 @@ import {
     normalizeSubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
 import { supabaseAdmin } from '@/src/lib/supabase/admin'
+import {
+    getPlanFeatures,
+    normalizePlanSlug,
+} from '@/src/features/business/utils/plan-config'
 
 export default async function AdminBusinessLayout({
     children,
@@ -93,6 +97,7 @@ export default async function AdminBusinessLayout({
         .select(`
             id,
             name,
+            plan_slug,
             slug,
             subscription_status,
             trial_ends_at
@@ -114,6 +119,13 @@ export default async function AdminBusinessLayout({
     const subscriptionStatus =
         normalizeSubscriptionStatus(
             business.subscription_status
+        )
+
+    const planFeatures =
+        getPlanFeatures(
+            normalizePlanSlug(
+                business.plan_slug
+            )
         )
 
     const subscriptionUi =
@@ -193,6 +205,9 @@ export default async function AdminBusinessLayout({
                 role={profile.role}
                 showPlatformPayments={
                     showPlatformPayments
+                }
+                canUseGallery={
+                    planFeatures.publicGallery
                 }
             />
 

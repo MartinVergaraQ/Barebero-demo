@@ -9,6 +9,10 @@ import { isBarberRole } from '@/src/features/auth/utils/admin-scope'
 import { SubscriptionBanner } from '@/src/features/business/components/subscription-banner'
 import { getSubscriptionUi } from '@/src/features/business/utils/subscription-ui'
 import { normalizeSubscriptionStatus } from '@/src/features/business/utils/subscription-rules'
+import {
+    getPlanFeatures,
+    normalizePlanSlug,
+} from '@/src/features/business/utils/plan-config'
 
 export default async function BarberLayout({
     children,
@@ -76,6 +80,7 @@ export default async function BarberLayout({
         .select(`
             id,
             name,
+            plan_slug,
             slug,
             subscription_status,
             trial_ends_at
@@ -98,6 +103,13 @@ export default async function BarberLayout({
             business.subscription_status
         )
 
+    const planFeatures =
+        getPlanFeatures(
+            normalizePlanSlug(
+                business.plan_slug
+            )
+        )
+
     const subscriptionUi =
         getSubscriptionUi(
             subscriptionStatus,
@@ -118,6 +130,9 @@ export default async function BarberLayout({
                 }
                 role={
                     profile.role
+                }
+                canUseGallery={
+                    planFeatures.publicGallery
                 }
             />
 

@@ -4,6 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/src/lib/supabase/server'
 import { canManageAppointments } from '@/src/features/auth/utils/admin-access'
 import { isBarberRole } from '@/src/features/auth/utils/admin-scope'
+import {
+    canUseGalleryByPlan,
+    GALLERY_PLAN_ERROR,
+} from '@/src/features/gallery/utils/gallery-plan'
 
 export type CreateGalleryItemServerInput = {
     title?: string | null
@@ -82,11 +86,17 @@ export async function createGalleryItemServer(
     /*
      * 3. Negocio y suscripción
      */
-    const { data: business, error: businessError } = await supabase
-        .from('businesses')
-        .select('id, slug, subscription_status')
-        .eq('id', profile.business_id)
-        .single()
+    const { data: business, error: businessError } =
+        await supabase
+            .from('businesses')
+            .select(`
+            id,
+            slug,
+            plan_slug,
+            subscription_status
+        `)
+            .eq('id', profile.business_id)
+            .single()
 
     if (businessError || !business) {
         return failure('Negocio no encontrado')
@@ -100,6 +110,16 @@ export async function createGalleryItemServer(
             business.subscription_status === 'past_due'
                 ? 'Tu negocio está en modo solo lectura porque existe un pago pendiente.'
                 : 'La suscripción actual no permite agregar imágenes.'
+        )
+    }
+
+    if (
+        !canUseGalleryByPlan(
+            business.plan_slug
+        )
+    ) {
+        return failure(
+            GALLERY_PLAN_ERROR
         )
     }
 
