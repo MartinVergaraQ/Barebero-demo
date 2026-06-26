@@ -13,6 +13,7 @@ import {
 } from '@/src/features/booking/utils/validation'
 import { validateAppointmentAvailabilityServer } from '@/src/features/booking/api/validate-appointment-availability-server'
 import { isAppointmentOverlapError } from '@/src/features/booking/utils/appointment-errors'
+import { supabaseAdmin } from '@/src/lib/supabase/admin'
 
 type ManualAppointmentStatus =
     | 'pending'
@@ -45,7 +46,8 @@ export async function createManualAppointmentServer(
         )
     }
 
-    const supabase = await createClient()
+    const authClient =
+        await createClient()
 
     /*
      * 1. Sesión.
@@ -53,7 +55,7 @@ export async function createManualAppointmentServer(
     const {
         data: { user },
         error: userError,
-    } = await supabase.auth.getUser()
+    } = await authClient.auth.getUser()
 
     if (userError || !user) {
         throw new Error('No autorizado')
@@ -63,7 +65,7 @@ export async function createManualAppointmentServer(
      * 2. Perfil, negocio y rol.
      */
     const { data: profile, error: profileError } =
-        await supabase
+        await authClient
             .from('profiles')
             .select('id, business_id, role')
             .eq('id', user.id)
@@ -86,6 +88,8 @@ export async function createManualAppointmentServer(
         )
     }
 
+    const supabase = supabaseAdmin
+
     /*
      * 3. El barbero debe pertenecer al negocio.
      */
@@ -101,7 +105,7 @@ export async function createManualAppointmentServer(
     }
 
     const { data: barber, error: barberError } =
-        await supabase
+        await authClient
             .from('barbers')
             .select('id, business_id, profile_id')
             .eq('id', requestedBarberId)
@@ -207,7 +211,7 @@ export async function createManualAppointmentServer(
      * 7. Insertar utilizando exclusivamente
      * valores validados por servidor.
      */
-    const { data, error } = await supabase
+    const { data, error } = await authClient
         .from('appointments')
         .insert({
             business_id:

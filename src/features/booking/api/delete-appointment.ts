@@ -8,6 +8,7 @@ import {
     getSubscriptionBlockReason,
     normalizeSubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
+import { supabaseAdmin } from '@/src/lib/supabase/admin'
 
 export async function deleteAppointmentServer(
     appointmentId: string
@@ -21,12 +22,13 @@ export async function deleteAppointmentServer(
         throw new Error('Reserva no válida')
     }
 
-    const supabase = await createClient()
+    const authClient =
+        await createClient()
 
     const {
         data: { user },
         error: userError,
-    } = await supabase.auth.getUser()
+    } = await authClient.auth.getUser()
 
     if (userError || !user) {
         throw new Error('No autorizado')
@@ -35,7 +37,7 @@ export async function deleteAppointmentServer(
     const {
         data: profile,
         error: profileError,
-    } = await supabase
+    } = await authClient
         .from('profiles')
         .select('id, business_id, role')
         .eq('id', user.id)
@@ -59,6 +61,8 @@ export async function deleteAppointmentServer(
             'No tienes permisos para eliminar reservas permanentemente'
         )
     }
+
+    const supabase = supabaseAdmin
 
     const {
         data: business,
@@ -98,7 +102,7 @@ export async function deleteAppointmentServer(
     const {
         data: appointment,
         error: appointmentError,
-    } = await supabase
+    } = await authClient
         .from('appointments')
         .select(`
             id,
@@ -134,7 +138,7 @@ export async function deleteAppointmentServer(
     }
 
     const { error: deleteError } =
-        await supabase
+        await authClient
             .from('appointments')
             .delete()
             .eq('id', appointment.id)

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/src/lib/supabase/server'
 import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
+import { supabaseAdmin } from '@/src/lib/supabase/admin'
 
 type AllowedStatus = Extract<
     AppointmentStatus,
@@ -61,7 +62,8 @@ export async function updateReservationStatusByBarber({
     reservationId,
     nextStatus,
 }: Input): Promise<Result> {
-    const supabase = await createClient()
+    const authClient =
+        await createClient()
 
     /*
      * 1. Validar sesión.
@@ -69,7 +71,7 @@ export async function updateReservationStatusByBarber({
     const {
         data: { user },
         error: userError,
-    } = await supabase.auth.getUser()
+    } = await authClient.auth.getUser()
 
     if (userError || !user) {
         return failure('No autorizado')
@@ -79,7 +81,7 @@ export async function updateReservationStatusByBarber({
      * 2. Obtener perfil, negocio y rol autenticados.
      */
     const { data: profile, error: profileError } =
-        await supabase
+        await authClient
             .from('profiles')
             .select('id, business_id, role')
             .eq('id', user.id)
@@ -100,6 +102,8 @@ export async function updateReservationStatusByBarber({
             'No tienes permisos para gestionar reservas'
         )
     }
+
+    const supabase = supabaseAdmin
 
     /*
      * 3. Validar suscripción.
@@ -149,7 +153,7 @@ export async function updateReservationStatusByBarber({
      * al usuario y al negocio autenticado.
      */
     const { data: barber, error: barberError } =
-        await supabase
+        await authClient
             .from('barbers')
             .select('id, profile_id, business_id')
             .eq('profile_id', user.id)
@@ -180,7 +184,7 @@ export async function updateReservationStatusByBarber({
      * - negocio autenticado
      */
     const { data: reservation, error: reservationError } =
-        await supabase
+        await authClient
             .from('appointments')
             .select(`
     id,
@@ -279,7 +283,7 @@ export async function updateReservationStatusByBarber({
      * sobrescribir un cambio realizado simultáneamente.
      */
     const { data: updatedReservation, error: updateError } =
-        await supabase
+        await authClient
             .from('appointments')
             .update({
                 status: nextStatus,

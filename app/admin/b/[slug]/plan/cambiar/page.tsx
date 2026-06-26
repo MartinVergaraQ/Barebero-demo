@@ -6,6 +6,7 @@ import { canManageBusiness } from '@/src/features/auth/utils/admin-access'
 import { formatPlanLabel } from '@/src/features/business/utils/subscription-rules'
 import {
     PLAN_LIMITS,
+    PLAN_PRICES,
     type AllowedPlanSlug,
 } from '@/src/features/business/utils/plan-config'
 import { ChangePlanButton } from '@/src/features/business/components/change-plan-button'
@@ -19,7 +20,6 @@ type AdminCambiarPlanPageProps = {
 const PLANS: Array<{
     slug: AllowedPlanSlug
     name: string
-    priceLabel: string
     description: string
     badge?: string
     features: string[]
@@ -27,24 +27,36 @@ const PLANS: Array<{
         {
             slug: 'starter',
             name: 'Starter',
-            priceLabel: '$0',
-            description: 'Para comenzar y validar el negocio.',
-            features: ['1 barbero activo', '5 servicios activos', 'Panel básico'],
+            description:
+                'Configura tu barbería y prueba todas las funciones esenciales durante 5 días.',
+            features: [
+                '1 barbero activo',
+                '5 servicios activos',
+                'Reservas públicas',
+            ],
         },
         {
             slug: 'pro',
             name: 'Pro',
-            priceLabel: '$9.990',
-            description: 'Para negocios que ya están creciendo.',
+            description:
+                'Para barberías pequeñas que quieren automatizar sus reservas.',
             badge: 'Recomendado',
-            features: ['3 barberos activos', '15 servicios activos', 'Catálogo ampliado'],
+            features: [
+                '2 barberos activos',
+                '15 servicios activos',
+                'Notificaciones automáticas',
+            ],
         },
         {
             slug: 'studio',
             name: 'Studio',
-            priceLabel: '$19.990',
-            description: 'Para equipos con mayor operación.',
-            features: ['Barberos ilimitados', 'Servicios ilimitados', 'Mayor capacidad operativa'],
+            description:
+                'Para barberías con un equipo y mayor operación.',
+            features: [
+                '5 barberos activos',
+                '50 servicios activos',
+                'Mayor capacidad operativa',
+            ],
         },
     ]
 
@@ -168,6 +180,14 @@ export default async function AdminCambiarPlanPage({
     const hasPendingRequest = !!pendingPlanRequest
     const currentPlanSlug = businessPlan.plan_slug as AllowedPlanSlug
 
+    const visiblePlans =
+        currentPlanSlug === 'starter'
+            ? PLANS
+            : PLANS.filter(
+                plan =>
+                    plan.slug !== 'starter'
+            )
+
     return (
         <main className="min-h-screen px-4 py-6 text-slate-950 md:px-8 md:py-8">
             <div className="mx-auto max-w-7xl space-y-6">
@@ -270,7 +290,18 @@ export default async function AdminCambiarPlanPage({
                 </section>
 
                 <section className="grid items-start gap-4 lg:grid-cols-3">
-                    {PLANS.map((plan) => {
+                    {visiblePlans.map((plan) => {
+                        const price =
+                            PLAN_PRICES[plan.slug]
+
+                        const priceLabel =
+                            price === 0
+                                ? 'Prueba gratis'
+                                : new Intl.NumberFormat('es-CL', {
+                                    style: 'currency',
+                                    currency: 'CLP',
+                                    maximumFractionDigits: 0,
+                                }).format(price)
                         const limits = PLAN_LIMITS[plan.slug]
                         const isCurrentPlan = currentPlanSlug === plan.slug
 
@@ -329,11 +360,11 @@ export default async function AdminCambiarPlanPage({
 
                                 <div className="mt-5">
                                     <p className="text-4xl font-black tracking-tight text-slate-950">
-                                        {plan.priceLabel}
+                                        {priceLabel}
                                     </p>
 
                                     <p className="mt-1 text-sm font-bold text-slate-500">
-                                        mensual
+                                        5 días
                                     </p>
                                 </div>
 

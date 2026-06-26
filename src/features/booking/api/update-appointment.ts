@@ -18,6 +18,7 @@ import {
     normalizeSubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
 import { isAppointmentOverlapError } from '@/src/features/booking/utils/appointment-errors'
+import { supabaseAdmin } from '@/src/lib/supabase/admin'
 
 export type UpdateAppointmentInput = {
     id: string
@@ -90,7 +91,8 @@ export async function updateAppointmentServer(
         )
     }
 
-    const supabase = await createClient()
+    const authClient =
+        await createClient()
 
     /*
      * 1. Sesión y perfil.
@@ -98,7 +100,7 @@ export async function updateAppointmentServer(
     const {
         data: { user },
         error: userError,
-    } = await supabase.auth.getUser()
+    } = await authClient.auth.getUser()
 
     if (userError || !user) {
         throw new Error('No autorizado')
@@ -107,7 +109,7 @@ export async function updateAppointmentServer(
     const {
         data: profile,
         error: profileError,
-    } = await supabase
+    } = await authClient
         .from('profiles')
         .select('id, business_id, role')
         .eq('id', user.id)
@@ -130,6 +132,10 @@ export async function updateAppointmentServer(
         )
     }
 
+    const supabase =
+        supabaseAdmin
+
+
     /*
      * 2. Negocio y suscripción.
      *
@@ -139,7 +145,7 @@ export async function updateAppointmentServer(
     const {
         data: business,
         error: businessError,
-    } = await supabase
+    } = await authClient
         .from('businesses')
         .select(
             'id, slug, subscription_status'
@@ -177,7 +183,7 @@ export async function updateAppointmentServer(
     const {
         data: appointment,
         error: appointmentError,
-    } = await supabase
+    } = await authClient
         .from('appointments')
         .select(`
             id,
@@ -212,7 +218,7 @@ export async function updateAppointmentServer(
         const {
             data: ownBarber,
             error: ownBarberError,
-        } = await supabase
+        } = await authClient
             .from('barbers')
             .select('id, profile_id')
             .eq(
@@ -341,7 +347,7 @@ export async function updateAppointmentServer(
         const {
             data: requestedBarber,
             error: barberError,
-        } = await supabase
+        } = await authClient
             .from('barbers')
             .select(`
                 id,
@@ -406,7 +412,7 @@ export async function updateAppointmentServer(
      * 8. Actualización.
      */
     const { data, error } =
-        await supabase
+        await authClient
             .from('appointments')
             .update({
                 ...scheduleData,

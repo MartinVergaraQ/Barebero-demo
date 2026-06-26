@@ -11,6 +11,9 @@ import {
     normalizeSubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
 import { isAppointmentOverlapError } from '@/src/features/booking/utils/appointment-errors'
+import {
+    supabaseAdmin,
+} from '@/src/lib/supabase/admin'
 
 const ALLOWED_STATUSES =
     new Set<AppointmentStatus>([
@@ -40,19 +43,20 @@ export async function updateAppointmentStatus(
         )
     }
 
-    const supabase = await createClient()
+    const authClient =
+        await createClient()
 
     const {
         data: { user },
         error: userError,
-    } = await supabase.auth.getUser()
+    } = await authClient.auth.getUser()
 
     if (userError || !user) {
         throw new Error('No autorizado')
     }
 
     const { data: profile, error: profileError } =
-        await supabase
+        await authClient
             .from('profiles')
             .select('id, business_id, role')
             .eq('id', user.id)
@@ -73,8 +77,11 @@ export async function updateAppointmentStatus(
         )
     }
 
+    const supabase =
+        supabaseAdmin
+
     const { data: business, error: businessError } =
-        await supabase
+        await authClient
             .from('businesses')
             .select('id, slug, subscription_status')
             .eq('id', profile.business_id)
@@ -101,7 +108,7 @@ export async function updateAppointmentStatus(
     const {
         data: appointment,
         error: appointmentError,
-    } = await supabase
+    } = await authClient
         .from('appointments')
         .select(`
             id,
@@ -123,7 +130,7 @@ export async function updateAppointmentStatus(
 
     if (isBarberRole(profile.role)) {
         const { data: barber } =
-            await supabase
+            await authClient
                 .from('barbers')
                 .select('id, profile_id')
                 .eq('id', appointment.barber_id)
@@ -152,7 +159,7 @@ export async function updateAppointmentStatus(
         status !== 'cancelled'
     ) {
         const { data: conflicts, error } =
-            await supabase
+            await authClient
                 .from('appointments')
                 .select('id')
                 .eq(
@@ -188,7 +195,7 @@ export async function updateAppointmentStatus(
         }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await authClient
         .from('appointments')
         .update({ status })
         .eq('id', appointment.id)

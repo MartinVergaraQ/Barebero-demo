@@ -232,15 +232,6 @@ export default async function SuperadminBusinessesPage() {
                                                 </p>
                                             </div>
 
-                                            <div className="min-w-[95px] rounded-xl border border-black/10 bg-[#FBF7EE] px-3 py-2">
-                                                <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
-                                                    Trial
-                                                </p>
-
-                                                <p className="text-sm font-black text-slate-950">
-                                                    {formatDate(business.trial_ends_at)}
-                                                </p>
-                                            </div>
                                         </div>
 
                                         <div className="rounded-xl border border-black/10 bg-[#FBF7EE] px-3 py-2 sm:w-fit sm:min-w-[130px]">

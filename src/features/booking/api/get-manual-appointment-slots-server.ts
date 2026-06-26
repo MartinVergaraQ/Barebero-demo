@@ -13,6 +13,9 @@ import {
     getSubscriptionBlockReason,
     normalizeSubscriptionStatus,
 } from '@/src/features/business/utils/subscription-rules'
+import {
+    supabaseAdmin,
+} from '@/src/lib/supabase/admin'
 
 export type ManualAppointmentSlotStatus =
     | 'available'
@@ -160,19 +163,20 @@ export async function getManualAppointmentSlotsServer(
         )
     }
 
-    const supabase = await createClient()
+    const authClient =
+        await createClient()
 
     const {
         data: { user },
         error: userError,
-    } = await supabase.auth.getUser()
+    } = await authClient.auth.getUser()
 
     if (userError || !user) {
         throw new Error('No autorizado')
     }
 
     const { data: profile, error: profileError } =
-        await supabase
+        await authClient
             .from('profiles')
             .select('id, business_id, role')
             .eq('id', user.id)
@@ -192,9 +196,18 @@ export async function getManualAppointmentSlotsServer(
             'No tienes permisos para consultar disponibilidad'
         )
     }
+    /*
+ * A partir de aquí las consultas internas
+ * utilizan service role.
+ *
+ * El acceso ya fue autorizado mediante
+ * sesión, perfil y rol.
+ */
+    const supabase =
+        supabaseAdmin
 
     const { data: business, error: businessError } =
-        await supabase
+        await authClient
             .from('businesses')
             .select('id, subscription_status')
             .eq('id', profile.business_id)
@@ -219,7 +232,7 @@ export async function getManualAppointmentSlotsServer(
     }
 
     const { data: barber, error: barberError } =
-        await supabase
+        await authClient
             .from('barbers')
             .select('id, profile_id, is_active')
             .eq('id', barberId)
@@ -243,7 +256,7 @@ export async function getManualAppointmentSlotsServer(
     }
 
     const { data: service, error: serviceError } =
-        await supabase
+        await authClient
             .from('services')
             .select('id, duration_minutes, is_active')
             .eq('id', serviceId)
@@ -267,7 +280,7 @@ export async function getManualAppointmentSlotsServer(
     }
 
     const { data: barberService } =
-        await supabase
+        await authClient
             .from('barber_services')
             .select('id')
             .eq('barber_id', barber.id)
@@ -284,7 +297,7 @@ export async function getManualAppointmentSlotsServer(
         getDayOfWeek(appointmentDate)
 
     const { data: workingHours, error: hoursError } =
-        await supabase
+        await authClient
             .from('working_hours')
             .select('start_time, end_time')
             .eq('business_id', business.id)
@@ -318,7 +331,7 @@ export async function getManualAppointmentSlotsServer(
         BUSINESS_TIME_ZONE
     )
 
-    const appointmentsBaseQuery = supabase
+    const appointmentsBaseQuery = authClient
         .from('appointments')
         .select('id, start_at, end_at')
         .eq('business_id', business.id)
@@ -339,7 +352,7 @@ export async function getManualAppointmentSlotsServer(
         await Promise.all([
             appointmentsQuery,
 
-            supabase
+            authClient
                 .from('time_off')
                 .select('id, start_at, end_at')
                 .eq('business_id', business.id)

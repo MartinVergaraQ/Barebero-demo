@@ -1,4 +1,4 @@
-export const DEFAULT_TRIAL_DAYS = 5
+export const DEFAULT_TRIAL_DAYS = 14
 
 export const DEFAULT_BUSINESS_TIMEZONE =
     'America/Santiago'

@@ -1,0 +1,1473 @@
+========== create-manual-appointment-server.ts ==========
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/src/lib/supabase/server'
+import { canManageAppointments } from '@/src/features/auth/utils/admin-access'
+import { isBarberRole } from '@/src/features/auth/utils/admin-scope'
+import {
+    normalizeWhitespace,
+    validateClientName,
+    validateClientEmail,
+    validateClientPhone,
+    formatPhoneForStorage,
+} from '@/src/features/booking/utils/validation'
+import { validateAppointmentAvailabilityServer } from '@/src/features/booking/api/validate-appointment-availability-server'
+import { isAppointmentOverlapError } from '@/src/features/booking/utils/appointment-errors'
+
+type ManualAppointmentStatus =
+    | 'pending'
+    | 'confirmed'
+
+export type CreateManualAppointmentInput = {
+    barber_id: string
+    service_id: string
+    client_name: string
+    client_email?: string | null
+    client_phone: string
+    appointment_date: string
+    start_at: string
+    end_at?: string
+    status?: ManualAppointmentStatus
+}
+
+const ALLOWED_MANUAL_STATUSES =
+    new Set<ManualAppointmentStatus>([
+        'pending',
+        'confirmed',
+    ])
+
+export async function createManualAppointmentServer(
+    input: CreateManualAppointmentInput
+) {
+    if (!input || typeof input !== 'object') {
+        throw new Error(
+            'Los datos de la reserva no son válidos'
+        )
+    }
+
+    const supabase = await createClient()
+
+    /*
+     * 1. Sesión.
+     */
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+        throw new Error('No autorizado')
+    }
+
+    /*
+     * 2. Perfil, negocio y rol.
+     */
+    const { data: profile, error: profileError } =
+        await supabase
+            .from('profiles')
+            .select('id, business_id, role')
+            .eq('id', user.id)
+            .maybeSingle()
+
+    if (
+        profileError ||
+        !profile?.business_id
+    ) {
+        throw new Error(
+            'No se pudo verificar el perfil del usuario'
+        )
+    }
+
+    if (
+        !canManageAppointments(profile.role)
+    ) {
+        throw new Error(
+            'No tienes permisos para crear reservas'
+        )
+    }
+
+    /*
+     * 3. El barbero debe pertenecer al negocio.
+     */
+    const requestedBarberId =
+        typeof input.barber_id === 'string'
+            ? input.barber_id.trim()
+            : ''
+
+    if (!requestedBarberId) {
+        throw new Error(
+            'Selecciona un barbero'
+        )
+    }
+
+    const { data: barber, error: barberError } =
+        await supabase
+            .from('barbers')
+            .select('id, business_id, profile_id')
+            .eq('id', requestedBarberId)
+            .eq(
+                'business_id',
+                profile.business_id
+            )
+            .maybeSingle()
+
+    if (barberError || !barber) {
+        throw new Error(
+            'El barbero no pertenece a este negocio'
+        )
+    }
+
+    /*
+     * El rol barber solo puede agendarse a sí mismo.
+     */
+    if (
+        isBarberRole(profile.role) &&
+        barber.profile_id !== user.id
+    ) {
+        throw new Error(
+            'Solo puedes crear reservas para tu propia agenda'
+        )
+    }
+
+    /*
+     * 4. Datos del cliente.
+     */
+    const clientName = normalizeWhitespace(
+        typeof input.client_name === 'string'
+            ? input.client_name
+            : ''
+    )
+
+    const clientEmail = normalizeWhitespace(
+        typeof input.client_email === 'string'
+            ? input.client_email
+            : ''
+    )
+
+    const rawClientPhone =
+        typeof input.client_phone === 'string'
+            ? input.client_phone
+            : ''
+
+    const phoneError =
+        validateClientPhone(rawClientPhone)
+
+    if (phoneError) {
+        throw new Error(phoneError)
+    }
+
+    const clientPhone =
+        formatPhoneForStorage(rawClientPhone)
+
+    const nameError =
+        validateClientName(clientName)
+
+    if (nameError) {
+        throw new Error(nameError)
+    }
+
+    const emailError =
+        validateClientEmail(clientEmail)
+
+    if (emailError) {
+        throw new Error(emailError)
+    }
+
+    /*
+     * 5. Estado permitido al crear.
+     * No tiene sentido crear directamente una reserva
+     * completada, cancelada o no-show.
+     */
+    const status: ManualAppointmentStatus =
+        input.status &&
+            ALLOWED_MANUAL_STATUSES.has(
+                input.status
+            )
+            ? input.status
+            : 'confirmed'
+
+    /*
+     * 6. Validación completa de disponibilidad,
+     * servicio, suscripción, horario y bloqueos.
+     */
+    const validated =
+        await validateAppointmentAvailabilityServer({
+            businessId:
+                profile.business_id,
+            barberId: barber.id,
+            serviceId: input.service_id,
+            appointmentDate:
+                input.appointment_date,
+            startAt: input.start_at,
+            endAt: input.end_at,
+            audience: 'admin',
+        })
+
+    /*
+     * 7. Insertar utilizando exclusivamente
+     * valores validados por servidor.
+     */
+    const { data, error } = await supabase
+        .from('appointments')
+        .insert({
+            business_id:
+                profile.business_id,
+            barber_id:
+                validated.barberId,
+            service_id:
+                validated.serviceId,
+            client_name: clientName,
+            client_email:
+                clientEmail || null,
+            client_phone: clientPhone,
+            appointment_date:
+                validated.appointmentDate,
+            start_at: validated.startAt,
+            end_at: validated.endAt,
+            status,
+            source: 'admin',
+        })
+        .select(`
+            id,
+            business_id,
+            barber_id,
+            service_id,
+            client_name,
+            client_email,
+            client_phone,
+            appointment_date,
+            start_at,
+            end_at,
+            status,
+            source
+        `)
+        .single()
+
+    if (error) {
+        if (isAppointmentOverlapError(error)) {
+            throw new Error(
+                'Ese horario acaba de ser reservado. Selecciona otra hora.'
+            )
+        }
+        console.error(
+            'Error creando reserva manual:',
+            error
+        )
+        throw new Error(
+            'No se pudo crear la reserva'
+        )
+    }
+
+    revalidatePath(
+        `/admin/b/${validated.businessSlug}/reservas`
+    )
+
+    revalidatePath(
+        `/b/${validated.businessSlug}`
+    )
+
+    revalidatePath(
+        `/b/${validated.businessSlug}/reservar`
+    )
+
+    return data
+}
+========== update-appointment.ts ==========
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/src/lib/supabase/server'
+import { canManageAppointments } from '@/src/features/auth/utils/admin-access'
+import { isBarberRole } from '@/src/features/auth/utils/admin-scope'
+import {
+    normalizeWhitespace,
+    validateClientName,
+    validateClientEmail,
+    validateClientPhone,
+    formatPhoneForStorage,
+} from '@/src/features/booking/utils/validation'
+import { validateAppointmentAvailabilityServer } from '@/src/features/booking/api/validate-appointment-availability-server'
+import {
+    canEditWithSubscription,
+    getSubscriptionBlockReason,
+    normalizeSubscriptionStatus,
+} from '@/src/features/business/utils/subscription-rules'
+import { isAppointmentOverlapError } from '@/src/features/booking/utils/appointment-errors'
+
+export type UpdateAppointmentInput = {
+    id: string
+    barber_id: string
+    service_id: string
+    client_name: string
+    client_email?: string | null
+    client_phone: string
+    appointment_date: string
+    start_at: string
+    end_at?: string
+}
+
+function normalizeId(
+    value: unknown,
+    label: string
+): string {
+    const normalized =
+        typeof value === 'string'
+            ? value.trim()
+            : ''
+
+    if (!normalized) {
+        throw new Error(`${label} no es válido`)
+    }
+
+    return normalized
+}
+
+export async function updateAppointmentServer(
+    input: UpdateAppointmentInput
+) {
+    if (!input || typeof input !== 'object') {
+        throw new Error(
+            'Los datos de la reserva no son válidos'
+        )
+    }
+
+    const appointmentId = normalizeId(
+        input.id,
+        'La reserva'
+    )
+
+    const requestedBarberId = normalizeId(
+        input.barber_id,
+        'El barbero'
+    )
+
+    const requestedServiceId = normalizeId(
+        input.service_id,
+        'El servicio'
+    )
+
+    const requestedDate =
+        typeof input.appointment_date === 'string'
+            ? input.appointment_date.trim()
+            : ''
+
+    const requestedStartAt =
+        new Date(input.start_at)
+
+    if (
+        !requestedDate ||
+        Number.isNaN(
+            requestedStartAt.getTime()
+        )
+    ) {
+        throw new Error(
+            'La fecha u hora de la reserva no es válida'
+        )
+    }
+
+    const supabase = await createClient()
+
+    /*
+     * 1. Sesión y perfil.
+     */
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+        throw new Error('No autorizado')
+    }
+
+    const {
+        data: profile,
+        error: profileError,
+    } = await supabase
+        .from('profiles')
+        .select('id, business_id, role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+    if (
+        profileError ||
+        !profile?.business_id
+    ) {
+        throw new Error(
+            'No se pudo verificar el perfil del usuario'
+        )
+    }
+
+    if (
+        !canManageAppointments(profile.role)
+    ) {
+        throw new Error(
+            'No tienes permisos para editar reservas'
+        )
+    }
+
+    /*
+     * 2. Negocio y suscripción.
+     *
+     * Esto debe validarse incluso si solamente
+     * cambia el nombre del cliente.
+     */
+    const {
+        data: business,
+        error: businessError,
+    } = await supabase
+        .from('businesses')
+        .select(
+            'id, slug, subscription_status'
+        )
+        .eq('id', profile.business_id)
+        .maybeSingle()
+
+    if (businessError || !business) {
+        throw new Error(
+            'Negocio no encontrado'
+        )
+    }
+
+    const subscriptionStatus =
+        normalizeSubscriptionStatus(
+            business.subscription_status
+        )
+
+    if (
+        !canEditWithSubscription(
+            subscriptionStatus
+        )
+    ) {
+        throw new Error(
+            getSubscriptionBlockReason(
+                subscriptionStatus
+            ) ||
+            'La suscripción actual no permite editar reservas.'
+        )
+    }
+
+    /*
+     * 3. Reserva actual.
+     */
+    const {
+        data: appointment,
+        error: appointmentError,
+    } = await supabase
+        .from('appointments')
+        .select(`
+            id,
+            business_id,
+            barber_id,
+            service_id,
+            appointment_date,
+            start_at,
+            end_at,
+            status
+        `)
+        .eq('id', appointmentId)
+        .eq(
+            'business_id',
+            profile.business_id
+        )
+        .maybeSingle()
+
+    if (
+        appointmentError ||
+        !appointment
+    ) {
+        throw new Error(
+            'Reserva no encontrada en este negocio'
+        )
+    }
+
+    /*
+     * 4. Permisos del barbero.
+     */
+    if (isBarberRole(profile.role)) {
+        const {
+            data: ownBarber,
+            error: ownBarberError,
+        } = await supabase
+            .from('barbers')
+            .select('id, profile_id')
+            .eq(
+                'business_id',
+                profile.business_id
+            )
+            .eq('profile_id', user.id)
+            .maybeSingle()
+
+        if (
+            ownBarberError ||
+            !ownBarber
+        ) {
+            throw new Error(
+                'No se encontró tu perfil de barbero'
+            )
+        }
+
+        if (
+            appointment.barber_id !==
+            ownBarber.id
+        ) {
+            throw new Error(
+                'Solo puedes editar tus propias reservas'
+            )
+        }
+
+        if (
+            requestedBarberId !==
+            ownBarber.id
+        ) {
+            throw new Error(
+                'No puedes asignar la reserva a otro barbero'
+            )
+        }
+    }
+
+    /*
+     * 5. Datos del cliente.
+     */
+    const clientName =
+        normalizeWhitespace(
+            typeof input.client_name ===
+                'string'
+                ? input.client_name
+                : ''
+        )
+
+    const clientEmail =
+        normalizeWhitespace(
+            typeof input.client_email ===
+                'string'
+                ? input.client_email
+                : ''
+        )
+
+    const rawClientPhone =
+        typeof input.client_phone ===
+            'string'
+            ? input.client_phone
+            : ''
+
+    const nameError =
+        validateClientName(clientName)
+
+    if (nameError) {
+        throw new Error(nameError)
+    }
+
+    const emailError =
+        validateClientEmail(clientEmail)
+
+    if (emailError) {
+        throw new Error(emailError)
+    }
+
+    const phoneError =
+        validateClientPhone(rawClientPhone)
+
+    if (phoneError) {
+        throw new Error(phoneError)
+    }
+
+    const clientPhone =
+        formatPhoneForStorage(
+            rawClientPhone
+        )
+
+    /*
+     * 6. Detectar si realmente cambió la agenda.
+     *
+     * Si solamente cambió nombre, email o teléfono,
+     * no se vuelve a validar que la hora sea futura.
+     */
+    const currentStartAt =
+        new Date(appointment.start_at)
+
+    const scheduleChanged =
+        appointment.barber_id !==
+        requestedBarberId ||
+        appointment.service_id !==
+        requestedServiceId ||
+        appointment.appointment_date !==
+        requestedDate ||
+        currentStartAt.getTime() !==
+        requestedStartAt.getTime()
+
+    let scheduleData = {
+        barber_id:
+            appointment.barber_id,
+        service_id:
+            appointment.service_id,
+        appointment_date:
+            appointment.appointment_date,
+        start_at:
+            appointment.start_at,
+        end_at:
+            appointment.end_at,
+    }
+
+    /*
+     * 7. Solo si cambió fecha, hora, servicio
+     * o barbero se valida disponibilidad.
+     */
+    if (scheduleChanged) {
+        const {
+            data: requestedBarber,
+            error: barberError,
+        } = await supabase
+            .from('barbers')
+            .select(`
+                id,
+                business_id,
+                profile_id,
+                is_active
+            `)
+            .eq(
+                'id',
+                requestedBarberId
+            )
+            .eq(
+                'business_id',
+                profile.business_id
+            )
+            .eq('is_active', true)
+            .maybeSingle()
+
+        if (
+            barberError ||
+            !requestedBarber
+        ) {
+            throw new Error(
+                'El barbero no está disponible para este negocio'
+            )
+        }
+
+        const validated =
+            await validateAppointmentAvailabilityServer({
+                businessId:
+                    profile.business_id,
+                barberId:
+                    requestedBarber.id,
+                serviceId:
+                    requestedServiceId,
+                appointmentDate:
+                    requestedDate,
+                startAt:
+                    input.start_at,
+                endAt:
+                    input.end_at,
+                audience: 'admin',
+                excludeAppointmentId:
+                    appointment.id,
+            })
+
+        scheduleData = {
+            barber_id:
+                validated.barberId,
+            service_id:
+                validated.serviceId,
+            appointment_date:
+                validated.appointmentDate,
+            start_at:
+                validated.startAt,
+            end_at:
+                validated.endAt,
+        }
+    }
+
+    /*
+     * 8. Actualización.
+     */
+    const { data, error } =
+        await supabase
+            .from('appointments')
+            .update({
+                ...scheduleData,
+                client_name:
+                    clientName,
+                client_email:
+                    clientEmail || null,
+                client_phone:
+                    clientPhone,
+            })
+            .eq('id', appointment.id)
+            .eq(
+                'business_id',
+                profile.business_id
+            )
+            .select(`
+                id,
+                business_id,
+                barber_id,
+                service_id,
+                client_name,
+                client_email,
+                client_phone,
+                appointment_date,
+                start_at,
+                end_at,
+                status,
+                source
+            `)
+            .single()
+
+    if (error) {
+        if (isAppointmentOverlapError(error)) {
+            throw new Error(
+                'La hora seleccionada ya no está disponible. Selecciona otra hora.'
+            )
+        }
+        console.error(
+            'Error actualizando reserva:',
+            error
+        )
+        throw new Error(
+            'No se pudo actualizar la reserva'
+        )
+    }
+
+    revalidatePath(
+        `/admin/b/${business.slug}/reservas`
+    )
+
+    revalidatePath(
+        `/b/${business.slug}`
+    )
+
+    revalidatePath(
+        `/b/${business.slug}/reservar`
+    )
+
+    return data
+}
+
+========== update-appointment-status.ts ==========
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/src/lib/supabase/server'
+import { canManageAppointments } from '@/src/features/auth/utils/admin-access'
+import { isBarberRole } from '@/src/features/auth/utils/admin-scope'
+import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
+import {
+    canEditWithSubscription,
+    getSubscriptionBlockReason,
+    normalizeSubscriptionStatus,
+} from '@/src/features/business/utils/subscription-rules'
+import { isAppointmentOverlapError } from '@/src/features/booking/utils/appointment-errors'
+
+const ALLOWED_STATUSES =
+    new Set<AppointmentStatus>([
+        'pending',
+        'confirmed',
+        'completed',
+        'cancelled',
+        'no_show',
+    ])
+
+export async function updateAppointmentStatus(
+    appointmentId: string,
+    status: AppointmentStatus
+) {
+    const normalizedId =
+        typeof appointmentId === 'string'
+            ? appointmentId.trim()
+            : ''
+
+    if (!normalizedId) {
+        throw new Error('Reserva no válida')
+    }
+
+    if (!ALLOWED_STATUSES.has(status)) {
+        throw new Error(
+            'El estado seleccionado no es válido'
+        )
+    }
+
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+        throw new Error('No autorizado')
+    }
+
+    const { data: profile, error: profileError } =
+        await supabase
+            .from('profiles')
+            .select('id, business_id, role')
+            .eq('id', user.id)
+            .maybeSingle()
+
+    if (
+        profileError ||
+        !profile?.business_id
+    ) {
+        throw new Error(
+            'No se pudo verificar el perfil'
+        )
+    }
+
+    if (!canManageAppointments(profile.role)) {
+        throw new Error(
+            'No tienes permisos para actualizar reservas'
+        )
+    }
+
+    const { data: business, error: businessError } =
+        await supabase
+            .from('businesses')
+            .select('id, slug, subscription_status')
+            .eq('id', profile.business_id)
+            .maybeSingle()
+
+    if (businessError || !business) {
+        throw new Error('Negocio no encontrado')
+    }
+
+    const subscriptionStatus =
+        normalizeSubscriptionStatus(
+            business.subscription_status
+        )
+
+    if (!canEditWithSubscription(subscriptionStatus)) {
+        throw new Error(
+            getSubscriptionBlockReason(
+                subscriptionStatus
+            ) ||
+            'La suscripción actual no permite actualizar reservas.'
+        )
+    }
+
+    const {
+        data: appointment,
+        error: appointmentError,
+    } = await supabase
+        .from('appointments')
+        .select(`
+            id,
+            business_id,
+            barber_id,
+            start_at,
+            end_at,
+            status
+        `)
+        .eq('id', normalizedId)
+        .eq('business_id', profile.business_id)
+        .maybeSingle()
+
+    if (appointmentError || !appointment) {
+        throw new Error(
+            'Reserva no encontrada en este negocio'
+        )
+    }
+
+    if (isBarberRole(profile.role)) {
+        const { data: barber } =
+            await supabase
+                .from('barbers')
+                .select('id, profile_id')
+                .eq('id', appointment.barber_id)
+                .eq(
+                    'business_id',
+                    profile.business_id
+                )
+                .maybeSingle()
+
+        if (
+            !barber ||
+            barber.profile_id !== user.id
+        ) {
+            throw new Error(
+                'Solo puedes actualizar tus propias reservas'
+            )
+        }
+    }
+
+    /*
+     * Si una reserva cancelada vuelve a ocupar agenda,
+     * se comprueba que el horario continúe disponible.
+     */
+    if (
+        appointment.status === 'cancelled' &&
+        status !== 'cancelled'
+    ) {
+        const { data: conflicts, error } =
+            await supabase
+                .from('appointments')
+                .select('id')
+                .eq(
+                    'business_id',
+                    profile.business_id
+                )
+                .eq(
+                    'barber_id',
+                    appointment.barber_id
+                )
+                .neq('id', appointment.id)
+                .neq('status', 'cancelled')
+                .lt(
+                    'start_at',
+                    appointment.end_at
+                )
+                .gt(
+                    'end_at',
+                    appointment.start_at
+                )
+                .limit(1)
+
+        if (error) {
+            throw new Error(
+                'No se pudo comprobar la disponibilidad'
+            )
+        }
+
+        if (conflicts?.length) {
+            throw new Error(
+                'No se puede reactivar porque ese horario ya está ocupado'
+            )
+        }
+    }
+
+    const { data, error } = await supabase
+        .from('appointments')
+        .update({ status })
+        .eq('id', appointment.id)
+        .eq(
+            'business_id',
+            profile.business_id
+        )
+        .select(`
+            id,
+            status
+        `)
+        .single()
+
+    if (error) {
+        if (isAppointmentOverlapError(error)) {
+            throw new Error(
+                'No se puede reactivar la reserva porque ese horario ya está ocupado.'
+            )
+        }
+        console.error(
+            'Error actualizando estado:',
+            error
+        )
+        throw new Error(
+            'No se pudo actualizar el estado'
+        )
+
+    }
+    revalidatePath(
+        `/admin/b/${business.slug}/reservas`
+    )
+
+    revalidatePath(`/b/${business.slug}`)
+
+    revalidatePath(
+        `/b/${business.slug}/reservar`
+    )
+
+    return data
+}
+========== update-reservation-status-by-barber.ts ==========
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/src/lib/supabase/server'
+import type { AppointmentStatus } from '@/src/features/booking/api/components/schemas/types/booking'
+
+type AllowedStatus = Extract<
+    AppointmentStatus,
+    'pending' | 'confirmed' | 'completed' | 'cancelled'
+>
+
+type Input = {
+    reservationId: string
+    nextStatus: AllowedStatus
+}
+
+type Result =
+    | {
+        ok: true
+        status: AllowedStatus
+    }
+    | {
+        ok: false
+        message: string
+    }
+
+const ALLOWED_STATUSES = new Set<AllowedStatus>([
+    'pending',
+    'confirmed',
+    'completed',
+    'cancelled',
+])
+
+const ALLOWED_TRANSITIONS: Record<
+    AllowedStatus,
+    AllowedStatus[]
+> = {
+    pending: ['confirmed', 'cancelled'],
+    confirmed: ['completed', 'cancelled'],
+    completed: [],
+    cancelled: [],
+}
+
+function failure(message: string): Result {
+    return {
+        ok: false,
+        message,
+    }
+}
+
+function isAllowedStatus(
+    value: unknown
+): value is AllowedStatus {
+    return (
+        typeof value === 'string' &&
+        ALLOWED_STATUSES.has(value as AllowedStatus)
+    )
+}
+
+export async function updateReservationStatusByBarber({
+    reservationId,
+    nextStatus,
+}: Input): Promise<Result> {
+    const supabase = await createClient()
+
+    /*
+     * 1. Validar sesión.
+     */
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+        return failure('No autorizado')
+    }
+
+    /*
+     * 2. Obtener perfil, negocio y rol autenticados.
+     */
+    const { data: profile, error: profileError } =
+        await supabase
+            .from('profiles')
+            .select('id, business_id, role')
+            .eq('id', user.id)
+            .maybeSingle()
+
+    if (profileError || !profile?.business_id) {
+        return failure(
+            'No se pudo cargar el perfil del usuario'
+        )
+    }
+
+    if (
+        profile.role !== 'barber' &&
+        profile.role !== 'owner' &&
+        profile.role !== 'admin'
+    ) {
+        return failure(
+            'No tienes permisos para gestionar reservas'
+        )
+    }
+
+    /*
+     * 3. Validar suscripción.
+     */
+    const { data: business, error: businessError } =
+        await supabase
+            .from('businesses')
+            .select('id, slug, subscription_status')
+            .eq('id', profile.business_id)
+            .maybeSingle()
+
+    if (businessError || !business) {
+        return failure('Negocio no encontrado')
+    }
+
+    if (
+        business.subscription_status !== 'trialing' &&
+        business.subscription_status !== 'active'
+    ) {
+        return failure(
+            business.subscription_status === 'past_due'
+                ? 'Tu negocio está en modo lectura porque existe un pago pendiente.'
+                : business.subscription_status === 'cancelled'
+                    ? 'La suscripción está cancelada. Reactívala para gestionar reservas.'
+                    : 'La suscripción actual no permite modificar reservas.'
+        )
+    }
+
+    /*
+     * 4. Validar parámetros recibidos.
+     */
+    const normalizedReservationId =
+        reservationId?.trim()
+
+    if (!normalizedReservationId) {
+        return failure('La reserva no es válida')
+    }
+
+    if (!isAllowedStatus(nextStatus)) {
+        return failure(
+            'El estado solicitado no es válido'
+        )
+    }
+
+    /*
+     * 5. Obtener exclusivamente el barbero asociado
+     * al usuario y al negocio autenticado.
+     */
+    const { data: barber, error: barberError } =
+        await supabase
+            .from('barbers')
+            .select('id, profile_id, business_id')
+            .eq('profile_id', user.id)
+            .eq('business_id', profile.business_id)
+            .maybeSingle()
+
+    if (barberError) {
+        console.error(
+            'Error verificando barbero para actualizar reserva:',
+            barberError
+        )
+
+        return failure(
+            'No se pudo verificar el perfil del barbero'
+        )
+    }
+
+    if (!barber) {
+        return failure(
+            'No se encontró un barbero asociado a este usuario'
+        )
+    }
+
+    /*
+     * 6. Buscar la reserva usando simultáneamente:
+     * - ID de la reserva
+     * - barbero autenticado
+     * - negocio autenticado
+     */
+    const { data: reservation, error: reservationError } =
+        await supabase
+            .from('appointments')
+            .select(`
+    id,
+    business_id,
+    barber_id,
+    status,
+    start_at
+`)
+            .eq('id', normalizedReservationId)
+            .eq('business_id', profile.business_id)
+            .eq('barber_id', barber.id)
+            .maybeSingle()
+
+    if (reservationError) {
+        console.error(
+            'Error verificando reserva del barbero:',
+            reservationError
+        )
+
+        return failure(
+            'No se pudo verificar la reserva'
+        )
+    }
+
+    if (!reservation) {
+        return failure(
+            'La reserva no existe o no pertenece a tu agenda'
+        )
+    }
+
+    if (!isAllowedStatus(reservation.status)) {
+        return failure(
+            'La reserva tiene un estado que no puede modificarse desde este panel'
+        )
+    }
+
+    /*
+     * 7. Validar transición de estado.
+     */
+    const allowedNextStatuses =
+        ALLOWED_TRANSITIONS[reservation.status]
+
+    if (!allowedNextStatuses.includes(nextStatus)) {
+        return failure(
+            `No puedes cambiar una reserva de ${reservation.status} a ${nextStatus}`
+        )
+    }
+
+    /*
+ * 8. Una reserva solamente puede completarse
+ * cuando su horario de inicio ya llegó.
+ *
+ * Esta validación vive en el servidor para
+ * impedir que se evada desde el navegador.
+ */
+    if (nextStatus === 'completed') {
+        const startTimestamp =
+            new Date(
+                reservation.start_at
+            ).getTime()
+
+        if (
+            Number.isNaN(
+                startTimestamp
+            )
+        ) {
+            console.error(
+                'La reserva tiene un start_at inválido:',
+                {
+                    reservationId:
+                        reservation.id,
+                    startAt:
+                        reservation.start_at,
+                }
+            )
+
+            return failure(
+                'La reserva tiene una fecha inválida'
+            )
+        }
+
+        if (
+            startTimestamp >
+            Date.now()
+        ) {
+            return failure(
+                'No puedes completar una reserva antes de su horario.'
+            )
+        }
+    }
+
+    /*
+     * 9. Actualización protegida.
+     *
+     * Incluimos el estado actual en el filtro para evitar
+     * sobrescribir un cambio realizado simultáneamente.
+     */
+    const { data: updatedReservation, error: updateError } =
+        await supabase
+            .from('appointments')
+            .update({
+                status: nextStatus,
+            })
+            .eq('id', reservation.id)
+            .eq('business_id', profile.business_id)
+            .eq('barber_id', barber.id)
+            .eq('status', reservation.status)
+            .select('id, status')
+            .maybeSingle()
+
+    if (updateError) {
+        console.error(
+            'Error actualizando estado de la reserva:',
+            updateError
+        )
+
+        return failure(
+            'No se pudo actualizar el estado de la reserva'
+        )
+    }
+
+    if (!updatedReservation) {
+        return failure(
+            'La reserva cambió mientras la estabas modificando. Actualiza la página e inténtalo nuevamente.'
+        )
+    }
+
+    /*
+     * 9. Revalidar vistas relacionadas.
+     */
+    revalidatePath('/admin', 'layout')
+    revalidatePath(`/b/${business.slug}`)
+
+    return {
+        ok: true,
+        status: nextStatus,
+    }
+}
+========== delete-appointment.ts ==========
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/src/lib/supabase/server'
+import { canManageBusiness } from '@/src/features/auth/utils/admin-access'
+import {
+    canEditWithSubscription,
+    getSubscriptionBlockReason,
+    normalizeSubscriptionStatus,
+} from '@/src/features/business/utils/subscription-rules'
+
+export async function deleteAppointmentServer(
+    appointmentId: string
+) {
+    const normalizedId =
+        typeof appointmentId === 'string'
+            ? appointmentId.trim()
+            : ''
+
+    if (!normalizedId) {
+        throw new Error('Reserva no válida')
+    }
+
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+        throw new Error('No autorizado')
+    }
+
+    const {
+        data: profile,
+        error: profileError,
+    } = await supabase
+        .from('profiles')
+        .select('id, business_id, role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+    if (
+        profileError ||
+        !profile?.business_id
+    ) {
+        throw new Error(
+            'No se pudo verificar el perfil del usuario'
+        )
+    }
+
+    /*
+     * El borrado permanente queda reservado
+     * para owner y admin.
+     */
+    if (!canManageBusiness(profile.role)) {
+        throw new Error(
+            'No tienes permisos para eliminar reservas permanentemente'
+        )
+    }
+
+    const {
+        data: business,
+        error: businessError,
+    } = await supabase
+        .from('businesses')
+        .select('id, slug, subscription_status')
+        .eq('id', profile.business_id)
+        .maybeSingle()
+
+    if (businessError || !business) {
+        throw new Error('Negocio no encontrado')
+    }
+
+    const subscriptionStatus =
+        normalizeSubscriptionStatus(
+            business.subscription_status
+        )
+
+    if (
+        !canEditWithSubscription(
+            subscriptionStatus
+        )
+    ) {
+        throw new Error(
+            getSubscriptionBlockReason(
+                subscriptionStatus
+            ) ||
+            'La suscripción actual no permite eliminar reservas.'
+        )
+    }
+
+    /*
+     * Se comprueba que la reserva pertenezca
+     * al negocio autenticado.
+     */
+    const {
+        data: appointment,
+        error: appointmentError,
+    } = await supabase
+        .from('appointments')
+        .select(`
+            id,
+            business_id,
+            status,
+            start_at
+        `)
+        .eq('id', normalizedId)
+        .eq(
+            'business_id',
+            profile.business_id
+        )
+        .maybeSingle()
+
+    if (
+        appointmentError ||
+        !appointment
+    ) {
+        throw new Error(
+            'Reserva no encontrada en este negocio'
+        )
+    }
+
+    /*
+     * Recomendación de integridad:
+     * las reservas completadas deben conservarse
+     * como historial.
+     */
+    if (appointment.status === 'completed') {
+        throw new Error(
+            'Las reservas completadas no se pueden eliminar porque forman parte del historial'
+        )
+    }
+
+    const { error: deleteError } =
+        await supabase
+            .from('appointments')
+            .delete()
+            .eq('id', appointment.id)
+            .eq(
+                'business_id',
+                profile.business_id
+            )
+
+    if (deleteError) {
+        console.error(
+            'Error eliminando reserva:',
+            deleteError
+        )
+
+        throw new Error(
+            'No se pudo eliminar la reserva'
+        )
+    }
+
+    revalidatePath(
+        `/admin/b/${business.slug}/reservas`
+    )
+
+    revalidatePath(
+        `/b/${business.slug}`
+    )
+
+    revalidatePath(
+        `/b/${business.slug}/reservar`
+    )
+
+    return {
+        ok: true as const,
+    }
+}
