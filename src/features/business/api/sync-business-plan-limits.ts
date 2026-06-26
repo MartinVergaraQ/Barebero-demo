@@ -1,26 +1,44 @@
 import { createClient } from '@/src/lib/supabase/server'
-import { getPlanLimits } from '@/src/features/business/utils/plan-limits'
+import {
+    getPlanLimits,
+} from '@/src/features/business/utils/plan-limits'
 
 export async function syncBusinessPlanLimits(
     businessId: string,
     planSlug: string
 ) {
-    const supabase = await createClient()
-    const limits = getPlanLimits(planSlug)
+    const supabase =
+        await createClient()
 
-    const { data, error } = await supabase
+    const limits =
+        getPlanLimits(planSlug)
+
+    const {
+        data,
+        error,
+    } = await supabase
         .from('businesses')
         .update({
-            plan_slug: planSlug,
-            max_barbers: limits.max_barbers,
-            max_services: limits.max_services,
+            plan_slug:
+                limits.planSlug,
+
+            max_barbers:
+                limits.maxBarbers,
+
+            max_services:
+                limits.maxServices,
         })
-        .eq('id', businessId)
+        .eq(
+            'id',
+            businessId
+        )
         .select()
         .single()
 
     if (error) {
-        throw new Error(error.message)
+        throw new Error(
+            error.message
+        )
     }
 
     return data

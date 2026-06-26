@@ -55,7 +55,6 @@ type TimeSlot = {
 type ReservarClientProps = {
     businessId: string
     businessSlug: string
-    businessPlanSlug: AllowedPlanSlug
     businessTimezone: string
     initialServiceId?: string
     initialBarberId?: string

@@ -1,18 +1,32 @@
+// src/features/business/utils/plan-limits.ts
+
 import {
-    getPlanLimits,
+    PLAN_LIMITS,
+    normalizePlanSlug,
+    type AllowedPlanSlug,
 } from '@/src/features/business/utils/plan-config'
 
-export function getPlanDatabaseLimits(
-    planSlug?: string | null
-) {
+export type ResolvedPlanLimits = {
+    planSlug: AllowedPlanSlug
+    maxBarbers: number | null
+    maxServices: number | null
+}
+
+export function getPlanLimits(
+    planSlug: string | null | undefined
+): ResolvedPlanLimits {
+    const normalizedPlanSlug =
+        normalizePlanSlug(planSlug)
+
     const limits =
-        getPlanLimits(planSlug)
+        PLAN_LIMITS[normalizedPlanSlug]
 
     return {
-        max_barbers:
+        planSlug:
+            normalizedPlanSlug,
+        maxBarbers:
             limits.maxBarbers,
-
-        max_services:
+        maxServices:
             limits.maxServices,
     }
 }

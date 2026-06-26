@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+
 import { createClient } from '@/src/lib/supabase/server'
 import ReservarClient from '@/src/features/booking/components/reservar-client'
 
@@ -19,27 +20,54 @@ export default async function ReservarPage({
     const { slug } = await params
     const query = await searchParams
 
-    const serviceId = query?.serviceId ?? ''
-    const barberId = query?.barberId ?? ''
+    const serviceId =
+        query?.serviceId ?? ''
 
-    const supabase = await createClient()
+    const barberId =
+        query?.barberId ?? ''
 
-    const { data: business, error } = await supabase
+    const supabase =
+        await createClient()
+
+    const {
+        data: business,
+        error,
+    } = await supabase
         .from('businesses')
-        .select('id, slug')
+        .select(`
+            id,
+            slug,
+            plan_slug,
+            timezone
+        `)
         .eq('slug', slug)
-        .single()
+        .maybeSingle()
 
-    if (error || !business) {
+    if (
+        error ||
+        !business
+    ) {
         notFound()
     }
 
     return (
         <ReservarClient
-            businessId={business.id}
-            businessSlug={business.slug}
-            initialServiceId={serviceId}
-            initialBarberId={barberId}
+            businessId={
+                business.id
+            }
+            businessSlug={
+                business.slug
+            }
+            businessTimezone={
+                business.timezone ??
+                'America/Santiago'
+            }
+            initialServiceId={
+                serviceId
+            }
+            initialBarberId={
+                barberId
+            }
         />
     )
 }
