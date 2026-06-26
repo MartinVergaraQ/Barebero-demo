@@ -4,7 +4,13 @@ import {
     formatInTimeZone,
     fromZonedTime,
 } from 'date-fns-tz'
-import { createClient } from '@/src/lib/supabase/server'
+import {
+    createClient,
+} from '@/src/lib/supabase/server'
+
+import {
+    supabaseAdmin,
+} from '@/src/lib/supabase/admin'
 import { BUSINESS_TIME_ZONE } from '@/src/features/booking/utils/datetime'
 import {
     canEditWithSubscription,
@@ -109,6 +115,76 @@ function getDayOfWeek(
     )
 }
 
+const ADMIN_BOOKING_ROLES = new Set([
+    'owner',
+    'admin',
+])
+
+async function assertAdminBookingAccess(
+    businessId: string
+) {
+    const authClient =
+        await createClient()
+
+    const {
+        data: {
+            user,
+        },
+        error: userError,
+    } = await authClient.auth
+        .getUser()
+
+    if (
+        userError ||
+        !user
+    ) {
+        throw new Error(
+            'No autorizado'
+        )
+    }
+
+    const {
+        data: profile,
+        error: profileError,
+    } = await authClient
+        .from('profiles')
+        .select(`
+            id,
+            business_id,
+            role
+        `)
+        .eq('id', user.id)
+        .maybeSingle()
+
+    if (
+        profileError ||
+        !profile
+    ) {
+        throw new Error(
+            'No se pudo verificar el perfil'
+        )
+    }
+
+    if (
+        profile.business_id !==
+        businessId
+    ) {
+        throw new Error(
+            'No puedes gestionar reservas de otro negocio'
+        )
+    }
+
+    if (
+        !ADMIN_BOOKING_ROLES.has(
+            profile.role
+        )
+    ) {
+        throw new Error(
+            'No tienes permisos para administrar reservas'
+        )
+    }
+}
+
 export async function validateAppointmentAvailabilityServer(
     input: ValidateAppointmentAvailabilityInput
 ): Promise<ValidatedAppointmentSlot> {
@@ -187,7 +263,22 @@ export async function validateAppointmentAvailabilityServer(
         )
     }
 
-    const supabase = await createClient()
+    if (audience === 'admin') {
+        await assertAdminBookingAccess(
+            businessId
+        )
+    }
+
+    /*
+     * Las consultas internas utilizan
+     * service role.
+     *
+     * Para audience public no se devuelve
+     * información privada; solamente se
+     * valida la disponibilidad solicitada.
+     */
+    const supabase =
+        supabaseAdmin
 
     /*
      * 1. Negocio y suscripción.
